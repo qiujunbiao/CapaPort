@@ -96,6 +96,7 @@ export function defineAdapterComplianceSuite(options: AdapterComplianceOptions):
       const imported = await current.adapter.import(local);
       expect(imported.manifest.metadata.slug).toBe('release');
       expect(imported.files.map((file) => file.path)).toContain('skills/release/SKILL.md');
+      expect(imported.files.map((file) => file.path)).toContain('README.md');
       const plan = await current.adapter.planInstall(imported, { installation: user });
       expect(await current.adapter.validatePlan(plan)).toEqual({ valid: true });
       expect(plan.lock).toMatchObject({

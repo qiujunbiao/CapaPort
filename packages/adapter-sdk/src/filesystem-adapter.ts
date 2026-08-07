@@ -189,6 +189,10 @@ export function createFilesystemAdapter(config: FilesystemAdapterConfig): AgentA
       };
       const canonicalFiles = [
         { path: 'agentdoor.yaml', content: encoder.encode(stringify(manifest, { lineWidth: 0 })) },
+        {
+          path: 'README.md',
+          content: encoder.encode(`# ${localCapability.name}\n\nImported from ${config.displayName} by Agentdoor.\n`),
+        },
         ...files,
       ];
       return { manifest, files: canonicalFiles, digest: await hashPackage(canonicalFiles) };

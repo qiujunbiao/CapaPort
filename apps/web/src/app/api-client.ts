@@ -29,9 +29,9 @@ export function createWebClient(baseUrl: string, sessionStore: WebSessionStore):
     }
     if (!response.ok) {
       const payload = (await response.json().catch(() => undefined)) as
-        | { error?: { message?: string; code?: string } }
+        | { message?: string; error?: { message?: string; code?: string } }
         | undefined;
-      throw new Error(payload?.error?.message ?? `请求失败 (${response.status})`);
+      throw new Error(payload?.message ?? payload?.error?.message ?? `请求失败 (${response.status})`);
     }
     if (response.status === 204) return undefined as T;
     return response.json() as Promise<T>;

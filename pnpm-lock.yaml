@@ -185,6 +185,49 @@ importers:
         specifier: 4.1.10
         version: 4.1.10(@types/node@26.1.2)(jsdom@30.0.1)(vite@8.2.1(@types/node@26.1.2)(esbuild@0.28.1)(tsx@4.23.10)(yaml@2.9.0))
 
+  apps/cli:
+    dependencies:
+      '@agentdoor/adapter-claude-code':
+        specifier: workspace:*
+        version: link:../../adapters/claude-code
+      '@agentdoor/adapter-codex':
+        specifier: workspace:*
+        version: link:../../adapters/codex
+      '@agentdoor/adapter-cursor':
+        specifier: workspace:*
+        version: link:../../adapters/cursor
+      '@agentdoor/adapter-gemini-cli':
+        specifier: workspace:*
+        version: link:../../adapters/gemini-cli
+      '@agentdoor/adapter-sdk':
+        specifier: workspace:*
+        version: link:../../packages/adapter-sdk
+      '@agentdoor/capability-kit':
+        specifier: workspace:*
+        version: link:../../packages/capability-kit
+      '@agentdoor/contracts':
+        specifier: workspace:*
+        version: link:../../packages/contracts
+      '@agentdoor/security-scan':
+        specifier: workspace:*
+        version: link:../../packages/security-scan
+    devDependencies:
+      '@types/node':
+        specifier: 26.1.2
+        version: 26.1.2
+      esbuild:
+        specifier: 0.28.1
+        version: 0.28.1
+      tsx:
+        specifier: 4.23.10
+        version: 4.23.10
+      typescript:
+        specifier: 7.0.2
+        version: 7.0.2
+      vitest:
+        specifier: 4.1.10
+        version: 4.1.10(@types/node@26.1.2)(jsdom@30.0.1)(vite@8.2.1(@types/node@26.1.2)(esbuild@0.28.1)(tsx@4.23.10)(yaml@2.9.0))
+
   apps/desktop:
     dependencies:
       '@agentdoor/contracts':
