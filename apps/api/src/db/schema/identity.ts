@@ -61,6 +61,7 @@ export const sessions = pgTable(
     expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
     revokedAt: timestamp('revoked_at', { withTimezone: true }),
     revocationReason: text('revocation_reason'),
+    currentOrganizationId: uuid('current_organization_id'),
   },
   (table) => [
     index('sessions_user_idx').on(table.userId, table.createdAt),
