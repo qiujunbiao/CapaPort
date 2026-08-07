@@ -167,6 +167,7 @@ export const capabilityVersions = pgTable(
     publishedAt: timestamp('published_at', { withTimezone: true }).notNull().defaultNow(),
   },
   (table) => [
+    uniqueIndex('capability_versions_id_org_uidx').on(table.id, table.organizationId),
     uniqueIndex('capability_versions_capability_space_version_uidx').on(
       table.capabilityId,
       table.spaceId,

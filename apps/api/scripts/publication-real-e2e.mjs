@@ -3,7 +3,7 @@ import { buildArchive } from '../../../packages/capability-kit/dist/index.js';
 
 const api = process.env.AGENTDOOR_API_URL ?? 'http://localhost:3210/api/v1';
 const mailpit = process.env.MAILPIT_URL ?? 'http://localhost:8025';
-const stamp = `${Date.now()}`;
+const stamp = process.env.AGENTDOOR_E2E_STAMP ?? `${Date.now()}`;
 const password = `V7!qZ2#${stamp}Lm9@Xr4`;
 const ownerEmail = `owner.publish.${stamp}@example.com`;
 const reviewerEmail = `reviewer.publish.${stamp}@example.com`;

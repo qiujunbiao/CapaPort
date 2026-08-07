@@ -20,6 +20,10 @@
       "types": "./src/errors.ts",
       "default": "./dist/errors.js"
     },
+    "./distribution": {
+      "types": "./src/distribution.ts",
+      "default": "./dist/distribution.js"
+    },
     "./organizations": {
       "types": "./src/organizations.ts",
       "default": "./dist/organizations.js"

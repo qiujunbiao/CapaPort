@@ -45,6 +45,14 @@ export class StorageService implements DependencyProbe {
     );
   }
 
+  createDownloadUrl(objectKey: string, expiresIn = 120): Promise<string> {
+    return getSignedUrl(
+      this.uploadClient,
+      new GetObjectCommand({ Bucket: this.config.s3.bucket, Key: objectKey, ResponseContentType: 'application/zip' }),
+      { expiresIn },
+    );
+  }
+
   async statObject(objectKey: string): Promise<{ sizeBytes: number }> {
     const result = await this.client.send(new HeadObjectCommand({ Bucket: this.config.s3.bucket, Key: objectKey }));
     return { sizeBytes: result.ContentLength ?? 0 };
