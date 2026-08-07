@@ -11,11 +11,22 @@ const validEnvironment = {
   S3_BUCKET: 'agentdoor',
   S3_ACCESS_KEY: 'agentdoor',
   S3_SECRET_KEY: 'agentdoor-secret',
+  JWT_SECRET: 'jwt-secret-that-is-longer-than-thirty-two-characters',
+  REFRESH_TOKEN_PEPPER: 'refresh-pepper-that-is-longer-than-thirty-two-characters',
+  VERIFICATION_PEPPER: 'verification-pepper-longer-than-thirty-two-characters',
+  SMTP_HOST: 'localhost',
+  SMTP_PORT: '1025',
+  SMTP_FROM: 'Agentdoor <no-reply@agentdoor.local>',
 };
 
 describe('configuration', () => {
   it('parses and types a complete environment', () => {
-    expect(parseConfig(validEnvironment)).toMatchObject({ nodeEnv: 'test', port: 3100, s3: { bucket: 'agentdoor' } });
+    expect(parseConfig(validEnvironment)).toMatchObject({
+      nodeEnv: 'test',
+      port: 3100,
+      s3: { bucket: 'agentdoor' },
+      auth: { accessTtlSeconds: 900, refreshTtlDays: 30 },
+    });
   });
 
   it('rejects missing and malformed values before application startup', () => {

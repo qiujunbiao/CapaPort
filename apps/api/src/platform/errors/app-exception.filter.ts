@@ -1,4 +1,4 @@
-import { type ArgumentsHost, Catch, type ExceptionFilter, HttpException, HttpStatus } from '@nestjs/common';
+import { type ArgumentsHost, Catch, type ExceptionFilter, HttpException, HttpStatus, Logger } from '@nestjs/common';
 import { AppError } from './app-error.js';
 
 type RequestWithId = { requestId?: string; raw?: { requestId?: string } };
@@ -6,6 +6,8 @@ type HttpReply = { status(code: number): HttpReply; send(payload: unknown): void
 
 @Catch()
 export class AppExceptionFilter implements ExceptionFilter {
+  private readonly logger = new Logger(AppExceptionFilter.name);
+
   catch(exception: unknown, host: ArgumentsHost): void {
     const request = host.switchToHttp().getRequest<RequestWithId>();
     const reply = host.switchToHttp().getResponse<HttpReply>();
@@ -28,6 +30,8 @@ export class AppExceptionFilter implements ExceptionFilter {
       reply.status(statusCode).send({ code: `HTTP_${statusCode}`, message, requestId });
       return;
     }
+
+    this.logger.error('Unhandled request exception', exception instanceof Error ? exception.stack : String(exception));
 
     reply.status(HttpStatus.INTERNAL_SERVER_ERROR).send({
       code: 'INTERNAL_ERROR',

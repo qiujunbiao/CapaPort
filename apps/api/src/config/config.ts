@@ -10,6 +10,15 @@ const environmentSchema = z.object({
   S3_BUCKET: z.string().min(3),
   S3_ACCESS_KEY: z.string().min(1),
   S3_SECRET_KEY: z.string().min(8),
+  JWT_SECRET: z.string().min(32),
+  REFRESH_TOKEN_PEPPER: z.string().min(32),
+  VERIFICATION_PEPPER: z.string().min(32),
+  ACCESS_TOKEN_TTL_SECONDS: z.coerce.number().int().min(60).max(3_600).default(900),
+  REFRESH_TOKEN_TTL_DAYS: z.coerce.number().int().min(1).max(365).default(30),
+  VERIFICATION_TTL_MINUTES: z.coerce.number().int().min(2).max(60).default(10),
+  SMTP_HOST: z.string().min(1),
+  SMTP_PORT: z.coerce.number().int().min(1).max(65_535).default(1025),
+  SMTP_FROM: z.string().min(3),
 });
 
 export type AppConfig = {
@@ -24,6 +33,15 @@ export type AppConfig = {
     accessKey: string;
     secretKey: string;
   };
+  auth: {
+    jwtSecret: string;
+    refreshPepper: string;
+    verificationPepper: string;
+    accessTtlSeconds: number;
+    refreshTtlDays: number;
+    verificationTtlMinutes: number;
+  };
+  notification: { smtpHost: string; smtpPort: number; smtpFrom: string };
 };
 
 export const APP_CONFIG = Symbol('APP_CONFIG');
@@ -45,6 +63,19 @@ export function parseConfig(environment: Record<string, string | undefined>): Ap
       bucket: parsed.data.S3_BUCKET,
       accessKey: parsed.data.S3_ACCESS_KEY,
       secretKey: parsed.data.S3_SECRET_KEY,
+    },
+    auth: {
+      jwtSecret: parsed.data.JWT_SECRET,
+      refreshPepper: parsed.data.REFRESH_TOKEN_PEPPER,
+      verificationPepper: parsed.data.VERIFICATION_PEPPER,
+      accessTtlSeconds: parsed.data.ACCESS_TOKEN_TTL_SECONDS,
+      refreshTtlDays: parsed.data.REFRESH_TOKEN_TTL_DAYS,
+      verificationTtlMinutes: parsed.data.VERIFICATION_TTL_MINUTES,
+    },
+    notification: {
+      smtpHost: parsed.data.SMTP_HOST,
+      smtpPort: parsed.data.SMTP_PORT,
+      smtpFrom: parsed.data.SMTP_FROM,
     },
   };
 }

@@ -7,9 +7,12 @@ WORKDIR /workspace
 
 COPY . .
 RUN --mount=type=cache,id=agentdoor-pnpm-store,target=/root/.local/share/pnpm/store \
+    --mount=type=cache,id=agentdoor-pnpm-metadata,target=/root/.cache/pnpm \
     pnpm install --frozen-lockfile
 RUN pnpm --filter @agentdoor/api build
-RUN pnpm --filter @agentdoor/api deploy --prod --legacy /deploy
+RUN --mount=type=cache,id=agentdoor-pnpm-store,target=/root/.local/share/pnpm/store \
+    --mount=type=cache,id=agentdoor-pnpm-metadata,target=/root/.cache/pnpm \
+    pnpm --filter @agentdoor/api deploy --prod --legacy /deploy
 
 FROM node:22-alpine AS runtime
 

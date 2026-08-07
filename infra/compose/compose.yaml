@@ -10,6 +10,15 @@ x-backend-environment: &backend-environment
   S3_BUCKET: agentdoor
   S3_ACCESS_KEY: agentdoor
   S3_SECRET_KEY: agentdoor-minio-development
+  JWT_SECRET: agentdoor-jwt-development-secret-change-me-now
+  REFRESH_TOKEN_PEPPER: agentdoor-refresh-development-pepper-change-me
+  VERIFICATION_PEPPER: agentdoor-verification-development-pepper-change-me
+  ACCESS_TOKEN_TTL_SECONDS: 900
+  REFRESH_TOKEN_TTL_DAYS: 30
+  VERIFICATION_TTL_MINUTES: 10
+  SMTP_HOST: mailpit
+  SMTP_PORT: 1025
+  SMTP_FROM: Agentdoor <no-reply@agentdoor.local>
 
 x-backend: &backend
   build:
