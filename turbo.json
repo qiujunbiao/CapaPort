@@ -1,6 +1,12 @@
 {
   "$schema": "https://turbo.build/schema.json",
-  "globalPassThroughEnv": ["AGENTDOOR_REGISTRY", "npm_package_version"],
+  "globalPassThroughEnv": [
+    "AGENTDOOR_ACCEPTANCE_STAMP",
+    "AGENTDOOR_API_URL",
+    "AGENTDOOR_MAILPIT_URL",
+    "AGENTDOOR_REGISTRY",
+    "npm_package_version"
+  ],
   "tasks": {
     "build": {
       "dependsOn": ["^build"],

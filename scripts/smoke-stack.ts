@@ -70,7 +70,7 @@ async function waitForReady(apiBase: string): Promise<void> {
   throw new Error('API readiness deadline expired.');
 }
 
-const [apiPort, minioPort, mailpitPort] = await Promise.all([freePort(), freePort(), freePort()]);
+const [apiPort, minioPort, mailpitPort, webPort] = await Promise.all([freePort(), freePort(), freePort(), freePort()]);
 const apiBase = `http://127.0.0.1:${apiPort}/api/v1`;
 const stackEnvironment = {
   ...process.env,
@@ -78,6 +78,8 @@ const stackEnvironment = {
   MINIO_API_PORT: String(minioPort),
   MAILPIT_HTTP_PORT: String(mailpitPort),
   S3_PUBLIC_ENDPOINT: `http://127.0.0.1:${minioPort}`,
+  WEB_PORT: String(webPort),
+  WEB_API_URL: apiBase,
 };
 const scratch = await mkdtemp(join(tmpdir(), 'agentdoor-smoke-'));
 
