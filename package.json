@@ -17,6 +17,9 @@
     "format:check": "biome format .",
     "security:test": "vitest run --config vitest.security.config.ts",
     "security:gate": "tsx scripts/security-gate.ts",
+    "images:build": "tsx scripts/build-images.ts",
+    "stack:smoke": "tsx scripts/smoke-stack.ts",
+    "container:test": "pnpm --filter @agentdoor/api test -- tests/container-release.spec.ts",
     "docker:up": "docker compose -f infra/compose/compose.yaml up -d --build",
     "docker:down": "docker compose -f infra/compose/compose.yaml down"
   },

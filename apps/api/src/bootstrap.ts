@@ -13,7 +13,7 @@ export function configureApplication(app: INestApplication): void {
       'http://tauri.localhost',
     ],
     methods: ['GET', 'POST', 'PATCH', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['authorization', 'content-type', 'idempotency-key', 'x-organization-id'],
+    allowedHeaders: ['authorization', 'content-type', 'idempotency-key', 'x-organization-id', 'x-request-id'],
     maxAge: 86_400,
   });
   app.useGlobalFilters(new AppExceptionFilter());

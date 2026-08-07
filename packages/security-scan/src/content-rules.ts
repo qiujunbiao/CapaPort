@@ -5,6 +5,7 @@ import type { ScanPolicy } from './types.js';
 const decoder = new TextDecoder('utf-8', { fatal: false });
 const tokenPattern = /[A-Za-z0-9+/=_-]{32,}/g;
 const explicitExamples = /^(?:YOUR|EXAMPLE|PLACEHOLDER|REPLACE_ME|CHANGEME|xxxx)/i;
+const structuredIdentifierLine = /^\s*(?:slug|name|path|id):\s*[a-z][a-z0-9]*(?:-[a-z0-9]+){2,}\s*$/;
 
 function entropy(value: string): number {
   const counts = new Map<string, number>();
@@ -55,6 +56,7 @@ export function scanContent(path: string, bytes: Uint8Array, policy: ScanPolicy)
       if (
         candidate.length >= policy.highEntropyMinimumLength &&
         !explicitExamples.test(candidate) &&
+        !structuredIdentifierLine.test(line) &&
         entropy(candidate) >= policy.highEntropyThreshold &&
         !findings.some((finding) => finding.line === index + 1 && finding.evidence === candidate)
       ) {

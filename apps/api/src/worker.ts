@@ -2,6 +2,8 @@ import { DeleteObjectCommand, S3Client } from '@aws-sdk/client-s3';
 import { Pool } from 'pg';
 import { parseConfig } from './config/config.js';
 import { OperationsWorker } from './platform/events/operations.worker.js';
+import { platformMetrics } from './platform/telemetry/metrics-registry.js';
+import { platformLogger } from './platform/telemetry/structured-logger.js';
 
 const config = parseConfig(process.env);
 const pool = new Pool({ connectionString: config.databaseUrl, max: 10 });
@@ -33,7 +35,8 @@ async function cleanupExpiredUploads(): Promise<void> {
     await client.query('COMMIT');
   } catch (error) {
     await client.query('ROLLBACK');
-    console.error('Artifact cleanup failed', error instanceof Error ? error.name : 'unknown error');
+    platformMetrics.increment('agentdoor_worker_errors_total', { operation: 'artifact_cleanup' });
+    platformLogger.error('worker.artifact_cleanup.failed', { error });
   } finally {
     client.release();
   }
@@ -54,7 +57,8 @@ async function poll(): Promise<void> {
           : error instanceof Error
             ? error.message
             : 'unknown-error';
-      console.error('Worker polling failed', code.replace(/[^A-Za-z0-9_-]/g, '').slice(0, 80));
+      platformMetrics.increment('agentdoor_worker_errors_total', { operation: 'poll' });
+      platformLogger.error('worker.poll.failed', { code: code.replace(/[^A-Za-z0-9_-]/g, '').slice(0, 80) });
     }
     pollCount += 1;
     await new Promise((resolve) => setTimeout(resolve, 1_000));
@@ -63,6 +67,7 @@ async function poll(): Promise<void> {
 
 for (const signal of ['SIGINT', 'SIGTERM'] as const) {
   process.on(signal, () => {
+    platformLogger.info('worker.shutdown.requested', { signal });
     stopping = true;
   });
 }
@@ -71,4 +76,5 @@ void poll().finally(async () => {
   await operations.close();
   storage.destroy();
   await pool.end();
+  platformLogger.info('worker.shutdown.completed');
 });

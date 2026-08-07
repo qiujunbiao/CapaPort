@@ -4,6 +4,8 @@ import nodemailer from 'nodemailer';
 import type { Pool, PoolClient } from 'pg';
 import type { AppConfig } from '../../config/config.js';
 import { notificationForEvent } from '../../modules/notifications/notification.template.js';
+import { platformMetrics } from '../telemetry/metrics-registry.js';
+import { platformLogger } from '../telemetry/structured-logger.js';
 
 type OutboxRow = {
   id: string;
@@ -59,7 +61,8 @@ export class OperationsWorker {
       concurrency: 5,
     });
     this.worker.on('error', (error) => {
-      console.error('Notification worker error', safeErrorCode(error, 'WorkerError'));
+      platformMetrics.increment('agentdoor_worker_errors_total', { operation: 'notification' });
+      platformLogger.error('worker.notification.error', { code: safeErrorCode(error, 'WorkerError') });
     });
   }
 
@@ -112,10 +115,16 @@ export class OperationsWorker {
   }
 
   private async process(job: Job<{ eventId: string }>): Promise<void> {
+    const jobLogger = platformLogger.child({
+      jobId: job.id,
+      eventId: job.data.eventId,
+      correlationId: job.data.eventId,
+    });
     const result = await this.pool.query<OutboxRow>('SELECT * FROM outbox_events WHERE id=$1', [job.data.eventId]);
     const event = result.rows[0];
     if (!event || event.published_at) return;
     try {
+      jobLogger.info('worker.outbox.started', { eventType: event.event_type });
       const recipients = await this.resolveRecipients(event);
       await this.prepareNotifications(event, recipients);
       await this.deliver(event.id);
@@ -123,7 +132,11 @@ export class OperationsWorker {
         'UPDATE outbox_events SET published_at=now(),last_error=NULL WHERE id=$1 AND published_at IS NULL',
         [event.id],
       );
+      platformMetrics.increment('agentdoor_worker_jobs_total', { status: 'completed', type: event.event_type });
+      jobLogger.info('worker.outbox.completed', { eventType: event.event_type, recipientCount: recipients.length });
     } catch (error) {
+      platformMetrics.increment('agentdoor_worker_jobs_total', { status: 'failed', type: event.event_type });
+      jobLogger.error('worker.outbox.failed', { eventType: event.event_type, error });
       const failure = await this.pool.query<{ attempts: number }>(
         `UPDATE outbox_events SET attempts=attempts+1,last_error=$2,
            available_at=now() + make_interval(secs => LEAST(300,power(2,attempts)::int)),

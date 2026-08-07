@@ -1,26 +1,33 @@
 import { z } from 'zod';
 
-const environmentSchema = z.object({
-  NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
-  PORT: z.coerce.number().int().min(1).max(65_535).default(3_100),
-  DATABASE_URL: z.url(),
-  REDIS_URL: z.url(),
-  S3_ENDPOINT: z.url(),
-  S3_PUBLIC_ENDPOINT: z.url().optional(),
-  S3_REGION: z.string().min(1),
-  S3_BUCKET: z.string().min(3),
-  S3_ACCESS_KEY: z.string().min(1),
-  S3_SECRET_KEY: z.string().min(8),
-  JWT_SECRET: z.string().min(32),
-  REFRESH_TOKEN_PEPPER: z.string().min(32),
-  VERIFICATION_PEPPER: z.string().min(32),
-  ACCESS_TOKEN_TTL_SECONDS: z.coerce.number().int().min(60).max(3_600).default(900),
-  REFRESH_TOKEN_TTL_DAYS: z.coerce.number().int().min(1).max(365).default(30),
-  VERIFICATION_TTL_MINUTES: z.coerce.number().int().min(2).max(60).default(10),
-  SMTP_HOST: z.string().min(1),
-  SMTP_PORT: z.coerce.number().int().min(1).max(65_535).default(1025),
-  SMTP_FROM: z.string().min(3),
-});
+const environmentSchema = z
+  .object({
+    NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
+    PORT: z.coerce.number().int().min(1).max(65_535).default(3_100),
+    DATABASE_URL: z.url(),
+    REDIS_URL: z.url(),
+    S3_ENDPOINT: z.url(),
+    S3_PUBLIC_ENDPOINT: z.url().optional(),
+    S3_REGION: z.string().min(1),
+    S3_BUCKET: z.string().min(3),
+    S3_ACCESS_KEY: z.string().min(1),
+    S3_SECRET_KEY: z.string().min(8),
+    JWT_SECRET: z.string().min(32),
+    REFRESH_TOKEN_PEPPER: z.string().min(32),
+    VERIFICATION_PEPPER: z.string().min(32),
+    ACCESS_TOKEN_TTL_SECONDS: z.coerce.number().int().min(60).max(3_600).default(900),
+    REFRESH_TOKEN_TTL_DAYS: z.coerce.number().int().min(1).max(365).default(30),
+    VERIFICATION_TTL_MINUTES: z.coerce.number().int().min(2).max(60).default(10),
+    SMTP_HOST: z.string().min(1),
+    SMTP_PORT: z.coerce.number().int().min(1).max(65_535).default(1025),
+    SMTP_FROM: z.string().min(3),
+    METRICS_TOKEN: z.string().min(32).optional(),
+  })
+  .superRefine((value, context) => {
+    if (value.NODE_ENV === 'production' && !value.METRICS_TOKEN) {
+      context.addIssue({ code: 'custom', path: ['METRICS_TOKEN'], message: 'is required in production' });
+    }
+  });
 
 export type AppConfig = {
   nodeEnv: 'development' | 'test' | 'production';
@@ -44,6 +51,7 @@ export type AppConfig = {
     verificationTtlMinutes: number;
   };
   notification: { smtpHost: string; smtpPort: number; smtpFrom: string };
+  metricsToken: string;
 };
 
 export const APP_CONFIG = Symbol('APP_CONFIG');
@@ -80,5 +88,6 @@ export function parseConfig(environment: Record<string, string | undefined>): Ap
       smtpPort: parsed.data.SMTP_PORT,
       smtpFrom: parsed.data.SMTP_FROM,
     },
+    metricsToken: parsed.data.METRICS_TOKEN ?? 'agentdoor-development-metrics-token',
   };
 }

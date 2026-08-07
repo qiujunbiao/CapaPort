@@ -16,16 +16,43 @@ RUN --mount=type=cache,id=agentdoor-pnpm-store,target=/root/.local/share/pnpm/st
 
 FROM node:22-alpine AS runtime
 
-ENV NODE_ENV=production
+ARG VERSION=development
+ARG REVISION=unknown
+ARG SOURCE=https://github.com/agentdoor/agentdoor
+LABEL org.opencontainers.image.title="Agentdoor backend" \
+      org.opencontainers.image.description="Agentdoor modular-monolith backend" \
+      org.opencontainers.image.version=$VERSION \
+      org.opencontainers.image.revision=$REVISION \
+      org.opencontainers.image.source=$SOURCE \
+      org.opencontainers.image.licenses="Apache-2.0"
+
+ENV NODE_ENV=production \
+    AGENTDOOR_VERSION=$VERSION
 WORKDIR /app
 
-COPY --from=build --chown=node:node /deploy/ ./
-COPY --from=build --chown=node:node /workspace/apps/api/migrations ./migrations
-COPY --from=build --chown=node:node /workspace/infra/docker/entrypoint.sh /usr/local/bin/agentdoor-entrypoint
+RUN apk add --no-cache tini \
+    && addgroup -S -g 10001 agentdoor \
+    && adduser -S -D -H -u 10001 -G agentdoor agentdoor
 
-RUN chmod 0555 /usr/local/bin/agentdoor-entrypoint
-USER node
+COPY --from=build --chown=10001:10001 /deploy/ ./
+COPY --from=build --chown=10001:10001 /workspace/apps/api/migrations ./migrations
+COPY --from=build --chown=10001:10001 /workspace/infra/docker/entrypoint.sh /usr/local/bin/agentdoor-entrypoint
+
+RUN chmod 0555 /usr/local/bin/agentdoor-entrypoint \
+    && find /app -type d -exec chmod 0555 {} + \
+    && find /app -type f -exec chmod 0444 {} +
+USER 10001:10001
+STOPSIGNAL SIGTERM
+ENTRYPOINT ["/sbin/tini", "--", "agentdoor-entrypoint"]
+
+FROM runtime AS worker
+CMD ["worker"]
+
+FROM runtime AS migrate
+CMD ["migrate"]
+
+FROM runtime AS api
 EXPOSE 3100
-
-ENTRYPOINT ["agentdoor-entrypoint"]
+HEALTHCHECK --interval=10s --timeout=3s --start-period=10s --retries=5 \
+  CMD node -e "fetch('http://127.0.0.1:3100/api/v1/health/live').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"
 CMD ["api"]

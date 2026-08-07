@@ -9,3 +9,14 @@ node_modules
 .turbo
 .env
 .env.local
+*.pem
+*.key
+backups
+reports
+infra/secrets
+docs
+scripts
+tests
+infra/compose
+infra/deploy
+apps/*/scripts

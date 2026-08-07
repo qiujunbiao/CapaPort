@@ -1,0 +1,105 @@
+name: agentdoor-production
+
+x-backend-environment: &backend-environment
+  NODE_ENV: production
+  PORT: 3100
+  DATABASE_URL_FILE: /run/secrets/database_url
+  REDIS_URL: ${REDIS_URL:?Set REDIS_URL}
+  S3_ENDPOINT: ${S3_ENDPOINT:?Set S3_ENDPOINT}
+  S3_PUBLIC_ENDPOINT: ${S3_PUBLIC_ENDPOINT:?Set S3_PUBLIC_ENDPOINT}
+  S3_REGION: ${S3_REGION:-us-east-1}
+  S3_BUCKET: ${S3_BUCKET:?Set S3_BUCKET}
+  S3_ACCESS_KEY_FILE: /run/secrets/s3_access_key
+  S3_SECRET_KEY_FILE: /run/secrets/s3_secret_key
+  JWT_SECRET_FILE: /run/secrets/jwt_secret
+  REFRESH_TOKEN_PEPPER_FILE: /run/secrets/refresh_token_pepper
+  VERIFICATION_PEPPER_FILE: /run/secrets/verification_pepper
+  METRICS_TOKEN_FILE: /run/secrets/metrics_token
+  ACCESS_TOKEN_TTL_SECONDS: ${ACCESS_TOKEN_TTL_SECONDS:-900}
+  REFRESH_TOKEN_TTL_DAYS: ${REFRESH_TOKEN_TTL_DAYS:-30}
+  VERIFICATION_TTL_MINUTES: ${VERIFICATION_TTL_MINUTES:-10}
+  SMTP_HOST: ${SMTP_HOST:?Set SMTP_HOST}
+  SMTP_PORT: ${SMTP_PORT:-587}
+  SMTP_FROM: ${SMTP_FROM:?Set SMTP_FROM}
+  AGENTDOOR_SERVICE: ${AGENTDOOR_SERVICE:-backend}
+
+x-backend-security: &backend-security
+  user: 10001:10001
+  read_only: true
+  tmpfs:
+    - /tmp:rw,noexec,nosuid,nodev,size=64m,uid=10001,gid=10001
+  cap_drop: [ALL]
+  security_opt:
+    - no-new-privileges:true
+  init: true
+  secrets:
+    - database_url
+    - s3_access_key
+    - s3_secret_key
+    - jwt_secret
+    - refresh_token_pepper
+    - verification_pepper
+    - metrics_token
+  networks: [backend]
+  stop_grace_period: 30s
+
+services:
+  migrate:
+    <<: *backend-security
+    image: ${AGENTDOOR_REGISTRY:?Set AGENTDOOR_REGISTRY}/agentdoor-migrate:${AGENTDOOR_IMAGE_TAG:?Set immutable AGENTDOOR_IMAGE_TAG}
+    environment:
+      <<: *backend-environment
+      AGENTDOOR_SERVICE: migrate
+    restart: no
+
+  api:
+    <<: *backend-security
+    image: ${AGENTDOOR_REGISTRY:?Set AGENTDOOR_REGISTRY}/agentdoor-api:${AGENTDOOR_IMAGE_TAG:?Set immutable AGENTDOOR_IMAGE_TAG}
+    environment:
+      <<: *backend-environment
+      AGENTDOOR_SERVICE: api
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    restart: unless-stopped
+    ports:
+      - ${AGENTDOOR_BIND_ADDRESS:-127.0.0.1}:${AGENTDOOR_API_PORT:-3210}:3100
+    healthcheck:
+      test: [CMD, node, -e, "fetch('http://127.0.0.1:3100/api/v1/health/ready').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"]
+      interval: 10s
+      timeout: 3s
+      start_period: 15s
+      retries: 6
+
+  worker:
+    <<: *backend-security
+    image: ${AGENTDOOR_REGISTRY:?Set AGENTDOOR_REGISTRY}/agentdoor-worker:${AGENTDOOR_IMAGE_TAG:?Set immutable AGENTDOOR_IMAGE_TAG}
+    environment:
+      <<: *backend-environment
+      AGENTDOOR_SERVICE: worker
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    restart: unless-stopped
+    healthcheck:
+      disable: true
+
+networks:
+  backend:
+    internal: false
+
+secrets:
+  database_url:
+    file: ${AGENTDOOR_SECRETS_DIR:?Set AGENTDOOR_SECRETS_DIR}/database_url
+  s3_access_key:
+    file: ${AGENTDOOR_SECRETS_DIR:?Set AGENTDOOR_SECRETS_DIR}/s3_access_key
+  s3_secret_key:
+    file: ${AGENTDOOR_SECRETS_DIR:?Set AGENTDOOR_SECRETS_DIR}/s3_secret_key
+  jwt_secret:
+    file: ${AGENTDOOR_SECRETS_DIR:?Set AGENTDOOR_SECRETS_DIR}/jwt_secret
+  refresh_token_pepper:
+    file: ${AGENTDOOR_SECRETS_DIR:?Set AGENTDOOR_SECRETS_DIR}/refresh_token_pepper
+  verification_pepper:
+    file: ${AGENTDOOR_SECRETS_DIR:?Set AGENTDOOR_SECRETS_DIR}/verification_pepper
+  metrics_token:
+    file: ${AGENTDOOR_SECRETS_DIR:?Set AGENTDOOR_SECRETS_DIR}/metrics_token

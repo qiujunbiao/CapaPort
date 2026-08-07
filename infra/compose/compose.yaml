@@ -6,7 +6,7 @@ x-backend-environment: &backend-environment
   DATABASE_URL: postgres://agentdoor:agentdoor-development@postgres:5432/agentdoor
   REDIS_URL: redis://redis:6379
   S3_ENDPOINT: http://minio:9000
-  S3_PUBLIC_ENDPOINT: http://127.0.0.1:9000
+  S3_PUBLIC_ENDPOINT: ${S3_PUBLIC_ENDPOINT:-http://127.0.0.1:9000}
   S3_REGION: us-east-1
   S3_BUCKET: agentdoor
   S3_ACCESS_KEY: agentdoor
@@ -14,6 +14,7 @@ x-backend-environment: &backend-environment
   JWT_SECRET: agentdoor-jwt-development-secret-change-me-now
   REFRESH_TOKEN_PEPPER: agentdoor-refresh-development-pepper-change-me
   VERIFICATION_PEPPER: agentdoor-verification-development-pepper-change-me
+  METRICS_TOKEN: agentdoor-development-metrics-token
   ACCESS_TOKEN_TTL_SECONDS: 900
   REFRESH_TOKEN_TTL_DAYS: 30
   VERIFICATION_TTL_MINUTES: 10
@@ -26,6 +27,14 @@ x-backend: &backend
     context: ../..
     dockerfile: infra/docker/backend.Dockerfile
   environment: *backend-environment
+  user: 10001:10001
+  read_only: true
+  tmpfs:
+    - /tmp:rw,noexec,nosuid,nodev,size=64m,uid=10001,gid=10001
+  cap_drop: [ALL]
+  security_opt:
+    - no-new-privileges:true
+  stop_grace_period: 30s
   restart: unless-stopped
   depends_on:
     postgres:
@@ -127,6 +136,8 @@ services:
   worker:
     <<: *backend
     command: [worker]
+    healthcheck:
+      disable: true
     depends_on:
       postgres:
         condition: service_healthy

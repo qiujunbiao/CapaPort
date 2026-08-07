@@ -16,6 +16,8 @@ import { PlatformModule } from './platform/platform.module.js';
 import { RedisService } from './platform/redis/redis.service.js';
 import { RequestIdMiddleware } from './platform/request-context/request-id.middleware.js';
 import { StorageService } from './platform/storage/storage.service.js';
+import { TelemetryController } from './platform/telemetry/telemetry.controller.js';
+import { TelemetryMiddleware } from './platform/telemetry/telemetry.middleware.js';
 
 @Module({
   imports: [
@@ -31,7 +33,7 @@ import { StorageService } from './platform/storage/storage.service.js';
     NotificationModule,
     AnalyticsModule,
   ],
-  controllers: [HealthController],
+  controllers: [HealthController, TelemetryController],
   providers: [
     {
       provide: HealthService,
@@ -43,6 +45,6 @@ import { StorageService } from './platform/storage/storage.service.js';
 })
 export class AppModule implements NestModule {
   configure(consumer: MiddlewareConsumer): void {
-    consumer.apply(RequestIdMiddleware).forRoutes({ path: '{*path}', method: RequestMethod.ALL });
+    consumer.apply(RequestIdMiddleware, TelemetryMiddleware).forRoutes({ path: '{*path}', method: RequestMethod.ALL });
   }
 }
