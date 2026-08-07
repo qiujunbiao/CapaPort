@@ -172,6 +172,7 @@ fn main() {
     )
     .expect("local runtime initialization failed");
     tauri::Builder::default()
+        .plugin(tauri_plugin_updater::Builder::new().build())
         .manage(AppState { runtime })
         .invoke_handler(tauri::generate_handler![
             detect_agents,

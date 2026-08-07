@@ -6,6 +6,7 @@ dist/
 coverage/
 test-results/
 playwright-report/
+reports/
 target/
 apps/desktop/src-tauri/gen/
 *.tsbuildinfo

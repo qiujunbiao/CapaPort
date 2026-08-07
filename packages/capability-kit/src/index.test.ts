@@ -47,6 +47,11 @@ describe('manifest parsing', () => {
     const yaml = manifestYaml.replace('skills/release', unsafePath);
     expect(() => parseManifest(yaml)).toThrow(/path/i);
   });
+
+  it('rejects unknown manifest fields instead of silently accepting a confused schema', () => {
+    const yaml = manifestYaml.replace('kind: CapabilityPackage', 'kind: CapabilityPackage\nprivileged: true');
+    expect(() => parseManifest(yaml)).toThrow(/unrecognized|invalid/i);
+  });
 });
 
 describe('package hashing and archives', () => {

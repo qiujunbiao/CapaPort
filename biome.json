@@ -9,6 +9,7 @@
       "!**/node_modules",
       "!**/test-results",
       "!**/playwright-report",
+      "!**/reports",
       "!**/target",
       "!apps/desktop/src-tauri/gen"
     ]

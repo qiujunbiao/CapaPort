@@ -2,6 +2,7 @@
   "name": "agentdoor",
   "version": "0.1.0",
   "private": true,
+  "type": "module",
   "packageManager": "pnpm@11.16.0",
   "engines": {
     "node": ">=22.0.0"
@@ -14,6 +15,8 @@
     "lint": "biome check .",
     "format": "biome format --write .",
     "format:check": "biome format .",
+    "security:test": "vitest run --config vitest.security.config.ts",
+    "security:gate": "tsx scripts/security-gate.ts",
     "docker:up": "docker compose -f infra/compose/compose.yaml up -d --build",
     "docker:down": "docker compose -f infra/compose/compose.yaml down"
   },

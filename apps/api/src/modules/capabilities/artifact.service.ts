@@ -49,6 +49,7 @@ export interface ArtifactObjectStore {
   createUploadUrl(objectKey: string, contentType: 'application/zip', expiresIn: number): Promise<string>;
   statObject(objectKey: string): Promise<{ sizeBytes: number }>;
   readObject(objectKey: string): Promise<Uint8Array>;
+  writeVerifiedObject(objectKey: string, bytes: Uint8Array, contentType: 'application/zip'): Promise<void>;
   deleteObject(objectKey: string): Promise<void>;
   createDownloadUrl?(objectKey: string, expiresIn: number): Promise<string>;
 }
@@ -122,21 +123,38 @@ export class ArtifactService {
       throw new AppError('ARTIFACT_SIZE_MISMATCH', 'Uploaded artifact size does not match the declaration.', 409);
     }
     const bytes = await this.storage.readObject(upload.objectKey);
+    if (bytes.byteLength !== upload.declaredSizeBytes) {
+      await this.rejectUpload(upload, 'size_mismatch');
+      throw new AppError('ARTIFACT_SIZE_MISMATCH', 'Uploaded artifact size does not match the declaration.', 409);
+    }
     const sha256 = createHash('sha256').update(bytes).digest('hex');
     if (sha256 !== upload.declaredSha256) {
       await this.rejectUpload(upload, 'digest_mismatch');
       throw new AppError('ARTIFACT_DIGEST_MISMATCH', 'Uploaded artifact digest does not match the declaration.', 409);
     }
 
-    const result = await this.repository.confirmUpload({
-      organizationId: tenant.organizationId,
-      uploadId: upload.id,
-      artifactId: randomUUID(),
-      sha256,
-      sizeBytes,
-      objectKey: upload.objectKey,
-    });
-    if (result.deduplicated) await this.deleteQuietly(upload.objectKey);
+    const verifiedObjectKey = `artifacts/${tenant.organizationId}/${randomUUID()}`;
+    try {
+      await this.storage.writeVerifiedObject(verifiedObjectKey, bytes, 'application/zip');
+    } catch {
+      throw new AppError('ARTIFACT_STORAGE_FAILED', 'The verified artifact could not be finalized.', 503);
+    }
+    let result: { artifactId: string; deduplicated: boolean };
+    try {
+      result = await this.repository.confirmUpload({
+        organizationId: tenant.organizationId,
+        uploadId: upload.id,
+        artifactId: randomUUID(),
+        sha256,
+        sizeBytes,
+        objectKey: verifiedObjectKey,
+      });
+    } catch (error) {
+      await this.deleteQuietly(verifiedObjectKey);
+      throw error;
+    }
+    if (result.deduplicated) await this.deleteQuietly(verifiedObjectKey);
+    await this.deleteQuietly(upload.objectKey);
     return { artifactId: result.artifactId, sha256, sizeBytes, deduplicated: result.deduplicated };
   }
 

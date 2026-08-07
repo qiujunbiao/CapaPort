@@ -13,6 +13,7 @@ describe('ArtifactService', () => {
     createUploadUrl: vi.fn().mockResolvedValue('https://objects.example/upload'),
     statObject: vi.fn().mockResolvedValue({ sizeBytes: bytes.byteLength }),
     readObject: vi.fn().mockResolvedValue(bytes),
+    writeVerifiedObject: vi.fn().mockResolvedValue(undefined),
     deleteObject: vi.fn().mockResolvedValue(undefined),
   };
   const store = {
@@ -86,6 +87,53 @@ describe('ArtifactService', () => {
       deduplicated: true,
     });
     expect(storage.deleteObject).toHaveBeenCalledWith('uploads/org-a/random');
+  });
+
+  it('copies verified bytes to an immutable server-owned key before confirmation', async () => {
+    store.findUpload.mockResolvedValue({
+      id: 'upload-a',
+      organizationId: 'org-a',
+      spaceId: 'space-a',
+      requestedByUserId: 'user-a',
+      declaredSizeBytes: bytes.byteLength,
+      declaredSha256: digest,
+      objectKey: 'uploads/org-a/client-writable',
+      status: 'pending',
+      expiresAt: new Date(Date.now() + 60_000),
+    });
+    store.confirmUpload.mockResolvedValue({ artifactId: 'artifact-a', deduplicated: false });
+    const service = new ArtifactService(store, storage, spaces);
+
+    await service.confirmUpload(tenant, 'user-a', 'upload-a');
+
+    const verifiedKey = storage.writeVerifiedObject.mock.calls[0]?.[0];
+    expect(verifiedKey).toMatch(/^artifacts\/org-a\/[0-9a-f-]+$/);
+    expect(storage.writeVerifiedObject).toHaveBeenCalledWith(verifiedKey, bytes, 'application/zip');
+    expect(store.confirmUpload).toHaveBeenCalledWith(expect.objectContaining({ objectKey: verifiedKey }));
+    expect(storage.deleteObject).toHaveBeenCalledWith('uploads/org-a/client-writable');
+  });
+
+  it('rejects a stat/read size race before persisting an artifact', async () => {
+    const changedBytes = new TextEncoder().encode('different length after HEAD');
+    store.findUpload.mockResolvedValue({
+      id: 'upload-race',
+      organizationId: 'org-a',
+      spaceId: 'space-a',
+      requestedByUserId: 'user-a',
+      declaredSizeBytes: bytes.byteLength,
+      declaredSha256: createHash('sha256').update(changedBytes).digest('hex'),
+      objectKey: 'uploads/org-a/race',
+      status: 'pending',
+      expiresAt: new Date(Date.now() + 60_000),
+    });
+    storage.readObject.mockResolvedValueOnce(changedBytes);
+    const service = new ArtifactService(store, storage, spaces);
+
+    await expect(service.confirmUpload(tenant, 'user-a', 'upload-race')).rejects.toMatchObject({
+      code: 'ARTIFACT_SIZE_MISMATCH',
+    });
+    expect(storage.writeVerifiedObject).not.toHaveBeenCalled();
+    expect(store.confirmUpload).not.toHaveBeenCalled();
   });
 
   it('expires unconfirmed uploads and rejects confirmation after the deadline', async () => {

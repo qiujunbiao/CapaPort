@@ -109,7 +109,9 @@ export class ArtifactRepository implements ArtifactDataStore {
       if (!upload) throw new AppError('ARTIFACT_UPLOAD_INVALID', 'Upload request is invalid.', 404);
       if (upload.status === 'confirmed' && upload.artifact_id) {
         await client.query('COMMIT');
-        return { artifactId: upload.artifact_id, deduplicated: false };
+        // Another confirmation won the row lock; the caller's freshly finalized
+        // object was not referenced and must be removed as a duplicate.
+        return { artifactId: upload.artifact_id, deduplicated: true };
       }
       if (upload.status !== 'pending')
         throw new AppError('ARTIFACT_UPLOAD_INVALID', 'Upload is no longer active.', 409);

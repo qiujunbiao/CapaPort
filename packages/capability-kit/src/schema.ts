@@ -38,44 +38,58 @@ const slugSchema = z
   .max(80)
   .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, 'Slug must contain lowercase letters, numbers, and single hyphens');
 
-const componentSchema = z.object({
-  type: z.enum(['skill', 'prompt', 'context']),
-  path: packagePathSchema,
-});
+const componentSchema = z
+  .object({
+    type: z.enum(['skill', 'prompt', 'context']),
+    path: packagePathSchema,
+  })
+  .strict();
 
-const compatibilitySchema = z.object({
-  agents: z
-    .array(z.enum(['codex', 'claude-code', 'cursor', 'gemini-cli']))
-    .min(1)
-    .max(20),
-});
+const compatibilitySchema = z
+  .object({
+    agents: z
+      .array(z.enum(['codex', 'claude-code', 'cursor', 'gemini-cli']))
+      .min(1)
+      .max(20),
+  })
+  .strict();
 
-const permissionsSchema = z.object({
-  filesystem: z.enum(['none', 'read-project', 'write-project']),
-  network: z.enum(['none', 'restricted', 'full']),
-});
+const permissionsSchema = z
+  .object({
+    filesystem: z.enum(['none', 'read-project', 'write-project']),
+    network: z.enum(['none', 'restricted', 'full']),
+  })
+  .strict();
 
-const dependencySchema = z.object({
-  slug: slugSchema,
-  version: z.string().min(1).max(80),
-});
-
-export const manifestSchema = z.object({
-  schemaVersion: z.literal('agentdoor.io/v1alpha1'),
-  kind: z.literal('CapabilityPackage'),
-  metadata: z.object({
+const dependencySchema = z
+  .object({
     slug: slugSchema,
-    name: z.string().min(1).max(120),
-    description: z.string().max(2_000),
-    tags: z.array(slugSchema).max(20).default([]),
-  }),
-  spec: z.object({
-    components: z.array(componentSchema).min(1).max(100),
-    compatibility: compatibilitySchema,
-    permissions: permissionsSchema,
-    entrypoints: z.record(z.string().min(1).max(80), packagePathSchema),
-    dependencies: z.array(dependencySchema).max(100).default([]),
-  }),
-});
+    version: z.string().min(1).max(80),
+  })
+  .strict();
+
+export const manifestSchema = z
+  .object({
+    schemaVersion: z.literal('agentdoor.io/v1alpha1'),
+    kind: z.literal('CapabilityPackage'),
+    metadata: z
+      .object({
+        slug: slugSchema,
+        name: z.string().min(1).max(120),
+        description: z.string().max(2_000),
+        tags: z.array(slugSchema).max(20).default([]),
+      })
+      .strict(),
+    spec: z
+      .object({
+        components: z.array(componentSchema).min(1).max(100),
+        compatibility: compatibilitySchema,
+        permissions: permissionsSchema,
+        entrypoints: z.record(z.string().min(1).max(80), packagePathSchema),
+        dependencies: z.array(dependencySchema).max(100).default([]),
+      })
+      .strict(),
+  })
+  .strict();
 
 export type CapabilityManifest = z.infer<typeof manifestSchema>;

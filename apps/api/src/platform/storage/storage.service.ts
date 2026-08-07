@@ -64,6 +64,17 @@ export class StorageService implements DependencyProbe {
     return result.Body.transformToByteArray();
   }
 
+  async writeVerifiedObject(objectKey: string, bytes: Uint8Array, contentType: 'application/zip'): Promise<void> {
+    await this.client.send(
+      new PutObjectCommand({
+        Bucket: this.config.s3.bucket,
+        Key: objectKey,
+        Body: bytes,
+        ContentType: contentType,
+      }),
+    );
+  }
+
   async deleteObject(objectKey: string): Promise<void> {
     await this.client.send(new DeleteObjectCommand({ Bucket: this.config.s3.bucket, Key: objectKey }));
   }
