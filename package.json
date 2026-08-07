@@ -13,7 +13,9 @@
     "typecheck": "turbo run typecheck",
     "lint": "biome check .",
     "format": "biome format --write .",
-    "format:check": "biome format ."
+    "format:check": "biome format .",
+    "docker:up": "docker compose -f infra/compose/compose.yaml up -d --build",
+    "docker:down": "docker compose -f infra/compose/compose.yaml down"
   },
   "devDependencies": {
     "@biomejs/biome": "2.5.7",
