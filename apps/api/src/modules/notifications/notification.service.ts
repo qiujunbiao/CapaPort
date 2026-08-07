@@ -1,0 +1,46 @@
+import type { NotificationQuery } from '@agentdoor/contracts/operations';
+import type { TenantContext } from '@agentdoor/contracts/organizations';
+import { Inject, Injectable } from '@nestjs/common';
+import { AppError } from '../../platform/errors/app-error.js';
+
+export type NotificationRecord = {
+  id: string;
+  type: string;
+  title: string;
+  body: string;
+  data: Record<string, unknown>;
+  readAt?: Date;
+  createdAt: Date;
+};
+
+export interface NotificationDataStore {
+  list(
+    organizationId: string,
+    userId: string,
+    query: NotificationQuery,
+  ): Promise<{ notifications: NotificationRecord[]; unreadCount: number; nextCursor?: string }>;
+  markRead(organizationId: string, userId: string, notificationId: string): Promise<NotificationRecord | undefined>;
+  deadLetters(organizationId: string, limit: number): Promise<unknown[]>;
+}
+
+@Injectable()
+export class NotificationService {
+  constructor(@Inject('NOTIFICATION_DATA_STORE') private readonly repository: NotificationDataStore) {}
+
+  list(tenant: TenantContext, userId: string, query: NotificationQuery) {
+    return this.repository.list(tenant.organizationId, userId, query);
+  }
+
+  async markRead(tenant: TenantContext, userId: string, notificationId: string) {
+    const notification = await this.repository.markRead(tenant.organizationId, userId, notificationId);
+    if (!notification) throw new AppError('ACCESS_DENIED', 'Notification is unavailable.', 403);
+    return notification;
+  }
+
+  deadLetters(tenant: TenantContext, limit: number) {
+    if (!['owner', 'admin', 'auditor'].includes(tenant.organizationRole)) {
+      throw new AppError('ACCESS_DENIED', 'Dead-letter visibility is restricted.', 403);
+    }
+    return this.repository.deadLetters(tenant.organizationId, limit);
+  }
+}

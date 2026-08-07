@@ -1,36 +1,38 @@
 import { DeleteObjectCommand, S3Client } from '@aws-sdk/client-s3';
 import { Pool } from 'pg';
 import { parseConfig } from './config/config.js';
+import { OperationsWorker } from './platform/events/operations.worker.js';
 
 const config = parseConfig(process.env);
-const pool = new Pool({ connectionString: config.databaseUrl, max: 5 });
+const pool = new Pool({ connectionString: config.databaseUrl, max: 10 });
 const storage = new S3Client({
   endpoint: config.s3.endpoint,
   region: config.s3.region,
   forcePathStyle: true,
   credentials: { accessKeyId: config.s3.accessKey, secretAccessKey: config.s3.secretKey },
 });
+const operations = new OperationsWorker(pool, config);
 let stopping = false;
 let pollCount = 0;
 
 async function cleanupExpiredUploads(): Promise<void> {
   const client = await pool.connect();
   try {
-    await client.query('begin');
+    await client.query('BEGIN');
     const uploads = await client.query<{ id: string; object_key: string }>(
-      `select id,object_key from artifact_uploads
-        where status='pending' and expires_at < now()
-        order by expires_at for update skip locked limit 100`,
+      `SELECT id,object_key FROM artifact_uploads
+        WHERE status='pending' AND expires_at < now()
+        ORDER BY expires_at FOR UPDATE SKIP LOCKED LIMIT 100`,
     );
     for (const upload of uploads.rows) {
       await storage.send(new DeleteObjectCommand({ Bucket: config.s3.bucket, Key: upload.object_key }));
-      await client.query("update artifact_uploads set status='expired',failure_code='expired' where id=$1", [
+      await client.query("UPDATE artifact_uploads SET status='expired',failure_code='expired' WHERE id=$1", [
         upload.id,
       ]);
     }
-    await client.query('commit');
+    await client.query('COMMIT');
   } catch (error) {
-    await client.query('rollback');
+    await client.query('ROLLBACK');
     console.error('Artifact cleanup failed', error instanceof Error ? error.name : 'unknown error');
   } finally {
     client.release();
@@ -39,23 +41,21 @@ async function cleanupExpiredUploads(): Promise<void> {
 
 async function poll(): Promise<void> {
   while (!stopping) {
-    const client = await pool.connect();
     try {
-      await client.query('begin');
-      const result = await client.query<{ id: string }>(
-        `select id from outbox_events where published_at is null and failed_at is null order by created_at for update skip locked limit 20`,
-      );
-      for (const event of result.rows) {
-        await client.query('update outbox_events set published_at = now() where id = $1', [event.id]);
+      await operations.enqueuePending();
+      if (pollCount % 60 === 0) {
+        await cleanupExpiredUploads();
+        await operations.cleanupRetention();
       }
-      await client.query('commit');
     } catch (error) {
-      await client.query('rollback');
-      console.error('Outbox polling failed', error instanceof Error ? error.message : 'unknown error');
-    } finally {
-      client.release();
+      const code =
+        error && typeof error === 'object' && 'code' in error && typeof error.code === 'string'
+          ? error.code
+          : error instanceof Error
+            ? error.message
+            : 'unknown-error';
+      console.error('Worker polling failed', code.replace(/[^A-Za-z0-9_-]/g, '').slice(0, 80));
     }
-    if (pollCount % 60 === 0) await cleanupExpiredUploads();
     pollCount += 1;
     await new Promise((resolve) => setTimeout(resolve, 1_000));
   }
@@ -68,6 +68,7 @@ for (const signal of ['SIGINT', 'SIGTERM'] as const) {
 }
 
 void poll().finally(async () => {
+  await operations.close();
   storage.destroy();
   await pool.end();
 });

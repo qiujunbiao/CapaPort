@@ -1,6 +1,7 @@
 export * from './capabilities.js';
 export * from './distribution.js';
 export * from './identity.js';
+export * from './operations.js';
 export * from './organizations.js';
 export { outboxEvents } from './outbox.js';
 export * from './publications.js';

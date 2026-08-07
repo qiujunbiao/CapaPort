@@ -28,6 +28,10 @@
       "types": "./src/organizations.ts",
       "default": "./dist/organizations.js"
     },
+    "./operations": {
+      "types": "./src/operations.ts",
+      "default": "./dist/operations.js"
+    },
     "./publications": {
       "types": "./src/publications.ts",
       "default": "./dist/publications.js"

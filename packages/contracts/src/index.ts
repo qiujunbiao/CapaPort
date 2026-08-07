@@ -2,6 +2,7 @@ export * from './auth.js';
 export * from './capabilities.js';
 export * from './distribution.js';
 export * from './errors.js';
+export * from './operations.js';
 export * from './organizations.js';
 export * from './publications.js';
 export * from './spaces.js';

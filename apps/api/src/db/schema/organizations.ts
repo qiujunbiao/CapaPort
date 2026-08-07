@@ -1,3 +1,4 @@
+import { sql } from 'drizzle-orm';
 import { index, jsonb, pgTable, text, timestamp, uniqueIndex, uuid } from 'drizzle-orm/pg-core';
 import { users } from './identity.js';
 
@@ -77,6 +78,10 @@ export const auditLogs = pgTable(
     resourceId: text('resource_id').notNull(),
     metadata: jsonb('metadata').notNull().default({}),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    expiresAt: timestamp('expires_at', { withTimezone: true }).notNull().default(sql`(now() + interval '7 years')`),
   },
-  (table) => [index('audit_logs_org_created_idx').on(table.organizationId, table.createdAt)],
+  (table) => [
+    index('audit_logs_org_created_idx').on(table.organizationId, table.createdAt),
+    index('audit_logs_retention_idx').on(table.expiresAt),
+  ],
 );

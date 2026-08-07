@@ -1,8 +1,11 @@
 import { type MiddlewareConsumer, Module, type NestModule, RequestMethod } from '@nestjs/common';
 import { AccessModule } from './modules/access/access.module.js';
+import { AnalyticsModule } from './modules/analytics/analytics.module.js';
+import { AuditModule } from './modules/audit/audit.module.js';
 import { CapabilityModule } from './modules/capabilities/capability.module.js';
 import { DistributionModule } from './modules/distribution/distribution.module.js';
 import { IdentityModule } from './modules/identity/identity.module.js';
+import { NotificationModule } from './modules/notifications/notification.module.js';
 import { OrganizationModule } from './modules/organizations/organization.module.js';
 import { PublishingModule } from './modules/publishing/publishing.module.js';
 import { DatabaseService } from './platform/database/database.service.js';
@@ -22,6 +25,9 @@ import { StorageService } from './platform/storage/storage.service.js';
     CapabilityModule,
     PublishingModule,
     DistributionModule,
+    AuditModule,
+    NotificationModule,
+    AnalyticsModule,
   ],
   controllers: [HealthController],
   providers: [

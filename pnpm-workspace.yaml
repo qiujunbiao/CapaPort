@@ -5,6 +5,7 @@ packages:
 
 allowBuilds:
   esbuild: true
+  msgpackr-extract: false
 
 minimumReleaseAgeExclude:
   - tsx@4.23.10
