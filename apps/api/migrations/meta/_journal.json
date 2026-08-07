@@ -22,6 +22,13 @@
       "when": 1786111200000,
       "tag": "0002_organizations",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1786111800000,
+      "tag": "0003_spaces",
+      "breakpoints": true
     }
   ]
 }

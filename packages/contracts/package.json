@@ -19,6 +19,10 @@
     "./organizations": {
       "types": "./src/organizations.ts",
       "default": "./dist/organizations.js"
+    },
+    "./spaces": {
+      "types": "./src/spaces.ts",
+      "default": "./dist/spaces.js"
     }
   },
   "types": "./src/index.ts",

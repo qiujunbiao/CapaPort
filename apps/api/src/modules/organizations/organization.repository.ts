@@ -13,6 +13,7 @@ import {
   organizationMemberships,
   organizations,
 } from '../../db/schema/organizations.js';
+import { spaceMemberships, spaces } from '../../db/schema/spaces.js';
 import type { DatabaseService } from '../../platform/database/database.service.js';
 import { OutboxService } from '../../platform/database/outbox.service.js';
 import { AppError } from '../../platform/errors/app-error.js';
@@ -51,6 +52,37 @@ export class OrganizationRepository implements OrganizationDataStore, TenantStor
         organizationId: input.organizationId,
         userId: input.userId,
         role: 'owner',
+      });
+      const organizationSpaceId = randomUUID();
+      const personalSpaceId = randomUUID();
+      await transaction.insert(spaces).values([
+        {
+          id: organizationSpaceId,
+          organizationId: input.organizationId,
+          type: 'organization',
+          name: input.name,
+          slug: 'organization',
+          reviewPolicy: 'required',
+          createdByMembershipId: input.ownerMembershipId,
+        },
+        {
+          id: personalSpaceId,
+          organizationId: input.organizationId,
+          type: 'personal',
+          name: 'Personal space',
+          slug: `personal-${input.userId.replaceAll('-', '')}`,
+          ownerUserId: input.userId,
+          reviewPolicy: 'direct',
+          createdByMembershipId: input.ownerMembershipId,
+        },
+      ]);
+      await transaction.insert(spaceMemberships).values({
+        id: randomUUID(),
+        organizationId: input.organizationId,
+        spaceId: personalSpaceId,
+        userId: input.userId,
+        role: 'manager',
+        addedByMembershipId: input.ownerMembershipId,
       });
       await transaction.insert(auditLogs).values({
         id: randomUUID(),
@@ -488,6 +520,35 @@ export class OrganizationRepository implements OrganizationDataStore, TenantStor
         [membershipId, invitation.organization_id, userId, invitation.role],
       );
       const acceptedMembershipId = membership.rows[0]?.id ?? membershipId;
+      const personalSpaceId = randomUUID();
+      await client.query(
+        `INSERT INTO spaces
+           (id,organization_id,type,name,slug,owner_user_id,review_policy,status,created_by_membership_id)
+         SELECT $1,$2,'personal',u.display_name || '''s space',$3,$4,'direct','active',$5
+           FROM users u WHERE u.id=$4
+         ON CONFLICT DO NOTHING`,
+        [
+          personalSpaceId,
+          invitation.organization_id,
+          `personal-${userId.replaceAll('-', '')}`,
+          userId,
+          acceptedMembershipId,
+        ],
+      );
+      const personalSpace = await client.query<{ id: string }>(
+        `SELECT id FROM spaces
+          WHERE organization_id=$1 AND type='personal' AND owner_user_id=$2`,
+        [invitation.organization_id, userId],
+      );
+      const acceptedPersonalSpaceId = personalSpace.rows[0]?.id ?? personalSpaceId;
+      await client.query(
+        `INSERT INTO space_memberships
+           (id,organization_id,space_id,user_id,role,status,added_by_membership_id)
+         VALUES ($1,$2,$3,$4,'manager','active',$5)
+         ON CONFLICT (space_id,user_id) DO UPDATE
+           SET role='manager',status='active',updated_at=now()`,
+        [randomUUID(), invitation.organization_id, acceptedPersonalSpaceId, userId, acceptedMembershipId],
+      );
       await client.query('UPDATE organization_invitations SET accepted_at=$2, accepted_by_user_id=$3 WHERE id=$1', [
         invitation.id,
         now,
