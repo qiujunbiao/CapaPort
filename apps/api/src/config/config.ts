@@ -6,6 +6,7 @@ const environmentSchema = z.object({
   DATABASE_URL: z.url(),
   REDIS_URL: z.url(),
   S3_ENDPOINT: z.url(),
+  S3_PUBLIC_ENDPOINT: z.url().optional(),
   S3_REGION: z.string().min(1),
   S3_BUCKET: z.string().min(3),
   S3_ACCESS_KEY: z.string().min(1),
@@ -28,6 +29,7 @@ export type AppConfig = {
   redisUrl: string;
   s3: {
     endpoint: string;
+    publicEndpoint: string;
     region: string;
     bucket: string;
     accessKey: string;
@@ -59,6 +61,7 @@ export function parseConfig(environment: Record<string, string | undefined>): Ap
     redisUrl: parsed.data.REDIS_URL,
     s3: {
       endpoint: parsed.data.S3_ENDPOINT,
+      publicEndpoint: parsed.data.S3_PUBLIC_ENDPOINT ?? parsed.data.S3_ENDPOINT,
       region: parsed.data.S3_REGION,
       bucket: parsed.data.S3_BUCKET,
       accessKey: parsed.data.S3_ACCESS_KEY,

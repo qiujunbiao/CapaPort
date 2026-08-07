@@ -7,6 +7,7 @@ const validEnvironment = {
   DATABASE_URL: 'postgres://agentdoor:agentdoor@localhost:5432/agentdoor',
   REDIS_URL: 'redis://localhost:6379',
   S3_ENDPOINT: 'http://localhost:9000',
+  S3_PUBLIC_ENDPOINT: 'https://objects.example.com',
   S3_REGION: 'us-east-1',
   S3_BUCKET: 'agentdoor',
   S3_ACCESS_KEY: 'agentdoor',
@@ -24,7 +25,7 @@ describe('configuration', () => {
     expect(parseConfig(validEnvironment)).toMatchObject({
       nodeEnv: 'test',
       port: 3100,
-      s3: { bucket: 'agentdoor' },
+      s3: { bucket: 'agentdoor', publicEndpoint: 'https://objects.example.com' },
       auth: { accessTtlSeconds: 900, refreshTtlDays: 30 },
     });
   });

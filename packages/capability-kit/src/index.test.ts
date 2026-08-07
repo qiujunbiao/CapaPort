@@ -61,6 +61,22 @@ describe('package hashing and archives', () => {
     expect(extractArchive(archive)).toEqual(files);
     expect(() => buildArchive([file('../escape', 'bad')])).toThrow(/path/i);
   });
+
+  it('rejects a forged zip bomb from central-directory sizes before inflation', () => {
+    const archive = buildArchive([file('README.md', 'small')]);
+    const forged = new Uint8Array(archive);
+    const view = new DataView(forged.buffer, forged.byteOffset, forged.byteLength);
+    let centralDirectory = -1;
+    for (let offset = 0; offset <= forged.byteLength - 4; offset += 1) {
+      if (view.getUint32(offset, true) === 0x02014b50) {
+        centralDirectory = offset;
+        break;
+      }
+    }
+    expect(centralDirectory).toBeGreaterThanOrEqual(0);
+    view.setUint32(centralDirectory + 24, 100 * 1024 * 1024 + 1, true);
+    expect(() => extractArchive(forged)).toThrow(/uncompressed size limit/i);
+  });
 });
 
 describe('package diffs and version classification', () => {

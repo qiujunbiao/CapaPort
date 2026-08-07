@@ -20,7 +20,18 @@ export function buildArchive(files: readonly PackageFile[]): Uint8Array {
 }
 
 export function extractArchive(archive: Uint8Array): PackageFile[] {
-  const entries = unzipSync(archive);
+  let declaredFiles = 0;
+  let declaredBytes = 0;
+  const entries = unzipSync(archive, {
+    filter: (entry) => {
+      declaredFiles += 1;
+      if (declaredFiles > MAX_FILES) throw new Error(`Package contains more than ${MAX_FILES} files`);
+      declaredBytes += entry.originalSize;
+      if (declaredBytes > MAX_UNCOMPRESSED_BYTES) throw new Error('Package exceeds the uncompressed size limit');
+      normalizePackagePath(entry.name);
+      return true;
+    },
+  });
   const paths = Object.keys(entries);
   if (paths.length > MAX_FILES) {
     throw new Error(`Package contains more than ${MAX_FILES} files`);

@@ -1,5 +1,6 @@
 import { type MiddlewareConsumer, Module, type NestModule, RequestMethod } from '@nestjs/common';
 import { AccessModule } from './modules/access/access.module.js';
+import { CapabilityModule } from './modules/capabilities/capability.module.js';
 import { IdentityModule } from './modules/identity/identity.module.js';
 import { OrganizationModule } from './modules/organizations/organization.module.js';
 import { DatabaseService } from './platform/database/database.service.js';
@@ -11,7 +12,7 @@ import { RequestIdMiddleware } from './platform/request-context/request-id.middl
 import { StorageService } from './platform/storage/storage.service.js';
 
 @Module({
-  imports: [PlatformModule, IdentityModule, OrganizationModule, AccessModule],
+  imports: [PlatformModule, IdentityModule, OrganizationModule, AccessModule, CapabilityModule],
   controllers: [HealthController],
   providers: [
     {

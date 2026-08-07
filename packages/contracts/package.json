@@ -12,6 +12,10 @@
       "types": "./src/auth.ts",
       "default": "./dist/auth.js"
     },
+    "./capabilities": {
+      "types": "./src/capabilities.ts",
+      "default": "./dist/capabilities.js"
+    },
     "./errors": {
       "types": "./src/errors.ts",
       "default": "./dist/errors.js"
