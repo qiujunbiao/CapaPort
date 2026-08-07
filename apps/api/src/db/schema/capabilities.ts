@@ -79,6 +79,7 @@ export const capabilities = pgTable(
   },
   (table) => [
     uniqueIndex('capabilities_org_slug_uidx').on(table.organizationId, table.slug),
+    uniqueIndex('capabilities_id_org_uidx').on(table.id, table.organizationId),
     uniqueIndex('capabilities_id_org_space_uidx').on(table.id, table.organizationId, table.spaceId),
     index('capabilities_search_idx').on(table.organizationId, table.status, table.name),
   ],
@@ -166,7 +167,11 @@ export const capabilityVersions = pgTable(
     publishedAt: timestamp('published_at', { withTimezone: true }).notNull().defaultNow(),
   },
   (table) => [
-    uniqueIndex('capability_versions_capability_version_uidx').on(table.capabilityId, table.version),
+    uniqueIndex('capability_versions_capability_space_version_uidx').on(
+      table.capabilityId,
+      table.spaceId,
+      table.version,
+    ),
     index('capability_versions_org_digest_idx').on(table.organizationId, table.contentDigest),
   ],
 );

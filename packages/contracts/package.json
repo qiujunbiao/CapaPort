@@ -24,6 +24,10 @@
       "types": "./src/organizations.ts",
       "default": "./dist/organizations.js"
     },
+    "./publications": {
+      "types": "./src/publications.ts",
+      "default": "./dist/publications.js"
+    },
     "./spaces": {
       "types": "./src/spaces.ts",
       "default": "./dist/spaces.js"

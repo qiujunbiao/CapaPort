@@ -182,11 +182,21 @@ export class CapabilityRepository implements CapabilityDataStore {
     query: CapabilitySearchQuery,
   ): Promise<CapabilityRecord[]> {
     if (accessibleSpaceIds.length === 0) return [];
-    const filters = [
-      eq(capabilities.organizationId, organizationId),
-      eq(capabilities.status, 'active'),
+    const filters = [eq(capabilities.organizationId, organizationId), eq(capabilities.status, 'active')];
+    const visibleFilter = or(
       inArray(capabilities.spaceId, accessibleSpaceIds),
-    ];
+      sql`EXISTS (
+        SELECT 1 FROM capability_versions visible_version
+         WHERE visible_version.capability_id=${capabilities.id}
+           AND visible_version.organization_id=${organizationId}
+           AND visible_version.space_id IN (${sql.join(
+             accessibleSpaceIds.map((id) => sql`${id}`),
+             sql`, `,
+           )})
+           AND visible_version.status IN ('published','deprecated')
+      )`,
+    );
+    if (visibleFilter) filters.push(visibleFilter);
     if (query.query) {
       const escapedQuery = query.query
         .replaceAll('\\', String.raw`\\`)
@@ -386,9 +396,12 @@ export class CapabilityRepository implements CapabilityDataStore {
         compatibility: capabilities.compatibility,
         ownerUserId: capabilities.ownerUserId,
         status: capabilities.status,
-        hasPublishedVersion: sql<boolean>`EXISTS (
-          SELECT 1 FROM capability_versions v
-           WHERE v.capability_id=${capabilities.id} AND v.status IN ('published','deprecated')
+        publishedSpaceIds: sql<string[]>`ARRAY(
+          SELECT DISTINCT v.space_id::text FROM capability_versions v
+           WHERE v.capability_id=${sql.raw('"capabilities"."id"')}
+             AND v.organization_id=${sql.raw('"capabilities"."organization_id"')}
+             AND v.status IN ('published','deprecated')
+          ORDER BY v.space_id::text
         )`,
       })
       .from(capabilities)
@@ -397,6 +410,7 @@ export class CapabilityRepository implements CapabilityDataStore {
       .limit(limit);
     return rows.map((row) => ({
       ...row,
+      hasPublishedVersion: row.publishedSpaceIds.length > 0,
       compatibility: row.compatibility as AgentId[],
       status: row.status as CapabilityRecord['status'],
     }));

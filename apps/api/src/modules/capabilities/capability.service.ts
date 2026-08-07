@@ -22,7 +22,10 @@ import { AppError } from '../../platform/errors/app-error.js';
 import { SpaceService } from '../access/space.service.js';
 import { ArtifactService } from './artifact.service.js';
 
-export type CapabilityRecord = CapabilitySummary & { hasPublishedVersion?: boolean };
+export type CapabilityRecord = CapabilitySummary & {
+  hasPublishedVersion?: boolean;
+  publishedSpaceIds?: string[];
+};
 export type CapabilityDraftRecord = {
   id: string;
   organizationId: string;
@@ -303,7 +306,15 @@ export class CapabilityService {
       await this.spaces.authorize(tenant, userId, capability.spaceId, 'content:view-private');
     } catch (error) {
       if (!capability.hasPublishedVersion) throw error;
-      await this.spaces.authorize(tenant, userId, capability.spaceId, 'content:view-published');
+      for (const spaceId of capability.publishedSpaceIds ?? []) {
+        try {
+          await this.spaces.authorize(tenant, userId, spaceId, 'content:view-published');
+          return;
+        } catch (publishedError) {
+          if (!(publishedError instanceof AppError) || publishedError.code !== 'ACCESS_DENIED') throw publishedError;
+        }
+      }
+      throw error;
     }
   }
 
