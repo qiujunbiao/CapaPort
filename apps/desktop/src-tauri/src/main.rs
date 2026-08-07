@@ -1,6 +1,9 @@
 #[cfg(feature = "tauri-app")]
-use agentdoor_runtime::commands::{
-    BindProjectInput, ExportPackageInput, InventoryInput, PathInput, Runtime,
+use agentdoor_runtime::commands::{ExportPackageInput, InventoryInput, PathInput, Runtime};
+#[cfg(feature = "tauri-app")]
+use agentdoor_runtime::projects::{
+    BindProjectInput, ContextPackageInput, ProjectBindingInput, ProjectProjectionInput,
+    ProjectSpaceInput,
 };
 #[cfg(feature = "tauri-app")]
 use agentdoor_runtime::credentials::OsCredentialStore;
@@ -80,11 +83,51 @@ fn rollback_install(
 fn bind_project_directory(
     input: BindProjectInput,
     state: tauri::State<'_, AppState>,
-) -> Result<String, CommandError> {
+) -> Result<agentdoor_runtime::projects::LocalProjectBinding, CommandError> {
     state
         .runtime
         .bind_project_directory(&input)
         .map_err(Into::into)
+}
+#[cfg(feature = "tauri-app")]
+#[tauri::command]
+fn list_project_bindings(
+    input: ProjectSpaceInput,
+    state: tauri::State<'_, AppState>,
+) -> Result<Vec<agentdoor_runtime::projects::LocalProjectBinding>, CommandError> {
+    state.runtime.list_project_bindings(&input).map_err(Into::into)
+}
+#[cfg(feature = "tauri-app")]
+#[tauri::command]
+fn remove_project_binding(
+    input: ProjectBindingInput,
+    state: tauri::State<'_, AppState>,
+) -> Result<(), CommandError> {
+    state.runtime.remove_project_binding(&input).map_err(Into::into)
+}
+#[cfg(feature = "tauri-app")]
+#[tauri::command]
+fn inventory_project_context(
+    input: ProjectBindingInput,
+    state: tauri::State<'_, AppState>,
+) -> Result<agentdoor_runtime::projects::ProjectInventory, CommandError> {
+    state.runtime.inventory_project_context(&input).map_err(Into::into)
+}
+#[cfg(feature = "tauri-app")]
+#[tauri::command]
+fn export_project_context(
+    input: ContextPackageInput,
+    state: tauri::State<'_, AppState>,
+) -> Result<agentdoor_runtime::projects::ContextPackageExport, CommandError> {
+    state.runtime.export_project_context(&input).map_err(Into::into)
+}
+#[cfg(feature = "tauri-app")]
+#[tauri::command]
+fn project_context_plan(
+    input: ProjectProjectionInput,
+    state: tauri::State<'_, AppState>,
+) -> Result<agentdoor_runtime::files::InstallPlan, CommandError> {
+    state.runtime.project_context_plan(&input).map_err(Into::into)
 }
 #[cfg(feature = "tauri-app")]
 #[tauri::command]
@@ -139,6 +182,11 @@ fn main() {
             apply_install,
             rollback_install,
             bind_project_directory,
+            list_project_bindings,
+            remove_project_binding,
+            inventory_project_context,
+            export_project_context,
+            project_context_plan,
             sync_queue_status,
             store_session,
             load_session,

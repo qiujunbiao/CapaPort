@@ -27,6 +27,38 @@ export type PreviewChange = {
 export type InstallPreview = { transactionId: string; changes: PreviewChange[]; conflicts: number };
 export type ApplyResult = { transactionId: string; changedFiles: number; state: string };
 export type SyncQueueStatus = { pending: number; failed: number; nextAvailableAt?: string };
+export type LocalProjectBinding = {
+  localBindingId: string;
+  spaceId: string;
+  localPath: string;
+  agents: Array<'codex' | 'claude-code' | 'cursor' | 'gemini-cli'>;
+  status: 'active' | 'missing' | 'removed';
+  createdAt: string;
+};
+export type ProjectInventoryEntry = {
+  relativePath: string;
+  sizeBytes: number;
+  eligible: boolean;
+  ignoreReason?: string;
+};
+export type ProjectInventory = {
+  localBindingId: string;
+  status: 'active' | 'missing';
+  entries: ProjectInventoryEntry[];
+  eligibleFiles: number;
+  eligibleBytes: number;
+  ignored: Array<{ reason: string; count: number }>;
+};
+export type ContextPackageExport = {
+  digest: string;
+  selectionDigest: string;
+  fileCount: number;
+  totalBytes: number;
+  agents: Array<'codex' | 'claude-code' | 'cursor' | 'gemini-cli'>;
+  scanEngineVersion: string;
+  scannedAt: string;
+  archiveBase64: string;
+};
 
 export const localCommandNames = [
   'detect_agents',
@@ -37,6 +69,11 @@ export const localCommandNames = [
   'apply_install',
   'rollback_install',
   'bind_project_directory',
+  'list_project_bindings',
+  'remove_project_binding',
+  'inventory_project_context',
+  'export_project_context',
+  'project_context_plan',
   'sync_queue_status',
   'store_session',
   'load_session',

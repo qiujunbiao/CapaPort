@@ -50,6 +50,7 @@ export interface ArtifactObjectStore {
   statObject(objectKey: string): Promise<{ sizeBytes: number }>;
   readObject(objectKey: string): Promise<Uint8Array>;
   deleteObject(objectKey: string): Promise<void>;
+  createDownloadUrl?(objectKey: string, expiresIn: number): Promise<string>;
 }
 
 @Injectable()
@@ -146,6 +147,14 @@ export class ArtifactService {
     const artifact = await this.repository.findArtifact(organizationId, artifactId);
     if (artifact?.status !== 'ready') throw new AppError('ARTIFACT_INVALID', 'Artifact is unavailable.', 404);
     return { artifact, bytes: await this.storage.readObject(artifact.objectKey) };
+  }
+
+  async createDownload(organizationId: string, artifactId: string, expiresIn = 120) {
+    const artifact = await this.repository.findArtifact(organizationId, artifactId);
+    if (artifact?.status !== 'ready' || !this.storage.createDownloadUrl) {
+      throw new AppError('ARTIFACT_INVALID', 'Artifact is unavailable.', 404);
+    }
+    return { url: await this.storage.createDownloadUrl(artifact.objectKey, expiresIn), expiresIn };
   }
 
   async cleanupExpired(now = new Date(), limit = 100): Promise<number> {

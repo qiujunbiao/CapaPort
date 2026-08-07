@@ -25,6 +25,10 @@ pub enum RuntimeError {
     CredentialStore,
     #[error("NOT_FOUND")]
     NotFound,
+    #[error("SOURCE_TREE_REJECTED")]
+    SourceTreeRejected,
+    #[error("SENSITIVE_CONTENT")]
+    SensitiveContent,
 }
 
 #[derive(Debug, Serialize)]

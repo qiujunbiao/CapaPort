@@ -6,6 +6,8 @@ import type {
   ErrorEnvelope,
   InstallPlan,
   OrganizationSummary,
+  ProjectBindingSummary,
+  ProjectContextSummary,
   PublicationSummary,
   PublicUser,
   SpaceSummary,
@@ -107,6 +109,34 @@ export function createCloudClient(
     return { capabilityId: created.capability.id, draftId: created.draft.id };
   }
 
+  async function uploadArchive(
+    session: Session,
+    organizationId: string,
+    spaceId: string,
+    fileName: string,
+    sha256: string,
+    archiveBase64: string,
+  ) {
+    const bytes = base64Bytes(archiveBase64);
+    const upload = await request<ArtifactUploadPlan>('/artifacts/uploads', {
+      method: 'POST',
+      session,
+      organizationId,
+      body: JSON.stringify({ spaceId, fileName, contentType: 'application/zip', sizeBytes: bytes.byteLength, sha256 }),
+    });
+    const response = await fetch(upload.url, {
+      method: 'PUT',
+      headers: upload.headers,
+      body: bytes.buffer as ArrayBuffer,
+    });
+    if (!response.ok) throw new CloudError('ARTIFACT_UPLOAD_FAILED', '上下文包上传失败，请重试');
+    return request<{ artifactId: string }>(`/artifacts/uploads/${upload.uploadId}/confirm`, {
+      method: 'POST',
+      session,
+      organizationId,
+    });
+  }
+
   return {
     isOnline: () => navigator.onLine,
     login: (input) => request<TokenPair>('/auth/login', { method: 'POST', body: JSON.stringify(input) }),
@@ -183,6 +213,54 @@ export function createCloudClient(
           agent: input.agent,
           outcome: input.outcome,
           ...(input.failureCode ? { failureCode: input.failureCode } : {}),
+        }),
+      });
+    },
+    createProjectBinding: (input) =>
+      request<ProjectBindingSummary>(`/projects/${input.spaceId}/bindings`, {
+        method: 'POST',
+        session: input.session,
+        organizationId: input.organizationId,
+        body: JSON.stringify({
+          deviceId: input.deviceId,
+          localBindingId: input.localBindingId,
+          agents: input.agents,
+        }),
+      }),
+    projectBindings: (session, organizationId, spaceId) =>
+      request<ProjectBindingSummary[]>(`/projects/${spaceId}/bindings`, { session, organizationId }),
+    removeProjectBinding: (session, organizationId, spaceId, bindingId) =>
+      request<void>(`/projects/${spaceId}/bindings/${bindingId}`, {
+        method: 'DELETE',
+        session,
+        organizationId,
+      }),
+    syncProjectContext: async (input) => {
+      const artifact = await uploadArchive(
+        input.session,
+        input.organizationId,
+        input.spaceId,
+        `project-context-${input.context.selectionDigest.slice(0, 12)}.zip`,
+        input.context.digest,
+        input.context.archiveBase64,
+      );
+      return request<ProjectContextSummary>(`/projects/${input.spaceId}/contexts`, {
+        method: 'POST',
+        session: input.session,
+        organizationId: input.organizationId,
+        body: JSON.stringify({
+          bindingId: input.bindingId,
+          artifactId: artifact.artifactId,
+          digest: input.context.digest,
+          selectionDigest: input.context.selectionDigest,
+          fileCount: input.context.fileCount,
+          totalBytes: input.context.totalBytes,
+          agents: input.context.agents,
+          scan: {
+            status: 'passed',
+            engineVersion: input.context.scanEngineVersion,
+            scannedAt: input.context.scannedAt,
+          },
         }),
       });
     },

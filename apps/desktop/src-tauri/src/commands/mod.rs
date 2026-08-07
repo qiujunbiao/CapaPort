@@ -2,6 +2,10 @@ use crate::credentials::CredentialStore;
 use crate::database::{Database, SyncQueueStatus};
 use crate::files::{ApplyResult, FileEngine, InstallPlan, InstallPreview};
 use crate::paths::PathPolicy;
+use crate::projects::{
+    BindProjectInput, ContextPackageExport, ContextPackageInput, LocalProjectBinding,
+    ProjectBindingInput, ProjectEngine, ProjectInventory, ProjectProjectionInput, ProjectSpaceInput,
+};
 use crate::{RuntimeError, RuntimeResult};
 use base64::Engine;
 use regex::Regex;
@@ -10,7 +14,6 @@ use sha2::{Digest, Sha256};
 use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
-use uuid::Uuid;
 use walkdir::WalkDir;
 
 #[derive(Debug, Clone, Serialize)]
@@ -81,13 +84,6 @@ pub struct PathInput {
 
 #[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub struct BindProjectInput {
-    pub space_id: String,
-    pub path: String,
-}
-
-#[derive(Debug, Clone, Deserialize)]
-#[serde(rename_all = "camelCase")]
 pub struct ExportPackageInput {
     pub adapter_id: String,
     pub root_path: String,
@@ -98,6 +94,7 @@ pub struct ExportPackageInput {
 pub struct Runtime {
     database: Database,
     engine: FileEngine,
+    projects: ProjectEngine,
     home_dir: PathBuf,
     project_root: Option<PathBuf>,
     credentials: Arc<dyn CredentialStore>,
@@ -133,7 +130,8 @@ impl Runtime {
         let policy = PathPolicy::new(roots)?;
         Ok(Self {
             database,
-            engine: FileEngine::new(policy),
+            engine: FileEngine::new(policy.clone()),
+            projects: ProjectEngine::new(policy),
             home_dir,
             project_root,
             credentials,
@@ -403,18 +401,23 @@ impl Runtime {
     pub fn rollback_install(&self, transaction_id: &str) -> RuntimeResult<ApplyResult> {
         self.engine.rollback(transaction_id, &self.database)
     }
-    pub fn bind_project_directory(&self, input: &BindProjectInput) -> RuntimeResult<String> {
-        if input.space_id.is_empty() || input.space_id.len() > 120 {
-            return Err(RuntimeError::InvalidInput);
-        }
-        let canonical = self.engine.policy().add_root(PathBuf::from(&input.path))?;
-        self.database.bind_path(
-            &Uuid::new_v4().to_string(),
-            &input.space_id,
-            &canonical.to_string_lossy(),
-            &now(),
-        )?;
-        Ok("bound".into())
+    pub fn bind_project_directory(&self, input: &BindProjectInput) -> RuntimeResult<LocalProjectBinding> {
+        self.projects.bind(&self.database, input)
+    }
+    pub fn list_project_bindings(&self, input: &ProjectSpaceInput) -> RuntimeResult<Vec<LocalProjectBinding>> {
+        self.projects.list(&self.database, Some(&input.space_id))
+    }
+    pub fn remove_project_binding(&self, input: &ProjectBindingInput) -> RuntimeResult<()> {
+        self.projects.remove(&self.database, &input.local_binding_id)
+    }
+    pub fn inventory_project_context(&self, input: &ProjectBindingInput) -> RuntimeResult<ProjectInventory> {
+        self.projects.inventory(&self.database, &input.local_binding_id)
+    }
+    pub fn export_project_context(&self, input: &ContextPackageInput) -> RuntimeResult<ContextPackageExport> {
+        self.projects.package(&self.database, input)
+    }
+    pub fn project_context_plan(&self, input: &ProjectProjectionInput) -> RuntimeResult<InstallPlan> {
+        self.projects.projection(&self.database, input)
     }
     pub fn sync_queue_status(&self) -> RuntimeResult<SyncQueueStatus> {
         self.database.queue_status()
@@ -522,15 +525,6 @@ fn ignored(path: &Path) -> bool {
     })
 }
 
-fn now() -> String {
-    use std::time::{SystemTime, UNIX_EPOCH};
-    let millis = SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .unwrap_or_default()
-        .as_millis();
-    format!("{millis:020}")
-}
-
 fn validate_slug(value: &str) -> RuntimeResult<()> {
     let valid = !value.is_empty()
         && value.len() <= 80
@@ -631,10 +625,11 @@ mod tests {
             runtime
                 .bind_project_directory(&BindProjectInput {
                     space_id: "space-1".into(),
-                    path: project.to_string_lossy().into()
+                    path: project.to_string_lossy().into(),
+                    agents: Some(vec!["codex".into()]),
                 })
-                .unwrap(),
-            "bound"
+                .unwrap().space_id,
+            "space-1"
         );
         assert_eq!(runtime.sync_queue_status().unwrap().pending, 0);
     }
@@ -779,6 +774,7 @@ mod tests {
             .bind_project_directory(&BindProjectInput {
                 space_id: "space-persisted".into(),
                 path: project.to_string_lossy().into(),
+                agents: Some(vec!["codex".into()]),
             })
             .unwrap();
         drop(runtime);

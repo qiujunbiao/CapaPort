@@ -71,6 +71,13 @@ const roleActions: Record<SpaceRole, ReadonlySet<AuthorizationAction>> = {
     'space:archive',
     'space:manage-members',
     'space:update-review-policy',
+    'content:view-published',
+    'content:view-private',
+    'content:create',
+    'content:edit',
+    'content:submit',
+    'content:review',
+    'content:install',
   ]),
   reviewer: new Set([
     'space:view',

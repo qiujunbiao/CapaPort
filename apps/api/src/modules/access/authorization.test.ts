@@ -27,7 +27,7 @@ const resource = { organizationId: 'org-a', type: 'team' as const };
 
 describe('space authorization matrix', () => {
   it.each([
-    ['manager', ['space:view', 'space:update', 'space:archive', 'space:manage-members', 'space:update-review-policy']],
+    ['manager', actions],
     ['reviewer', ['space:view', 'content:view-published', 'content:view-private', 'content:review', 'content:install']],
     [
       'contributor',

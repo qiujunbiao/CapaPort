@@ -7,6 +7,7 @@ import { DistributionModule } from './modules/distribution/distribution.module.j
 import { IdentityModule } from './modules/identity/identity.module.js';
 import { NotificationModule } from './modules/notifications/notification.module.js';
 import { OrganizationModule } from './modules/organizations/organization.module.js';
+import { ProjectModule } from './modules/projects/project.module.js';
 import { PublishingModule } from './modules/publishing/publishing.module.js';
 import { DatabaseService } from './platform/database/database.service.js';
 import { HealthController } from './platform/health/health.controller.js';
@@ -24,6 +25,7 @@ import { StorageService } from './platform/storage/storage.service.js';
     AccessModule,
     CapabilityModule,
     PublishingModule,
+    ProjectModule,
     DistributionModule,
     AuditModule,
     NotificationModule,

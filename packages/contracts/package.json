@@ -36,6 +36,10 @@
       "types": "./src/publications.ts",
       "default": "./dist/publications.js"
     },
+    "./projects": {
+      "types": "./src/projects.ts",
+      "default": "./dist/projects.js"
+    },
     "./spaces": {
       "types": "./src/spaces.ts",
       "default": "./dist/spaces.js"

@@ -11,13 +11,17 @@ import type {
   TokenPair,
   UpdateCheck,
 } from '@agentdoor/contracts';
+import type { ProjectBindingSummary, ProjectContextSummary } from '@agentdoor/contracts/projects';
 import type {
   AgentDescriptor,
   ApplyResult,
+  ContextPackageExport,
   InstallPlan,
   InstallPreview,
   LocalCapabilitySummary,
+  LocalProjectBinding,
   LocalScanReport,
+  ProjectInventory,
   SyncQueueStatus,
 } from '../generated/commands';
 
@@ -116,6 +120,23 @@ export interface CloudClient {
     outcome: 'installed' | 'failed';
     failureCode?: string;
   }): Promise<void>;
+  createProjectBinding(input: {
+    session: Session;
+    organizationId: string;
+    spaceId: string;
+    deviceId: string;
+    localBindingId: string;
+    agents: AgentId[];
+  }): Promise<ProjectBindingSummary>;
+  projectBindings(session: Session, organizationId: string, spaceId: string): Promise<ProjectBindingSummary[]>;
+  removeProjectBinding?(session: Session, organizationId: string, spaceId: string, bindingId: string): Promise<void>;
+  syncProjectContext(input: {
+    session: Session;
+    organizationId: string;
+    spaceId: string;
+    bindingId: string;
+    context: ContextPackageExport;
+  }): Promise<ProjectContextSummary>;
 }
 
 export interface LocalClient {
@@ -131,7 +152,21 @@ export interface LocalClient {
   previewInstall(plan: InstallPlan): Promise<InstallPreview>;
   applyInstall(plan: InstallPlan): Promise<ApplyResult>;
   rollbackInstall(transactionId: string): Promise<ApplyResult>;
-  bindProjectDirectory(input: { spaceId: string; path: string }): Promise<string>;
+  bindProjectDirectory(input: { spaceId: string; path: string; agents?: AgentId[] }): Promise<LocalProjectBinding>;
+  listProjectBindings(spaceId: string): Promise<LocalProjectBinding[]>;
+  removeProjectBinding(localBindingId: string): Promise<void>;
+  inventoryProjectContext(localBindingId: string): Promise<ProjectInventory>;
+  exportProjectContext(input: {
+    localBindingId: string;
+    selectedPaths: string[];
+    agents: AgentId[];
+  }): Promise<ContextPackageExport>;
+  projectContextPlan(input: {
+    localBindingId: string;
+    selectedPaths: string[];
+    adapterId: AgentId;
+    rootPath: string;
+  }): Promise<InstallPlan>;
   syncQueueStatus(): Promise<SyncQueueStatus>;
   storeSession?(session: Session): Promise<void>;
   loadSession?(): Promise<Session | undefined>;

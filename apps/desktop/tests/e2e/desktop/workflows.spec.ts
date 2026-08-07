@@ -17,6 +17,8 @@ async function injectClients(page: Page, options: { conflict?: boolean } = {}) {
       },
     };
     const publications: Array<Record<string, unknown>> = [];
+    const projectBindings: Array<Record<string, unknown>> = [];
+    const localProjectBindings: Array<Record<string, unknown>> = [];
     const capability = {
       id: '00000000-0000-4000-8000-000000000010',
       organizationId: 'org-a',
@@ -47,6 +49,15 @@ async function injectClients(page: Page, options: { conflict?: boolean } = {}) {
           name: '个人空间',
           slug: 'personal',
           reviewPolicy: 'direct',
+          status: 'active',
+        },
+        {
+          id: '00000000-0000-4000-8000-000000000022',
+          organizationId: 'org-a',
+          type: 'project',
+          name: '支付平台',
+          slug: 'payments',
+          reviewPolicy: 'required',
           status: 'active',
         },
         {
@@ -89,6 +100,46 @@ async function injectClients(page: Page, options: { conflict?: boolean } = {}) {
         return { publicationId: 'publication-a' };
       },
       reportInstallation: async () => undefined,
+      devices: async () => [],
+      registerDevice: async (_session: unknown, _organizationId: string, supportedAgents: string[]) => ({
+        id: '00000000-0000-4000-8000-000000000030',
+        name: 'E2E Mac',
+        platform: 'macos',
+        appVersion: '0.1.0',
+        supportedAgents,
+        status: 'active',
+      }),
+      createProjectBinding: async (input: Record<string, unknown>) => {
+        const binding = {
+          id: '00000000-0000-4000-8000-000000000031',
+          organizationId: input.organizationId,
+          projectSpaceId: input.spaceId,
+          deviceId: input.deviceId,
+          localBindingId: input.localBindingId,
+          agents: input.agents,
+          status: 'active',
+          createdAt: new Date().toISOString(),
+        };
+        projectBindings.push(binding);
+        return binding;
+      },
+      projectBindings: async () => projectBindings,
+      removeProjectBinding: async () => undefined,
+      syncProjectContext: async (input: {
+        organizationId: string;
+        spaceId: string;
+        bindingId: string;
+        context: Record<string, unknown>;
+      }) => ({
+        id: 'context-a',
+        organizationId: input.organizationId,
+        projectSpaceId: input.spaceId,
+        bindingId: input.bindingId,
+        deviceId: 'device-a',
+        artifactId: 'artifact-a',
+        ...input.context,
+        createdAt: new Date().toISOString(),
+      }),
     };
     const local = {
       detectAgents: async () => [
@@ -122,7 +173,43 @@ async function injectClients(page: Page, options: { conflict?: boolean } = {}) {
         state: 'applied',
       }),
       rollbackInstall: async (transactionId: string) => ({ transactionId, changedFiles: 1, state: 'rolled_back' }),
-      bindProjectDirectory: async () => 'bound',
+      bindProjectDirectory: async (input: { spaceId: string; path: string; agents: string[] }) => {
+        const binding = {
+          localBindingId: '11111111-1111-4111-8111-111111111111',
+          spaceId: input.spaceId,
+          localPath: input.path,
+          agents: input.agents,
+          status: 'active',
+          createdAt: '0001',
+        };
+        localProjectBindings.push(binding);
+        return binding;
+      },
+      listProjectBindings: async () => localProjectBindings,
+      removeProjectBinding: async () => undefined,
+      inventoryProjectContext: async (localBindingId: string) => ({
+        localBindingId,
+        status: 'active',
+        entries: [
+          { relativePath: 'README.md', sizeBytes: 40, eligible: true },
+          { relativePath: 'docs/policy.yaml', sizeBytes: 60, eligible: true },
+          { relativePath: 'src/index.ts', sizeBytes: 100, eligible: false, ignoreReason: 'source-code' },
+        ],
+        eligibleFiles: 2,
+        eligibleBytes: 100,
+        ignored: [{ reason: 'source-code', count: 1 }],
+      }),
+      exportProjectContext: async (input: { selectedPaths: string[]; agents: string[] }) => ({
+        digest: 'e'.repeat(64),
+        selectionDigest: 'f'.repeat(64),
+        fileCount: input.selectedPaths.length,
+        totalBytes: 100,
+        agents: input.agents,
+        scanEngineVersion: 'project-context-1.0.0',
+        scannedAt: new Date().toISOString(),
+        archiveBase64: 'UEsFBgAAAAAAAAAAAAAAAAAAAAAAAA==',
+      }),
+      projectContextPlan: async () => ({ writes: [] }),
       syncQueueStatus: async () => ({ pending: 0, failed: 0 }),
     };
     Object.defineProperty(window, '__AGENTDOOR_E2E__', { value: { cloud, local, sessionStore: store } });
@@ -152,4 +239,23 @@ test('search → install preview → resolve local update conflict', async ({ pa
   await page.getByLabel('保留本地版本').click();
   await page.getByRole('button', { name: '确认安装' }).click();
   await expect(page.getByRole('dialog')).toBeHidden();
+});
+
+test('bind multiple project directories → explicitly select → secure sync', async ({ page }) => {
+  await injectClients(page);
+  await page.goto('/');
+  await page.getByRole('button', { name: '项目', exact: true }).click();
+  await expect(page.getByRole('heading', { name: '项目空间' })).toBeVisible();
+  await page.getByRole('button', { name: '绑定另一个目录' }).click();
+  await page.getByLabel('项目目录').fill('/private/work/payments');
+  await page.getByLabel('Claude Code').check();
+  await page.getByRole('button', { name: '确认绑定' }).click();
+  await expect(page.getByTitle('/private/work/payments')).toBeVisible();
+  await page.getByRole('button', { name: '选择同步' }).click();
+  await expect(page.getByText('src/index.ts')).toBeVisible();
+  await expect(page.getByRole('checkbox', { name: /src\/index\.ts/ })).toBeDisabled();
+  await page.getByRole('checkbox', { name: /docs\/policy\.yaml/ }).uncheck();
+  await page.screenshot({ path: '/tmp/agentdoor-project-context.png', fullPage: true });
+  await page.getByRole('button', { name: '同步 1 个文件' }).click();
+  await expect(page.getByText(/已同步 1 个显式选择的上下文文件/)).toBeVisible();
 });

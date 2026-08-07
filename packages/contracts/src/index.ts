@@ -4,5 +4,6 @@ export * from './distribution.js';
 export * from './errors.js';
 export * from './operations.js';
 export * from './organizations.js';
+export * from './projects.js';
 export * from './publications.js';
 export * from './spaces.js';

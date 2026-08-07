@@ -5,6 +5,7 @@ node_modules
 **/node_modules
 **/dist
 **/coverage
+**/target
 .turbo
 .env
 .env.local

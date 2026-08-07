@@ -4,5 +4,6 @@ export * from './identity.js';
 export * from './operations.js';
 export * from './organizations.js';
 export { outboxEvents } from './outbox.js';
+export * from './projects.js';
 export * from './publications.js';
 export * from './spaces.js';

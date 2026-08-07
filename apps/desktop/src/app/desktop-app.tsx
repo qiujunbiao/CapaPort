@@ -1,4 +1,4 @@
-import type { CapabilitySummary, SpaceSummary, UpdateCheck } from '@agentdoor/contracts';
+import type { AgentId, CapabilitySummary, SpaceSummary, UpdateCheck } from '@agentdoor/contracts';
 import { QueryClient, QueryClientProvider, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Bell, Box, CloudOff, FolderGit2, Home, Menu, PanelLeftClose, Send, Settings, ShieldCheck } from 'lucide-react';
 import { useEffect, useMemo, useState, useSyncExternalStore } from 'react';
@@ -226,8 +226,59 @@ function AppContent({
       return (
         <ProjectsPage
           spaces={spacesQuery.data ?? []}
-          onBind={async (spaceId, path) => {
-            await local.bindProjectDirectory({ spaceId, path });
+          loadBindings={(spaceId) => local.listProjectBindings(spaceId)}
+          onBind={async (spaceId, path, agents) => {
+            if (!session || !organizationId || !cloud.devices || !cloud.registerDevice)
+              throw new Error('当前客户端不支持项目同步');
+            const localBinding = await local.bindProjectDirectory({ spaceId, path, agents });
+            try {
+              const devices = await cloud.devices(session, organizationId);
+              const device =
+                devices.find(
+                  (item) => agents.every((agent) => item.supportedAgents.includes(agent)) && item.status === 'active',
+                ) ?? (await cloud.registerDevice(session, organizationId, agents));
+              await cloud.createProjectBinding({
+                session,
+                organizationId,
+                spaceId,
+                deviceId: device.id,
+                localBindingId: localBinding.localBindingId,
+                agents,
+              });
+            } catch (error) {
+              await local.removeProjectBinding(localBinding.localBindingId).catch(() => undefined);
+              throw error;
+            }
+          }}
+          onRemove={async (spaceId, binding) => {
+            if (!session || !organizationId) throw new Error('请选择组织');
+            const cloudBinding = (await cloud.projectBindings(session, organizationId, spaceId)).find(
+              (item) => item.localBindingId === binding.localBindingId,
+            );
+            if (cloudBinding && cloud.removeProjectBinding) {
+              await cloud.removeProjectBinding(session, organizationId, spaceId, cloudBinding.id);
+            }
+            await local.removeProjectBinding(binding.localBindingId);
+          }}
+          onInventory={(binding) => local.inventoryProjectContext(binding.localBindingId)}
+          onSync={async (spaceId, binding, selectedPaths, agents) => {
+            if (!session || !organizationId) throw new Error('请选择组织');
+            const cloudBinding = (await cloud.projectBindings(session, organizationId, spaceId)).find(
+              (item) => item.localBindingId === binding.localBindingId && item.status === 'active',
+            );
+            if (!cloudBinding) throw new Error('云端绑定不存在，请重新绑定目录');
+            const context = await local.exportProjectContext({
+              localBindingId: binding.localBindingId,
+              selectedPaths,
+              agents: agents as AgentId[],
+            });
+            await cloud.syncProjectContext({
+              session,
+              organizationId,
+              spaceId,
+              bindingId: cloudBinding.id,
+              context,
+            });
           }}
         />
       );

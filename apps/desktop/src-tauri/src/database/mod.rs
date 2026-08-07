@@ -8,6 +8,7 @@ const MIGRATION: &str = r#"
 PRAGMA foreign_keys=ON;
 CREATE TABLE IF NOT EXISTS device_cache (key TEXT PRIMARY KEY,value_json TEXT NOT NULL,updated_at TEXT NOT NULL);
 CREATE TABLE IF NOT EXISTS path_bindings (id TEXT PRIMARY KEY,space_id TEXT NOT NULL,local_path TEXT NOT NULL,created_at TEXT NOT NULL,UNIQUE(space_id,local_path));
+CREATE TABLE IF NOT EXISTS local_project_bindings (id TEXT PRIMARY KEY,space_id TEXT NOT NULL,local_path TEXT NOT NULL,agents_json TEXT NOT NULL,status TEXT NOT NULL DEFAULT 'active',created_at TEXT NOT NULL,updated_at TEXT NOT NULL,UNIQUE(space_id,local_path));
 CREATE TABLE IF NOT EXISTS install_locks (id TEXT PRIMARY KEY,adapter_id TEXT NOT NULL,capability_slug TEXT NOT NULL,root_path TEXT NOT NULL,lock_json TEXT NOT NULL,updated_at TEXT NOT NULL,UNIQUE(adapter_id,capability_slug,root_path));
 CREATE TABLE IF NOT EXISTS backups (id TEXT PRIMARY KEY,transaction_id TEXT NOT NULL,relative_path TEXT NOT NULL,backup_path TEXT NOT NULL,created_at TEXT NOT NULL);
 CREATE TABLE IF NOT EXISTS sync_cursors (scope_key TEXT PRIMARY KEY,cursor TEXT NOT NULL,updated_at TEXT NOT NULL);
@@ -31,6 +32,17 @@ pub struct RetryOperation {
     pub operation: String,
     pub payload_json: String,
     pub attempts: u32,
+}
+
+#[derive(Debug, Clone, Serialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct LocalProjectBindingRow {
+    pub local_binding_id: String,
+    pub space_id: String,
+    pub local_path: String,
+    pub agents: Vec<String>,
+    pub status: String,
+    pub created_at: String,
 }
 
 pub struct Database {
@@ -68,13 +80,79 @@ impl Database {
     pub fn bound_paths(&self) -> RuntimeResult<Vec<String>> {
         let connection = self.connection.lock();
         let mut statement = connection
-            .prepare("SELECT local_path FROM path_bindings ORDER BY created_at,id")
+            .prepare("SELECT local_path FROM path_bindings UNION SELECT local_path FROM local_project_bindings WHERE status='active' ORDER BY local_path")
             .map_err(|_| RuntimeError::Database)?;
         let rows = statement
             .query_map([], |row| row.get(0))
             .map_err(|_| RuntimeError::Database)?;
         rows.collect::<Result<Vec<_>, _>>()
             .map_err(|_| RuntimeError::Database)
+    }
+
+    pub fn bind_project_path(
+        &self,
+        id: &str,
+        space_id: &str,
+        local_path: &str,
+        agents: &[String],
+        now: &str,
+    ) -> RuntimeResult<LocalProjectBindingRow> {
+        let agents_json = serde_json::to_string(agents).map_err(|_| RuntimeError::InvalidInput)?;
+        self.connection.lock().execute(
+            "INSERT INTO local_project_bindings(id,space_id,local_path,agents_json,status,created_at,updated_at) VALUES(?1,?2,?3,?4,'active',?5,?5) ON CONFLICT(space_id,local_path) DO UPDATE SET agents_json=excluded.agents_json,status='active',updated_at=excluded.updated_at",
+            params![id, space_id, local_path, agents_json, now],
+        ).map_err(|_| RuntimeError::Database)?;
+        self.connection.lock().query_row(
+            "SELECT id,space_id,local_path,agents_json,status,created_at FROM local_project_bindings WHERE space_id=?1 AND local_path=?2",
+            params![space_id, local_path],
+            |row| {
+                let agents_json: String = row.get(3)?;
+                Ok(LocalProjectBindingRow {
+                    local_binding_id: row.get(0)?,
+                    space_id: row.get(1)?,
+                    local_path: row.get(2)?,
+                    agents: serde_json::from_str(&agents_json).unwrap_or_default(),
+                    status: row.get(4)?,
+                    created_at: row.get(5)?,
+                })
+            },
+        ).map_err(|_| RuntimeError::Database)
+    }
+
+    pub fn project_bindings(&self, space_id: Option<&str>) -> RuntimeResult<Vec<LocalProjectBindingRow>> {
+        let connection = self.connection.lock();
+        let sql = if space_id.is_some() {
+            "SELECT id,space_id,local_path,agents_json,status,created_at FROM local_project_bindings WHERE space_id=?1 ORDER BY created_at,id"
+        } else {
+            "SELECT id,space_id,local_path,agents_json,status,created_at FROM local_project_bindings ORDER BY created_at,id"
+        };
+        let mut statement = connection.prepare(sql).map_err(|_| RuntimeError::Database)?;
+        let map_row = |row: &rusqlite::Row<'_>| {
+            let agents_json: String = row.get(3)?;
+            Ok(LocalProjectBindingRow {
+                local_binding_id: row.get(0)?,
+                space_id: row.get(1)?,
+                local_path: row.get(2)?,
+                agents: serde_json::from_str(&agents_json).unwrap_or_default(),
+                status: row.get(4)?,
+                created_at: row.get(5)?,
+            })
+        };
+        let rows = if let Some(space_id) = space_id {
+            statement.query_map([space_id], map_row).map_err(|_| RuntimeError::Database)?
+        } else {
+            statement.query_map([], map_row).map_err(|_| RuntimeError::Database)?
+        };
+        rows.collect::<Result<Vec<_>, _>>().map_err(|_| RuntimeError::Database)
+    }
+
+    pub fn remove_project_binding(&self, local_binding_id: &str, now: &str) -> RuntimeResult<()> {
+        let changed = self.connection.lock().execute(
+            "UPDATE local_project_bindings SET status='removed',updated_at=?2 WHERE id=?1",
+            params![local_binding_id, now],
+        ).map_err(|_| RuntimeError::Database)?;
+        if changed == 0 { return Err(RuntimeError::NotFound); }
+        Ok(())
     }
 
     pub fn save_lock(
@@ -237,7 +315,7 @@ impl Database {
 
     #[cfg(test)]
     fn table_count(&self) -> i64 {
-        self.connection.lock().query_row("SELECT count(*) FROM sqlite_master WHERE type='table' AND name IN ('device_cache','path_bindings','install_locks','backups','sync_cursors','retry_queue','recovery_journal')", [], |row| row.get(0)).unwrap()
+        self.connection.lock().query_row("SELECT count(*) FROM sqlite_master WHERE type='table' AND name IN ('device_cache','path_bindings','local_project_bindings','install_locks','backups','sync_cursors','retry_queue','recovery_journal')", [], |row| row.get(0)).unwrap()
     }
 
     #[cfg(test)]
@@ -261,7 +339,7 @@ mod tests {
     fn migrates_all_local_state_tables_and_reports_an_empty_queue() {
         let directory = tempdir().unwrap();
         let database = Database::open(&directory.path().join("agentdoor.db")).unwrap();
-        assert_eq!(database.table_count(), 7);
+        assert_eq!(database.table_count(), 8);
         assert_eq!(
             database.queue_status().unwrap(),
             SyncQueueStatus {
