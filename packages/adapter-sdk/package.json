@@ -1,0 +1,30 @@
+{
+  "name": "@agentdoor/adapter-sdk",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./compliance": {
+      "types": "./dist/compliance.d.ts",
+      "default": "./dist/compliance.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "vitest run",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@agentdoor/capability-kit": "workspace:*",
+    "yaml": "2.9.0"
+  },
+  "devDependencies": {
+    "@types/node": "26.1.2",
+    "typescript": "7.0.2",
+    "vitest": "4.1.10"
+  }
+}
