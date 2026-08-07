@@ -1,0 +1,38 @@
+[package]
+name = "agentdoor-desktop"
+version = "0.1.0"
+edition = "2024"
+
+[lib]
+name = "agentdoor_runtime"
+path = "src/lib.rs"
+
+[[bin]]
+name = "agentdoor-desktop"
+path = "src/main.rs"
+
+[features]
+default = []
+tauri-app = ["dep:directories", "dep:keyring", "dep:tauri"]
+
+[dependencies]
+base64 = "0.22.1"
+directories = { version = "6.0.0", optional = true }
+hex = "0.4.3"
+keyring = { version = "4.1.5", optional = true }
+parking_lot = "0.12.5"
+regex = "1.11.2"
+rusqlite = { version = "0.37.0", features = ["bundled"] }
+serde = { version = "1.0.228", features = ["derive"] }
+serde_json = "1.0.145"
+sha2 = "0.10.9"
+tauri = { version = "2", optional = true }
+thiserror = "2.0.17"
+uuid = { version = "1.18.1", features = ["v4", "serde"] }
+walkdir = "2.5.0"
+
+[dev-dependencies]
+tempfile = "3.23.0"
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }

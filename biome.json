@@ -1,7 +1,15 @@
 {
   "$schema": "https://biomejs.dev/schemas/2.5.7/schema.json",
   "files": {
-    "includes": ["**", "!**/dist", "!**/coverage", "!**/.turbo", "!**/node_modules"]
+    "includes": [
+      "**",
+      "!**/dist",
+      "!**/coverage",
+      "!**/.turbo",
+      "!**/node_modules",
+      "!**/target",
+      "!apps/desktop/src-tauri/gen"
+    ]
   },
   "formatter": {
     "enabled": true,

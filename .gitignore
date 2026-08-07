@@ -4,6 +4,8 @@ node_modules/
 .turbo/
 dist/
 coverage/
+target/
+apps/desktop/src-tauri/gen/
 *.tsbuildinfo
 .env
 .env.local
