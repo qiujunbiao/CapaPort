@@ -3,9 +3,11 @@ use crate::database::{Database, SyncQueueStatus};
 use crate::files::{ApplyResult, FileEngine, InstallPlan, InstallPreview};
 use crate::paths::PathPolicy;
 use crate::{RuntimeError, RuntimeResult};
+use base64::Engine;
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
+use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use uuid::Uuid;
@@ -46,6 +48,24 @@ pub struct LocalScanReport {
     pub blocked: bool,
 }
 
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct LocalPackageExport {
+    pub file_name: String,
+    pub size_bytes: usize,
+    pub sha256: String,
+    pub archive_base64: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct SecureSession {
+    pub access_token: String,
+    pub refresh_token: String,
+    pub expires_in: Option<u64>,
+    pub organization_id: Option<String>,
+}
+
 #[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct InventoryInput {
@@ -66,12 +86,20 @@ pub struct BindProjectInput {
     pub path: String,
 }
 
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ExportPackageInput {
+    pub adapter_id: String,
+    pub root_path: String,
+    pub component_type: String,
+    pub slug: String,
+}
+
 pub struct Runtime {
     database: Database,
     engine: FileEngine,
     home_dir: PathBuf,
     project_root: Option<PathBuf>,
-    #[allow(dead_code)]
     credentials: Arc<dyn CredentialStore>,
 }
 
@@ -278,6 +306,94 @@ impl Runtime {
         Ok(report)
     }
 
+    pub fn export_local_package(
+        &self,
+        input: &ExportPackageInput,
+    ) -> RuntimeResult<LocalPackageExport> {
+        validate_slug(&input.slug)?;
+        let component_directory = component_directories(&input.adapter_id)
+            .iter()
+            .find(|(component_type, _)| component_type == &input.component_type)
+            .map(|(_, directory)| *directory)
+            .ok_or(RuntimeError::InvalidInput)?;
+        let root = Path::new(&input.root_path);
+        let source_relative = if input.component_type == "skill" {
+            format!("{component_directory}/{}", input.slug)
+        } else {
+            format!("{component_directory}/{}.md", input.slug)
+        };
+        let source = self
+            .engine
+            .policy()
+            .resolve(root, Path::new(&source_relative))?;
+        if (input.component_type == "skill" && !source.is_dir())
+            || (input.component_type != "skill" && !source.is_file())
+        {
+            return Err(RuntimeError::InvalidInput);
+        }
+        let canonical_root = match input.component_type.as_str() {
+            "skill" => format!("skills/{}", input.slug),
+            "prompt" => format!("prompts/{}.md", input.slug),
+            "context" => format!("context/{}.md", input.slug),
+            _ => return Err(RuntimeError::InvalidInput),
+        };
+        let mut files: Vec<(String, Vec<u8>)> = Vec::new();
+        if source.is_file() {
+            files.push((
+                canonical_root.clone(),
+                std::fs::read(&source).map_err(|_| RuntimeError::TransactionFailed)?,
+            ));
+        } else {
+            for entry in WalkDir::new(&source).follow_links(false) {
+                let entry = entry.map_err(|_| RuntimeError::TransactionFailed)?;
+                if entry.path_is_symlink() {
+                    return Err(RuntimeError::SymlinkRejected);
+                }
+                if !entry.file_type().is_file() {
+                    continue;
+                }
+                let relative = entry
+                    .path()
+                    .strip_prefix(&source)
+                    .map_err(|_| RuntimeError::PathNotAllowed)?
+                    .components()
+                    .map(|part| part.as_os_str().to_string_lossy())
+                    .collect::<Vec<_>>()
+                    .join("/");
+                files.push((
+                    format!("{canonical_root}/{relative}"),
+                    std::fs::read(entry.path()).map_err(|_| RuntimeError::TransactionFailed)?,
+                ));
+            }
+        }
+        files.sort_by(|left, right| left.0.cmp(&right.0));
+        let entrypoint = if input.component_type == "skill" {
+            format!("{canonical_root}/SKILL.md")
+        } else {
+            canonical_root.clone()
+        };
+        if !files.iter().any(|(path, _)| path == &entrypoint) {
+            return Err(RuntimeError::InvalidInput);
+        }
+        let manifest = format!(
+            "schemaVersion: agentdoor.io/v1alpha1\nkind: CapabilityPackage\nmetadata:\n  slug: {slug}\n  name: {slug}\n  description: \"\"\n  tags: []\nspec:\n  components:\n    - type: {component_type}\n      path: {canonical_root}\n  compatibility:\n    agents:\n      - {adapter_id}\n  permissions:\n    filesystem: read-project\n    network: none\n  entrypoints:\n    default: {entrypoint}\n  dependencies: []\n",
+            slug = input.slug,
+            component_type = input.component_type,
+            adapter_id = input.adapter_id,
+        );
+        let mut package_files = vec![("agentdoor.yaml".to_string(), manifest.into_bytes())];
+        package_files.extend(files);
+        package_files.sort_by(|left, right| left.0.cmp(&right.0));
+        let archive = build_zip(&package_files)?;
+        let sha256 = hex::encode(Sha256::digest(&archive));
+        Ok(LocalPackageExport {
+            file_name: format!("{}.zip", input.slug),
+            size_bytes: archive.len(),
+            sha256,
+            archive_base64: base64::engine::general_purpose::STANDARD.encode(archive),
+        })
+    }
+
     pub fn preview_install(&self, plan: &InstallPlan) -> RuntimeResult<InstallPreview> {
         self.engine.preview(plan)
     }
@@ -302,6 +418,28 @@ impl Runtime {
     }
     pub fn sync_queue_status(&self) -> RuntimeResult<SyncQueueStatus> {
         self.database.queue_status()
+    }
+
+    pub fn store_session(&self, session: &SecureSession) -> RuntimeResult<()> {
+        validate_session(session)?;
+        let value = serde_json::to_string(session).map_err(|_| RuntimeError::InvalidInput)?;
+        self.credentials.set("authenticated-session", &value)
+    }
+
+    pub fn load_session(&self) -> RuntimeResult<Option<SecureSession>> {
+        self.credentials
+            .get("authenticated-session")?
+            .map(|value| {
+                let session = serde_json::from_str::<SecureSession>(&value)
+                    .map_err(|_| RuntimeError::CredentialStore)?;
+                validate_session(&session)?;
+                Ok(session)
+            })
+            .transpose()
+    }
+
+    pub fn clear_session(&self) -> RuntimeResult<()> {
+        self.credentials.delete("authenticated-session")
     }
 }
 
@@ -391,6 +529,56 @@ fn now() -> String {
         .unwrap_or_default()
         .as_millis();
     format!("{millis:020}")
+}
+
+fn validate_slug(value: &str) -> RuntimeResult<()> {
+    let valid = !value.is_empty()
+        && value.len() <= 80
+        && value
+            .bytes()
+            .all(|byte| byte.is_ascii_lowercase() || byte.is_ascii_digit() || byte == b'-')
+        && !value.starts_with('-')
+        && !value.ends_with('-')
+        && !value.contains("--");
+    if valid {
+        Ok(())
+    } else {
+        Err(RuntimeError::InvalidInput)
+    }
+}
+
+fn validate_session(session: &SecureSession) -> RuntimeResult<()> {
+    let valid_token =
+        |value: &str| (40..=4096).contains(&value.len()) && !value.chars().any(char::is_whitespace);
+    if !valid_token(&session.access_token) || !valid_token(&session.refresh_token) {
+        return Err(RuntimeError::InvalidInput);
+    }
+    if session.organization_id.as_ref().is_some_and(|value| {
+        value.is_empty() || value.len() > 120 || value.chars().any(char::is_whitespace)
+    }) {
+        return Err(RuntimeError::InvalidInput);
+    }
+    Ok(())
+}
+
+fn build_zip(files: &[(String, Vec<u8>)]) -> RuntimeResult<Vec<u8>> {
+    let cursor = std::io::Cursor::new(Vec::new());
+    let mut writer = zip::ZipWriter::new(cursor);
+    let options = zip::write::SimpleFileOptions::default()
+        .compression_method(zip::CompressionMethod::Deflated)
+        .unix_permissions(0o644);
+    for (path, content) in files {
+        writer
+            .start_file(path, options)
+            .map_err(|_| RuntimeError::TransactionFailed)?;
+        writer
+            .write_all(content)
+            .map_err(|_| RuntimeError::TransactionFailed)?;
+    }
+    writer
+        .finish()
+        .map(|cursor| cursor.into_inner())
+        .map_err(|_| RuntimeError::TransactionFailed)
 }
 
 #[cfg(test)]
@@ -542,6 +730,44 @@ mod tests {
             .unwrap();
         assert_eq!(report.files, 1);
         assert!(report.findings.is_empty());
+    }
+
+    #[test]
+    fn exports_a_scanned_local_capability_as_a_canonical_zip() {
+        let (_root, runtime) = runtime();
+        let agent = runtime.detect_agents().unwrap().remove(0);
+        let exported = runtime
+            .export_local_package(&ExportPackageInput {
+                adapter_id: "codex".into(),
+                root_path: agent.root_path,
+                component_type: "skill".into(),
+                slug: "release".into(),
+            })
+            .unwrap();
+        assert_eq!(exported.file_name, "release.zip");
+        assert_eq!(exported.sha256.len(), 64);
+        assert!(exported.size_bytes > 100);
+        let archive = base64::engine::general_purpose::STANDARD
+            .decode(exported.archive_base64)
+            .unwrap();
+        let mut zip = zip::ZipArchive::new(std::io::Cursor::new(archive)).unwrap();
+        assert!(zip.by_name("agentdoor.yaml").is_ok());
+        assert!(zip.by_name("skills/release/SKILL.md").is_ok());
+    }
+
+    #[test]
+    fn stores_loads_and_clears_the_session_through_the_credential_abstraction() {
+        let (_root, runtime) = runtime();
+        let session = SecureSession {
+            access_token: "a".repeat(64),
+            refresh_token: "r".repeat(64),
+            expires_in: Some(900),
+            organization_id: Some("organization-a".into()),
+        };
+        runtime.store_session(&session).unwrap();
+        assert_eq!(runtime.load_session().unwrap(), Some(session));
+        runtime.clear_session().unwrap();
+        assert_eq!(runtime.load_session().unwrap(), None);
     }
 
     #[test]

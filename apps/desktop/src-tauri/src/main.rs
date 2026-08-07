@@ -1,5 +1,7 @@
 #[cfg(feature = "tauri-app")]
-use agentdoor_runtime::commands::{BindProjectInput, InventoryInput, PathInput, Runtime};
+use agentdoor_runtime::commands::{
+    BindProjectInput, ExportPackageInput, InventoryInput, PathInput, Runtime,
+};
 #[cfg(feature = "tauri-app")]
 use agentdoor_runtime::credentials::OsCredentialStore;
 #[cfg(feature = "tauri-app")]
@@ -34,6 +36,17 @@ fn scan_local_package(
     state: tauri::State<'_, AppState>,
 ) -> Result<agentdoor_runtime::commands::LocalScanReport, CommandError> {
     state.runtime.scan_local_package(&input).map_err(Into::into)
+}
+#[cfg(feature = "tauri-app")]
+#[tauri::command]
+fn export_local_package(
+    input: ExportPackageInput,
+    state: tauri::State<'_, AppState>,
+) -> Result<agentdoor_runtime::commands::LocalPackageExport, CommandError> {
+    state
+        .runtime
+        .export_local_package(&input)
+        .map_err(Into::into)
 }
 #[cfg(feature = "tauri-app")]
 #[tauri::command]
@@ -80,6 +93,26 @@ fn sync_queue_status(
 ) -> Result<agentdoor_runtime::database::SyncQueueStatus, CommandError> {
     state.runtime.sync_queue_status().map_err(Into::into)
 }
+#[cfg(feature = "tauri-app")]
+#[tauri::command]
+fn store_session(
+    session: agentdoor_runtime::commands::SecureSession,
+    state: tauri::State<'_, AppState>,
+) -> Result<(), CommandError> {
+    state.runtime.store_session(&session).map_err(Into::into)
+}
+#[cfg(feature = "tauri-app")]
+#[tauri::command]
+fn load_session(
+    state: tauri::State<'_, AppState>,
+) -> Result<Option<agentdoor_runtime::commands::SecureSession>, CommandError> {
+    state.runtime.load_session().map_err(Into::into)
+}
+#[cfg(feature = "tauri-app")]
+#[tauri::command]
+fn clear_session(state: tauri::State<'_, AppState>) -> Result<(), CommandError> {
+    state.runtime.clear_session().map_err(Into::into)
+}
 
 #[cfg(feature = "tauri-app")]
 fn main() {
@@ -101,11 +134,15 @@ fn main() {
             detect_agents,
             inventory_agent,
             scan_local_package,
+            export_local_package,
             preview_install,
             apply_install,
             rollback_install,
             bind_project_directory,
-            sync_queue_status
+            sync_queue_status,
+            store_session,
+            load_session,
+            clear_session
         ])
         .run(tauri::generate_context!())
         .expect("Agentdoor desktop runtime failed");
