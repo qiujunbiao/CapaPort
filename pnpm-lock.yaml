@@ -58,6 +58,22 @@ importers:
         specifier: 4.1.10
         version: 4.1.10(@types/node@26.1.2)(vite@8.2.0(@types/node@26.1.2)(esbuild@0.28.1)(tsx@4.23.10)(yaml@2.9.0))
 
+  packages/security-scan:
+    dependencies:
+      '@agentdoor/capability-kit':
+        specifier: workspace:*
+        version: link:../capability-kit
+    devDependencies:
+      '@types/node':
+        specifier: 26.1.2
+        version: 26.1.2
+      typescript:
+        specifier: 7.0.2
+        version: 7.0.2
+      vitest:
+        specifier: 4.1.10
+        version: 4.1.10(@types/node@26.1.2)(vite@8.2.0(@types/node@26.1.2)(esbuild@0.28.1)(tsx@4.23.10)(yaml@2.9.0))
+
 packages:
 
   '@biomejs/biome@2.5.7':
