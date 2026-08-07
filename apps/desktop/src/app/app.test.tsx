@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import { cloudFixture, localFixture } from '../test/fixtures';
 import { DesktopApp } from './desktop-app';
@@ -13,6 +13,18 @@ describe('desktop application safety workflows', () => {
     fireEvent.change(screen.getByLabelText('密码'), { target: { value: 'bad-password' } });
     fireEvent.click(screen.getByRole('button', { name: '登录' }));
     expect(await screen.findByRole('alert')).toHaveTextContent('账号或密码错误');
+  });
+
+  it('lets a user recover an account from the desktop client', async () => {
+    render(<DesktopApp cloud={cloudFixture()} local={localFixture()} sessionStore={createMemorySessionStore()} />);
+    fireEvent.click(screen.getByRole('button', { name: '忘记密码' }));
+    fireEvent.change(screen.getByLabelText('邮箱或手机号'), { target: { value: 'person@example.com' } });
+    fireEvent.click(screen.getByRole('button', { name: '发送验证码' }));
+    expect(await screen.findByRole('heading', { name: '重置密码' })).toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText('验证码'), { target: { value: '123456' } });
+    fireEvent.change(screen.getByLabelText('新密码'), { target: { value: 'new-password-123' } });
+    fireEvent.click(screen.getByRole('button', { name: '完成重置' }));
+    expect(await screen.findByRole('status')).toHaveTextContent('密码已重置');
   });
 
   it('keeps local discovery available offline while disabling cloud actions', async () => {
@@ -121,5 +133,41 @@ describe('desktop application safety workflows', () => {
     expect(screen.getByText('组织 A 能力')).toBeInTheDocument();
     fireEvent.click(screen.getByRole('tab', { name: '团队' }));
     expect(screen.queryByText('组织 A 能力')).not.toBeInTheDocument();
+  });
+
+  it('filters the capability library by compatible agent', async () => {
+    render(
+      <DesktopApp
+        cloud={cloudFixture({ includeClaudeOnly: true })}
+        local={localFixture()}
+        sessionStore={createMemorySessionStore({
+          accessToken: 'token',
+          refreshToken: 'refresh',
+          organizationId: 'org-a',
+        })}
+      />,
+    );
+    fireEvent.click(await screen.findByRole('button', { name: '能力库' }));
+    expect(await screen.findByText('Claude 专用能力')).toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText('兼容 Agent'), { target: { value: 'codex' } });
+    expect(screen.queryByText('Claude 专用能力')).not.toBeInTheDocument();
+  });
+
+  it('opens desktop notifications and marks an item as read', async () => {
+    render(
+      <DesktopApp
+        cloud={cloudFixture()}
+        local={localFixture()}
+        sessionStore={createMemorySessionStore({
+          accessToken: 'token',
+          refreshToken: 'refresh',
+          organizationId: 'org-a',
+        })}
+      />,
+    );
+    fireEvent.click(await screen.findByRole('button', { name: '通知' }));
+    expect(await screen.findByText('发布已通过')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: '标为已读' }));
+    await waitFor(() => expect(screen.queryByRole('button', { name: '标为已读' })).not.toBeInTheDocument());
   });
 });

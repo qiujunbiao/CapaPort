@@ -12,6 +12,7 @@
       "!**/reports",
       "!**/artifacts",
       "!**/target",
+      "!**/.superpowers",
       "!apps/desktop/src-tauri/gen"
     ]
   },

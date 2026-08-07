@@ -1,5 +1,5 @@
-import type { CapabilitySummary, SpaceSummary, UpdateCheck } from '@agentdoor/contracts';
-import { Box, Download, Search, SlidersHorizontal } from 'lucide-react';
+import type { AgentId, CapabilitySummary, SpaceSummary, UpdateCheck } from '@agentdoor/contracts';
+import { Box, Download, Search } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import type { InstallationSummary } from '../../app/types';
 import { Button, EmptyState, PageHeader, Panel, Status } from '../../components/ui';
@@ -18,6 +18,7 @@ export function LibraryPage({
   updateChecks,
   online,
   onInstall,
+  onUninstall,
 }: {
   capabilities: CapabilitySummary[];
   spaces: SpaceSummary[];
@@ -25,9 +26,11 @@ export function LibraryPage({
   updateChecks: Record<string, UpdateCheck>;
   online: boolean;
   onInstall: (capability: CapabilitySummary) => void;
+  onUninstall: (capability: CapabilitySummary, installation: InstallationSummary) => void;
 }) {
   const [query, setQuery] = useState('');
   const [scope, setScope] = useState('全部');
+  const [agent, setAgent] = useState('all');
   const spaceTypes = useMemo(() => new Map(spaces.map((space) => [space.id, space.type])), [spaces]);
   const installedIds = useMemo(
     () =>
@@ -49,9 +52,10 @@ export function LibraryPage({
           : scope === '已安装'
             ? installedIds.has(item.id)
             : spaceTypes.get(item.spaceId) === type;
-      return matchesSearch && matchesScope;
+      const matchesAgent = agent === 'all' || item.compatibility.includes(agent as AgentId);
+      return matchesSearch && matchesScope && matchesAgent;
     });
-  }, [capabilities, installedIds, query, scope, spaceTypes]);
+  }, [agent, capabilities, installedIds, query, scope, spaceTypes]);
   return (
     <div className="page">
       <PageHeader
@@ -77,10 +81,16 @@ export function LibraryPage({
               placeholder="搜索名称、标签或发布者"
             />
           </label>
-          <Button variant="secondary">
-            <SlidersHorizontal aria-hidden size={16} />
-            筛选
-          </Button>
+          <label>
+            兼容 Agent
+            <select aria-label="兼容 Agent" value={agent} onChange={(event) => setAgent(event.target.value)}>
+              <option value="all">全部 Agent</option>
+              <option value="codex">Codex</option>
+              <option value="claude-code">Claude Code</option>
+              <option value="cursor">Cursor</option>
+              <option value="gemini-cli">Gemini CLI</option>
+            </select>
+          </label>
         </div>
         {filtered.length ? (
           <div className="registry-list">
@@ -120,6 +130,21 @@ export function LibraryPage({
                         ? '重新安装'
                         : '安装'}
                 </Button>
+                {installations.find(
+                  (installation) => installation.capabilityId === capability.id && installation.status === 'installed',
+                ) ? (
+                  <Button
+                    variant="secondary"
+                    onClick={() => {
+                      const installation = installations.find(
+                        (item) => item.capabilityId === capability.id && item.status === 'installed',
+                      );
+                      if (installation) onUninstall(capability, installation);
+                    }}
+                  >
+                    卸载
+                  </Button>
+                ) : null}
               </article>
             ))}
           </div>

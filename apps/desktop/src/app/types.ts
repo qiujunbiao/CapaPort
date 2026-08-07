@@ -45,6 +45,16 @@ export type DeviceSummary = {
   supportedAgents: AgentId[];
   status: 'active' | 'revoked';
 };
+export type NotificationItem = {
+  id: string;
+  type: string;
+  title: string;
+  body: string;
+  data: Record<string, unknown>;
+  readAt: string | null;
+  createdAt: string;
+};
+export type NotificationPage = { notifications: NotificationItem[]; unreadCount: number; nextCursor?: string };
 
 export type LocalPackageExport = {
   fileName: string;
@@ -73,6 +83,11 @@ export interface CloudClient {
     displayName: string;
   }): Promise<{ challengeId: string; maskedTarget: string }>;
   verify?(input: { challengeId: string; code: string }): Promise<{ verified: true }>;
+  startRecovery?(input: {
+    kind: 'email' | 'phone';
+    target: string;
+  }): Promise<{ challengeId: string; maskedTarget: string }>;
+  completeRecovery?(input: { challengeId: string; code: string; newPassword: string }): Promise<{ recovered: true }>;
   me(session: Session): Promise<PublicUser>;
   organizations(session: Session): Promise<OrganizationSummary[]>;
   createOrganization?(session: Session, input: { name: string; slug: string }): Promise<OrganizationSummary>;
@@ -85,6 +100,8 @@ export interface CloudClient {
   updateCheck(session: Session, organizationId: string, installationId: string): Promise<UpdateCheck>;
   devices?(session: Session, organizationId: string): Promise<DeviceSummary[]>;
   registerDevice?(session: Session, organizationId: string, agents: AgentId[]): Promise<DeviceSummary>;
+  notifications?(session: Session, organizationId: string): Promise<NotificationPage>;
+  markNotificationRead?(session: Session, organizationId: string, notificationId: string): Promise<void>;
   versions?(session: Session, organizationId: string, capabilityId: string): Promise<CapabilityVersionSummary[]>;
   createInstallPlan(input: {
     session: Session;
@@ -101,7 +118,7 @@ export interface CloudClient {
     slug: string;
     agent: AgentId;
     archive: LocalPackageExport;
-  }): Promise<{ capabilityId: string; draftId: string }>;
+  }): Promise<{ capabilityId: string; draftId: string; riskFindingDigests: string[] }>;
   submitPublication(input: {
     session: Session;
     organizationId: string;
@@ -109,6 +126,7 @@ export interface CloudClient {
     draftId: string;
     targetSpaceId: string;
     version: string;
+    riskAcceptance?: { findingDigests: string[]; reason: string };
   }): Promise<{ publicationId: string }>;
   reportInstallation(input: {
     session: Session;
@@ -117,7 +135,7 @@ export interface CloudClient {
     capabilityId: string;
     versionId: string;
     agent: AgentId;
-    outcome: 'installed' | 'failed';
+    outcome: 'installed' | 'failed' | 'uninstalled';
     failureCode?: string;
   }): Promise<void>;
   createProjectBinding(input: {
@@ -152,6 +170,7 @@ export interface LocalClient {
   previewInstall(plan: InstallPlan): Promise<InstallPreview>;
   applyInstall(plan: InstallPlan): Promise<ApplyResult>;
   rollbackInstall(transactionId: string): Promise<ApplyResult>;
+  uninstall(input: { adapterId: string; capabilitySlug: string; rootPath: string }): Promise<ApplyResult>;
   bindProjectDirectory(input: { spaceId: string; path: string; agents?: AgentId[] }): Promise<LocalProjectBinding>;
   listProjectBindings(spaceId: string): Promise<LocalProjectBinding[]>;
   removeProjectBinding(localBindingId: string): Promise<void>;

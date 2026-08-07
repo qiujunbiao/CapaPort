@@ -5,7 +5,7 @@ import { DoorMark } from '../../components/brand';
 import { Button, ErrorNotice } from '../../components/ui';
 
 export function AuthScreen({ cloud, sessionStore }: { cloud: CloudClient; sessionStore: SessionStore }) {
-  const [mode, setMode] = useState<'login' | 'register' | 'verify'>('login');
+  const [mode, setMode] = useState<'login' | 'register' | 'verify' | 'recover' | 'recover-verify'>('login');
   const [target, setTarget] = useState('');
   const [password, setPassword] = useState('');
   const [displayName, setDisplayName] = useState('');
@@ -13,6 +13,7 @@ export function AuthScreen({ cloud, sessionStore }: { cloud: CloudClient; sessio
   const [code, setCode] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
   const kind = target.includes('@') ? 'email' : 'phone';
 
   async function submit(event: FormEvent) {
@@ -20,7 +21,19 @@ export function AuthScreen({ cloud, sessionStore }: { cloud: CloudClient; sessio
     setBusy(true);
     setError('');
     try {
-      if (mode === 'login') {
+      if (mode === 'recover') {
+        if (!cloud.startRecovery) throw new Error('当前服务未启用账号恢复');
+        const challenge = await cloud.startRecovery({ kind, target });
+        setChallengeId(challenge.challengeId);
+        setMode('recover-verify');
+      } else if (mode === 'recover-verify') {
+        if (!cloud.completeRecovery) throw new Error('当前服务未启用账号恢复');
+        await cloud.completeRecovery({ challengeId, code, newPassword: password });
+        setSuccess('密码已重置，请使用新密码登录。');
+        setPassword('');
+        setCode('');
+        setMode('login');
+      } else if (mode === 'login') {
         const tokens = await cloud.login({ kind, target, password, deviceName: 'Agentdoor Desktop' });
         sessionStore.set(tokens);
       } else if (mode === 'register') {
@@ -69,13 +82,28 @@ export function AuthScreen({ cloud, sessionStore }: { cloud: CloudClient; sessio
           <p className="eyebrow">
             {mode === 'login' ? 'WELCOME BACK' : mode === 'register' ? 'CREATE ACCOUNT' : 'VERIFY IDENTITY'}
           </p>
-          <h1>{mode === 'login' ? '进入 Agentdoor' : mode === 'register' ? '创建你的账号' : '验证邮箱或手机号'}</h1>
+          <h1>
+            {mode === 'login'
+              ? '进入 Agentdoor'
+              : mode === 'register'
+                ? '创建你的账号'
+                : mode === 'verify'
+                  ? '验证邮箱或手机号'
+                  : mode === 'recover'
+                    ? '找回账号'
+                    : '重置密码'}
+          </h1>
           <p className="auth-intro">
             {mode === 'verify'
               ? '输入收到的 6 位验证码，验证后即可登录。'
               : '使用邮箱或手机号继续，企业 SSO 将在后续版本接入。'}
           </p>
           {error ? <ErrorNotice>{error}</ErrorNotice> : null}
+          {success ? (
+            <p className="success-message" role="status">
+              {success}
+            </p>
+          ) : null}
           {mode === 'register' ? (
             <label>
               姓名
@@ -87,7 +115,7 @@ export function AuthScreen({ cloud, sessionStore }: { cloud: CloudClient; sessio
               />
             </label>
           ) : null}
-          {mode !== 'verify' ? (
+          {mode !== 'verify' && mode !== 'recover-verify' ? (
             <>
               <label>
                 邮箱或手机号
@@ -98,31 +126,55 @@ export function AuthScreen({ cloud, sessionStore }: { cloud: CloudClient; sessio
                   required
                 />
               </label>
+              {mode !== 'recover' ? (
+                <label>
+                  密码
+                  <input
+                    value={password}
+                    onChange={(event) => setPassword(event.target.value)}
+                    type="password"
+                    autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
+                    required
+                  />
+                </label>
+              ) : null}
+            </>
+          ) : (
+            <>
               <label>
-                密码
+                验证码
                 <input
-                  value={password}
-                  onChange={(event) => setPassword(event.target.value)}
-                  type="password"
-                  autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
+                  value={code}
+                  onChange={(event) => setCode(event.target.value.replace(/\D/g, '').slice(0, 6))}
+                  inputMode="numeric"
+                  autoComplete="one-time-code"
                   required
                 />
               </label>
+              {mode === 'recover-verify' ? (
+                <label>
+                  新密码
+                  <input
+                    value={password}
+                    onChange={(event) => setPassword(event.target.value)}
+                    type="password"
+                    autoComplete="new-password"
+                    required
+                  />
+                </label>
+              ) : null}
             </>
-          ) : (
-            <label>
-              验证码
-              <input
-                value={code}
-                onChange={(event) => setCode(event.target.value.replace(/\D/g, '').slice(0, 6))}
-                inputMode="numeric"
-                autoComplete="one-time-code"
-                required
-              />
-            </label>
           )}
           <Button type="submit" busy={busy}>
-            {mode === 'login' ? '登录' : mode === 'register' ? '注册并验证' : '完成验证'}
+            {mode === 'login'
+              ? '登录'
+              : mode === 'register'
+                ? '注册并验证'
+                : mode === 'recover'
+                  ? '发送验证码'
+                  : mode === 'recover-verify'
+                    ? '完成重置'
+                    : '完成验证'}
             <ArrowRight aria-hidden size={16} />
           </Button>
           <button
@@ -135,6 +187,19 @@ export function AuthScreen({ cloud, sessionStore }: { cloud: CloudClient; sessio
           >
             {mode === 'login' ? '没有账号？立即注册' : '已有账号？返回登录'}
           </button>
+          {mode === 'login' ? (
+            <button
+              className="text-button"
+              type="button"
+              onClick={() => {
+                setMode('recover');
+                setError('');
+                setSuccess('');
+              }}
+            >
+              忘记密码
+            </button>
+          ) : null}
         </form>
       </section>
     </main>

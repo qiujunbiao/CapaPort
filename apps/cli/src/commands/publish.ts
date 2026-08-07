@@ -28,6 +28,16 @@ export async function publishCommand(parsed: ParsedCommand, api: ApiClient, outp
   const scan = await scanPackage(pkg.files);
   if (scan.blocked)
     throw new Error(`敏感信息扫描阻止发布：${scan.findings.map((item) => `${item.ruleId}:${item.path}`).join(', ')}`);
+  const risks = scan.findings.filter((finding) => !finding.blocking);
+  let riskReason = stringFlag(parsed, 'risk-reason');
+  if (risks.length) {
+    const accepted =
+      parsed.flags['accept-risk'] === true ||
+      (!parsed.flags.yes && (await prompt.confirm(`检测到 ${risks.length} 项可确认风险，是否继续？`)));
+    if (!accepted) throw new UsageError('发布包含可确认风险，非交互模式需要 --accept-risk 和 --risk-reason');
+    riskReason = riskReason ?? (await prompt.ask('请输入风险确认原因'));
+    if (riskReason.trim().length < 3) throw new UsageError('风险确认原因至少需要 3 个字符');
+  }
   if (!parsed.flags.yes && !(await prompt.confirm(`发布 ${slug}@${version} 到目标空间？`)))
     throw new CancelledError('已取消发布');
   const archive = archivePackage(pkg);
@@ -72,7 +82,14 @@ export async function publishCommand(parsed: ParsedCommand, api: ApiClient, outp
   const publication = await api.request<{ id: string; status: string }>(`/capabilities/${capability.id}/publications`, {
     method: 'POST',
     headers: { 'idempotency-key': stringFlag(parsed, 'idempotency-key') ?? crypto.randomUUID() },
-    body: { draftId: draft.id, targetSpaceId, version },
+    body: {
+      draftId: draft.id,
+      targetSpaceId,
+      version,
+      ...(risks.length
+        ? { riskAcceptance: { findingDigests: risks.map((finding) => finding.evidenceDigest), reason: riskReason } }
+        : {}),
+    },
   });
   output.data(
     { capabilityId: capability.id, publicationId: publication.id, status: publication.status, scan },

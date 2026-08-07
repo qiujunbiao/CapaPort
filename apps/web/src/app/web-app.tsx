@@ -132,6 +132,7 @@ function Console({ client, sessionStore }: { client: WebClient; sessionStore: We
   const queryClient = useQueryClient();
   const [page, setPage] = useState<Page>('dashboard');
   const [mobileNav, setMobileNav] = useState(false);
+  const [notificationsOpen, setNotificationsOpen] = useState(false);
   const organizationsQuery = useQuery({
     queryKey: ['web-organizations'],
     queryFn: () => client.organizations(),
@@ -196,6 +197,12 @@ function Console({ client, sessionStore }: { client: WebClient; sessionStore: We
     enabled: Boolean(organizationId && canObserve),
     retry: false,
   });
+  const notificationsQuery = useQuery({
+    queryKey: ['web-notifications', organizationId],
+    queryFn: () => client.notifications(),
+    enabled: Boolean(organizationId && notificationsOpen),
+    retry: false,
+  });
 
   if (!session) return <AuthPage client={client} sessionStore={sessionStore} />;
   if (organizationsQuery.isLoading)
@@ -250,6 +257,7 @@ function Console({ client, sessionStore }: { client: WebClient; sessionStore: We
           capabilities={capabilitiesQuery.data ?? []}
           spaces={spacesQuery.data ?? []}
           canGovern={canGovern}
+          currentUserId={userQuery.data?.id}
           onRefresh={() => void refreshCore()}
         />
       );
@@ -280,6 +288,7 @@ function Console({ client, sessionStore }: { client: WebClient; sessionStore: We
         <SpacesPage
           client={client}
           spaces={spacesQuery.data ?? []}
+          organizationMembers={membersQuery.data ?? []}
           onRefresh={async () => {
             await spacesQuery.refetch();
           }}
@@ -299,6 +308,11 @@ function Console({ client, sessionStore }: { client: WebClient; sessionStore: We
         }}
         onLogout={() => {
           void client.logout().catch(() => undefined);
+          sessionStore.clear();
+          queryClient.clear();
+        }}
+        onLeave={async () => {
+          await client.leaveOrganization(organizationId);
           sessionStore.clear();
           queryClient.clear();
         }}
@@ -390,9 +404,38 @@ function Console({ client, sessionStore }: { client: WebClient; sessionStore: We
           </label>
           <div className="topbar-actions">
             <Status tone="good">服务正常</Status>
-            <button type="button" aria-label="通知">
+            <button type="button" aria-label="通知" onClick={() => setNotificationsOpen((value) => !value)}>
               <Bell />
             </button>
+            {notificationsOpen ? (
+              <section className="notification-popover" aria-label="通知列表">
+                <h2>通知</h2>
+                {notificationsQuery.data?.notifications.length ? (
+                  notificationsQuery.data.notifications.map((item) => (
+                    <article key={item.id}>
+                      <strong>{item.title}</strong>
+                      <p>{item.body}</p>
+                      {!item.readAt ? (
+                        <button
+                          type="button"
+                          className="text-button"
+                          onClick={async () => {
+                            await client.markNotificationRead(item.id);
+                            await notificationsQuery.refetch();
+                          }}
+                        >
+                          标为已读
+                        </button>
+                      ) : (
+                        <small>已读</small>
+                      )}
+                    </article>
+                  ))
+                ) : (
+                  <p>{notificationsQuery.isLoading ? '正在加载…' : '暂无通知'}</p>
+                )}
+              </section>
+            ) : null}
             <span className="user-avatar">{userQuery.data?.displayName.slice(0, 1) ?? 'A'}</span>
             <div>
               <strong>{userQuery.data?.displayName ?? '—'}</strong>

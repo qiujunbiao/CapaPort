@@ -24,6 +24,7 @@ type PublicationRow = {
   candidate_digest: string;
   candidate_manifest: unknown;
   candidate_scan_report: unknown;
+  risk_acceptance: unknown | null;
   version: string;
   review_required: boolean;
   status: string;
@@ -155,9 +156,9 @@ export class PublishingRepository implements PublicationDataStore {
       await client.query(
         `INSERT INTO publications
           (id,organization_id,capability_id,source_space_id,target_space_id,source_revision_id,source_version_id,
-           candidate_artifact_id,candidate_digest,candidate_manifest,candidate_scan_report,version,review_required,status,
+           candidate_artifact_id,candidate_digest,candidate_manifest,candidate_scan_report,risk_acceptance,version,review_required,status,
            submitted_by_user_id,idempotency_key,created_at)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10::jsonb,$11::jsonb,$12,$13,$14,$15,$16,$17)`,
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10::jsonb,$11::jsonb,$12::jsonb,$13,$14,$15,$16,$17,$18)`,
         [
           input.publicationId,
           input.organizationId,
@@ -170,6 +171,7 @@ export class PublishingRepository implements PublicationDataStore {
           input.candidate.contentDigest,
           JSON.stringify(input.candidate.manifest),
           JSON.stringify(input.candidate.scanReport),
+          input.riskAcceptance ? JSON.stringify(input.riskAcceptance) : null,
           input.version,
           input.reviewRequired,
           input.reviewRequired ? 'in_review' : 'published',
@@ -217,6 +219,7 @@ export class PublishingRepository implements PublicationDataStore {
           candidateDigest: input.candidate.contentDigest,
           version: input.version,
           reviewRequired: input.reviewRequired,
+          riskAcceptance: input.riskAcceptance,
           publishedVersionId,
         },
       });
@@ -579,6 +582,9 @@ export class PublishingRepository implements PublicationDataStore {
       candidateDigest: row.candidate_digest,
       candidateManifest: row.candidate_manifest as PublicationRecord['candidateManifest'],
       candidateScanReport: row.candidate_scan_report as PublicationRecord['candidateScanReport'],
+      ...(row.risk_acceptance
+        ? { riskAcceptance: row.risk_acceptance as NonNullable<PublicationRecord['riskAcceptance']> }
+        : {}),
       version: row.version,
       reviewRequired: row.review_required,
       status: row.status as PublicationStatus,

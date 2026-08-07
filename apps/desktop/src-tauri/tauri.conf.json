@@ -4,9 +4,9 @@
   "version": "0.1.0",
   "identifier": "com.agentdoor.desktop",
   "build": {
-    "beforeDevCommand": "pnpm --dir .. dev",
+    "beforeDevCommand": "pnpm dev",
     "devUrl": "http://localhost:1420",
-    "beforeBuildCommand": "pnpm --dir .. build",
+    "beforeBuildCommand": "pnpm build",
     "frontendDist": "../dist",
     "features": ["tauri-app"]
   },

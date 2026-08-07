@@ -1,4 +1,9 @@
-import type { CapabilitySummary, PublicationSummary, SpaceSummary } from '@agentdoor/contracts';
+import type {
+  CapabilitySummary,
+  PublicationCandidateDiff,
+  PublicationSummary,
+  SpaceSummary,
+} from '@agentdoor/contracts';
 import { CheckCircle2, FileDiff, ShieldAlert, XCircle } from 'lucide-react';
 import { useState } from 'react';
 import type { WebClient } from '../../app/types';
@@ -20,6 +25,7 @@ export function ReviewsPage({
   const [status, setStatus] = useState('in_review');
   const [selected, setSelected] = useState<PublicationSummary>();
   const [scan, setScan] = useState<Record<string, unknown>>();
+  const [diff, setDiff] = useState<PublicationCandidateDiff>();
   const [reason, setReason] = useState('符合组织安全与复用规范');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
@@ -30,9 +36,12 @@ export function ReviewsPage({
   async function select(item: PublicationSummary) {
     setSelected(item);
     setScan(undefined);
+    setDiff(undefined);
     setError('');
     try {
-      setScan(await client.scanReport(item.id));
+      const [nextScan, nextDiff] = await Promise.all([client.scanReport(item.id), client.publicationDiff(item.id)]);
+      setScan(nextScan);
+      setDiff(nextDiff);
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : '扫描报告加载失败');
     }
@@ -130,6 +139,32 @@ export function ReviewsPage({
                 <div>
                   <strong>安全扫描</strong>
                   <p>{scan ? JSON.stringify(scan) : '正在读取服务器扫描结果…'}</p>
+                </div>
+              </div>
+              <div className="scan-summary">
+                <FileDiff />
+                <div>
+                  <strong>候选差异 · {diff?.recommendedChange ?? '计算中'}</strong>
+                  {diff ? (
+                    <>
+                      <p>
+                        新增 {diff.added.length} · 修改 {diff.modified.length} · 删除 {diff.removed.length}
+                      </p>
+                      <ul>
+                        {diff.added.map((path) => (
+                          <li key={`a-${path}`}>+ {path}</li>
+                        ))}
+                        {diff.modified.map((path) => (
+                          <li key={`m-${path}`}>~ {path}</li>
+                        ))}
+                        {diff.removed.map((path) => (
+                          <li key={`r-${path}`}>- {path}</li>
+                        ))}
+                      </ul>
+                    </>
+                  ) : (
+                    <p>正在计算与上一发布版的差异…</p>
+                  )}
                 </div>
               </div>
               <label className="review-reason">

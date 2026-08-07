@@ -154,6 +154,20 @@ export function defineAdapterComplianceSuite(options: AdapterComplianceOptions):
       }
     });
 
+    it('refuses to uninstall files modified after installation', async () => {
+      const current = await fixture();
+      const skillDirectory = join(current.userRoot, 'skills', 'release');
+      await mkdir(skillDirectory, { recursive: true });
+      await writeFile(join(skillDirectory, 'SKILL.md'), '# Release');
+      const user = (await current.adapter.detect()).find((installation) => installation.scope === 'user');
+      if (!user) throw new Error('User installation missing');
+      const local = (await current.adapter.inventory(user))[0];
+      if (!local) throw new Error('Local capability missing');
+      const plan = await current.adapter.planInstall(await current.adapter.import(local), { installation: user });
+      await writeFile(plan.entries[0]?.destination ?? '', '# locally modified');
+      await expect(current.adapter.uninstall(plan.lock, new MemoryTransaction())).rejects.toThrow(/modified|conflict/i);
+    });
+
     it('plans valid Windows destinations using the adapter allowlist', async () => {
       const rootName = fixtureRootName(options.adapterId);
       const rootPath = `C:\\Users\\Person\\${rootName}`;

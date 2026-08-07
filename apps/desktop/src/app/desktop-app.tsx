@@ -59,6 +59,7 @@ function AppContent({
   const [online, setOnline] = useState(cloud.isOnline());
   const [discovering, setDiscovering] = useState(false);
   const [installing, setInstalling] = useState<CapabilitySummary>();
+  const [notificationsOpen, setNotificationsOpen] = useState(false);
 
   useEffect(() => {
     const update = () => setOnline(cloud.isOnline());
@@ -171,6 +172,15 @@ function AppContent({
     enabled: Boolean(session),
     retry: false,
   });
+  const notificationsQuery = useQuery({
+    queryKey: ['notifications', organizationId],
+    queryFn: () => {
+      if (!session || !organizationId || !cloud.notifications) throw new Error('当前服务不支持通知');
+      return cloud.notifications(session, organizationId);
+    },
+    enabled: Boolean(session && organizationId && online && notificationsOpen && cloud.notifications),
+    retry: false,
+  });
 
   async function switchOrganization(nextId: string) {
     if (!session || nextId === organizationId) return;
@@ -220,6 +230,26 @@ function AppContent({
           updateChecks={updateChecksQuery.data ?? {}}
           online={online}
           onInstall={setInstalling}
+          onUninstall={async (capability, installation) => {
+            if (!session || !organizationId) return;
+            const agent = (agentsQuery.data ?? []).find((item) => item.adapterId === installation.agent);
+            if (!agent) throw new Error('未找到对应 Agent 目录');
+            await local.uninstall({
+              adapterId: installation.agent,
+              capabilitySlug: capability.slug,
+              rootPath: agent.rootPath,
+            });
+            await cloud.reportInstallation({
+              session,
+              organizationId,
+              deviceId: installation.deviceId,
+              capabilityId: installation.capabilityId,
+              versionId: installation.versionId,
+              agent: installation.agent,
+              outcome: 'uninstalled',
+            });
+            await queryClient.invalidateQueries({ queryKey: ['installations', organizationId] });
+          }}
         />
       );
     if (page === 'projects')
@@ -365,9 +395,39 @@ function AppContent({
                 离线
               </Status>
             )}
-            <button type="button" aria-label="通知">
+            <button type="button" aria-label="通知" onClick={() => setNotificationsOpen((value) => !value)}>
               <Bell />
             </button>
+            {notificationsOpen ? (
+              <section className="notification-popover" aria-label="通知列表">
+                <h2>通知</h2>
+                {notificationsQuery.data?.notifications.length ? (
+                  notificationsQuery.data.notifications.map((item) => (
+                    <article key={item.id}>
+                      <strong>{item.title}</strong>
+                      <p>{item.body}</p>
+                      {!item.readAt ? (
+                        <button
+                          type="button"
+                          className="text-button"
+                          onClick={async () => {
+                            if (!session || !organizationId || !cloud.markNotificationRead) return;
+                            await cloud.markNotificationRead(session, organizationId, item.id);
+                            await notificationsQuery.refetch();
+                          }}
+                        >
+                          标为已读
+                        </button>
+                      ) : (
+                        <small>已读</small>
+                      )}
+                    </article>
+                  ))
+                ) : (
+                  <p>{notificationsQuery.isLoading ? '正在加载…' : '暂无通知'}</p>
+                )}
+              </section>
+            ) : null}
             <span className="avatar">{userQuery.data?.displayName.slice(0, 1) ?? 'A'}</span>
           </div>
         </header>

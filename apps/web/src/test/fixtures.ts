@@ -1,7 +1,9 @@
 import type { OrganizationRole, PublicationSummary } from '@agentdoor/contracts';
-import type { WebClient } from '../app/types';
+import type { SpaceMember, WebClient } from '../app/types';
 
-export function webFixture(options: { role?: OrganizationRole; publications?: PublicationSummary[] } = {}): WebClient {
+export function webFixture(
+  options: { role?: OrganizationRole; publications?: PublicationSummary[]; includeTeamSpace?: boolean } = {},
+): WebClient {
   const role = options.role ?? 'owner';
   const publications = options.publications ?? [
     {
@@ -17,10 +19,38 @@ export function webFixture(options: { role?: OrganizationRole; publications?: Pu
       createdAt: '2026-08-08T00:00:00.000Z',
     },
   ];
+  let teamMembers: SpaceMember[] = [
+    {
+      id: 'space-member-a',
+      userId: 'user-a',
+      displayName: '林默',
+      role: 'manager' as const,
+      status: 'active' as const,
+      createdAt: '2026-01-01T00:00:00.000Z',
+    },
+  ];
+  let notificationReadAt: string | null = null;
+  let capability = {
+    id: 'cap-a',
+    organizationId: 'org-a',
+    spaceId: 'space-org',
+    slug: 'release-helper',
+    name: '发布护航',
+    description: '发布检查与风险提示',
+    tags: ['release'],
+    compatibility: ['codex', 'claude-code'] as Array<'codex' | 'claude-code' | 'cursor' | 'gemini-cli'>,
+    ownerUserId: 'user-a',
+    status: 'active' as const,
+  };
   return {
     login: async () => ({ accessToken: 'token', refreshToken: 'refresh', expiresIn: 900 }),
     register: async () => ({ challengeId: 'challenge-a', maskedTarget: 'n***@example.com' }),
     verify: async () => ({ verified: true }),
+    startRecovery: async () => ({
+      challengeId: '11111111-1111-4111-8111-111111111111',
+      maskedTarget: 'p***@example.com',
+    }),
+    completeRecovery: async () => ({ recovered: true }),
     logout: async () => undefined,
     me: async () => ({ id: 'user-a', displayName: '林默', identities: [] }),
     organizations: async () => [{ id: 'org-a', name: '平台研发', slug: 'platform', role, status: 'active' }],
@@ -28,6 +58,7 @@ export function webFixture(options: { role?: OrganizationRole; publications?: Pu
     switchOrganization: async () => undefined,
     acceptInvitation: async () => ({ status: 'accepted', organizationId: 'org-a' }),
     updateOrganization: async () => undefined,
+    leaveOrganization: async () => undefined,
     members: async () => [
       {
         id: 'member-a',
@@ -36,6 +67,14 @@ export function webFixture(options: { role?: OrganizationRole; publications?: Pu
         role,
         status: 'active',
         joinedAt: '2026-01-01T00:00:00.000Z',
+      },
+      {
+        id: 'member-b',
+        userId: 'user-b',
+        displayName: '陈夏',
+        role: 'member',
+        status: 'active',
+        joinedAt: '2026-01-02T00:00:00.000Z',
       },
     ],
     invitations: async () => [],
@@ -63,24 +102,55 @@ export function webFixture(options: { role?: OrganizationRole; publications?: Pu
         status: 'active',
         ownerUserId: 'user-a',
       },
+      ...(options.includeTeamSpace
+        ? [
+            {
+              id: 'space-team',
+              organizationId: 'org-a',
+              type: 'team' as const,
+              name: '研发团队',
+              slug: 'engineering',
+              reviewPolicy: 'required' as const,
+              status: 'active' as const,
+              role: 'manager' as const,
+            },
+          ]
+        : []),
     ],
     createSpace: async (input) => ({ id: 'space-new', organizationId: 'org-a', status: 'active', ...input }),
     updateSpacePolicy: async () => undefined,
     archiveSpace: async () => undefined,
-    capabilities: async () => [
-      {
-        id: 'cap-a',
-        organizationId: 'org-a',
-        spaceId: 'space-org',
-        slug: 'release-helper',
-        name: '发布护航',
-        description: '发布检查与风险提示',
-        tags: ['release'],
-        compatibility: ['codex', 'claude-code'],
-        ownerUserId: 'user-a',
-        status: 'active',
-      },
-    ],
+    spaceMembers: async () => teamMembers,
+    addSpaceMember: async (_spaceId, userId, role) => {
+      teamMembers = [
+        ...teamMembers,
+        {
+          id: 'space-member-b',
+          userId,
+          displayName: '陈夏',
+          role,
+          status: 'active',
+          createdAt: '2026-01-02T00:00:00.000Z',
+        },
+      ];
+    },
+    changeSpaceMemberRole: async (_spaceId, membershipId, role) => {
+      teamMembers = teamMembers.map((member) => (member.id === membershipId ? { ...member, role } : member));
+    },
+    removeSpaceMember: async (_spaceId, membershipId) => {
+      teamMembers = teamMembers.filter((member) => member.id !== membershipId);
+    },
+    capabilities: async () => [capability],
+    updateCapability: async (_capabilityId, input) => {
+      capability = {
+        ...capability,
+        ...(input.name !== undefined ? { name: input.name } : {}),
+        ...(input.description !== undefined ? { description: input.description } : {}),
+        ...(input.tags !== undefined ? { tags: input.tags } : {}),
+        ...(input.compatibility !== undefined ? { compatibility: input.compatibility } : {}),
+      };
+      return capability;
+    },
     versions: async () => [
       {
         id: 'version-a',
@@ -101,6 +171,14 @@ export function webFixture(options: { role?: OrganizationRole; publications?: Pu
       return { ...publication, reviews: [] };
     },
     scanReport: async () => ({ status: 'passed', findings: [] }),
+    publicationDiff: async () => ({
+      fromVersionId: 'version-old',
+      candidateDigest: 'a'.repeat(64),
+      added: ['skills/new.md'],
+      modified: ['README.md'],
+      removed: [],
+      recommendedChange: 'minor',
+    }),
     review: async () => undefined,
     withdrawPublication: async () => undefined,
     audit: async () => ({
@@ -133,6 +211,23 @@ export function webFixture(options: { role?: OrganizationRole; publications?: Pu
       },
     ],
     revokeSession: async () => undefined,
+    notifications: async () => ({
+      notifications: [
+        {
+          id: 'notification-a',
+          type: 'publication.approved',
+          title: '发布已通过',
+          body: '能力包已发布到组织空间。',
+          data: {},
+          readAt: notificationReadAt,
+          createdAt: '2026-08-08T00:00:00.000Z',
+        },
+      ],
+      unreadCount: notificationReadAt ? 0 : 1,
+    }),
+    markNotificationRead: async () => {
+      notificationReadAt = '2026-08-08T00:01:00.000Z';
+    },
     deadLetters: async () => [],
   };
 }

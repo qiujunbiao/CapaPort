@@ -1,15 +1,27 @@
 import type { CloudClient, LocalClient } from '../app/types';
 
 export function cloudFixture(
-  options: { online?: boolean; loginError?: string; installed?: boolean; updateAvailable?: boolean } = {},
+  options: {
+    online?: boolean;
+    loginError?: string;
+    installed?: boolean;
+    updateAvailable?: boolean;
+    includeClaudeOnly?: boolean;
+  } = {},
 ): CloudClient {
   const online = options.online ?? true;
+  let notificationReadAt: string | null = null;
   return {
     isOnline: () => online,
     login: async () => {
       if (options.loginError) throw new Error(options.loginError);
       return { accessToken: 'token', refreshToken: 'refresh', expiresIn: 900 };
     },
+    startRecovery: async () => ({
+      challengeId: '11111111-1111-4111-8111-111111111111',
+      maskedTarget: 'p***@example.com',
+    }),
+    completeRecovery: async () => ({ recovered: true }),
     me: async () => ({ id: 'user-a', displayName: '林默', identities: [] }),
     organizations: async () => [
       { id: 'org-a', name: '组织 A', slug: 'org-a', role: 'owner', status: 'active' },
@@ -44,6 +56,22 @@ export function cloudFixture(
         ownerUserId: 'user-a',
         status: 'active',
       },
+      ...(options.includeClaudeOnly
+        ? [
+            {
+              id: 'cap-claude',
+              organizationId,
+              spaceId: 'space-a',
+              slug: 'claude-only',
+              name: 'Claude 专用能力',
+              description: '只安装到 Claude Code',
+              tags: ['claude'],
+              compatibility: ['claude-code' as const],
+              ownerUserId: 'user-a',
+              status: 'active' as const,
+            },
+          ]
+        : []),
     ],
     publications: async () => [],
     installations: async () =>
@@ -69,6 +97,23 @@ export function cloudFixture(
             availableVersion: '1.1.0',
           }
         : { action: 'none', currentVersionId: 'version-a' },
+    notifications: async () => ({
+      notifications: [
+        {
+          id: 'notification-a',
+          type: 'publication.approved',
+          title: '发布已通过',
+          body: '能力包已发布到组织空间。',
+          data: {},
+          readAt: notificationReadAt,
+          createdAt: '2026-08-08T00:00:00.000Z',
+        },
+      ],
+      unreadCount: notificationReadAt ? 0 : 1,
+    }),
+    markNotificationRead: async () => {
+      notificationReadAt = '2026-08-08T00:01:00.000Z';
+    },
     createInstallPlan: async () => ({
       capabilityId: 'cap-org-a',
       versionId: 'version-a',
@@ -78,7 +123,7 @@ export function cloudFixture(
       permissions: { filesystem: 'write-project', network: 'none' },
       download: { url: 'https://example.test/artifact.zip', expiresIn: 60 },
     }),
-    createCapabilityDraft: async () => ({ capabilityId: 'cap-a', draftId: 'draft-a' }),
+    createCapabilityDraft: async () => ({ capabilityId: 'cap-a', draftId: 'draft-a', riskFindingDigests: [] }),
     submitPublication: async () => ({ publicationId: 'publication-a' }),
     reportInstallation: async () => undefined,
     createProjectBinding: async (input) => ({
@@ -145,6 +190,7 @@ export function localFixture(
     }),
     applyInstall: async (plan) => ({ transactionId: plan.transactionId, changedFiles: 1, state: 'applied' }),
     rollbackInstall: async (transactionId) => ({ transactionId, changedFiles: 1, state: 'rolled_back' }),
+    uninstall: async () => ({ transactionId: 'uninstall-a', changedFiles: 1, state: 'uninstalled' }),
     bindProjectDirectory: async (input) => ({
       localBindingId: '11111111-1111-4111-8111-111111111111',
       spaceId: input.spaceId,

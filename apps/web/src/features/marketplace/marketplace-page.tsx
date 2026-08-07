@@ -1,4 +1,4 @@
-import type { CapabilitySummary, CapabilityVersionSummary, SpaceSummary } from '@agentdoor/contracts';
+import type { AgentId, CapabilitySummary, CapabilityVersionSummary, SpaceSummary } from '@agentdoor/contracts';
 import { Box, Search, ShieldCheck, X } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import type { WebClient } from '../../app/types';
@@ -9,12 +9,14 @@ export function MarketplacePage({
   capabilities,
   spaces,
   canGovern,
+  currentUserId,
   onRefresh,
 }: {
   client: WebClient;
   capabilities: CapabilitySummary[];
   spaces: SpaceSummary[];
   canGovern: boolean;
+  currentUserId: string | undefined;
   onRefresh: () => void;
 }) {
   const [query, setQuery] = useState('');
@@ -22,7 +24,21 @@ export function MarketplacePage({
   const [selected, setSelected] = useState<CapabilitySummary>();
   const [versions, setVersions] = useState<CapabilityVersionSummary[]>();
   const [error, setError] = useState('');
+  const [editing, setEditing] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [name, setName] = useState('');
+  const [description, setDescription] = useState('');
+  const [tags, setTags] = useState('');
+  const [compatibility, setCompatibility] = useState<AgentId[]>([]);
   const types = new Map(spaces.map((space) => [space.id, space.type]));
+  const selectedSpace = spaces.find((space) => space.id === selected?.spaceId);
+  const canEditSelected = Boolean(
+    selected &&
+      (canGovern ||
+        selected.ownerUserId === currentUserId ||
+        selectedSpace?.role === 'manager' ||
+        selectedSpace?.role === 'contributor'),
+  );
   const filtered = useMemo(
     () =>
       capabilities.filter((capability) => {
@@ -38,10 +54,59 @@ export function MarketplacePage({
     setSelected(capability);
     setVersions(undefined);
     setError('');
+    setEditing(false);
     try {
       setVersions(await client.versions(capability.id));
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : '版本加载失败');
+    }
+  }
+
+  function startEditing() {
+    if (!selected) return;
+    setName(selected.name);
+    setDescription(selected.description);
+    setTags(selected.tags.join(', '));
+    setCompatibility(selected.compatibility);
+    setEditing(true);
+    setError('');
+  }
+
+  function toggleAgent(agent: AgentId) {
+    setCompatibility((current) =>
+      current.includes(agent) ? current.filter((item) => item !== agent) : [...current, agent],
+    );
+  }
+
+  async function saveMetadata() {
+    if (!selected) return;
+    if (!name.trim() || !compatibility.length) {
+      setError('能力名称不能为空，且至少选择一个兼容 Agent。');
+      return;
+    }
+    setSaving(true);
+    setError('');
+    try {
+      const updated = await client.updateCapability(selected.id, {
+        name: name.trim(),
+        description: description.trim(),
+        tags: [
+          ...new Set(
+            tags
+              .split(',')
+              .map((tag) => tag.trim().toLowerCase())
+              .filter(Boolean),
+          ),
+        ],
+        compatibility,
+      });
+      setSelected(updated);
+      setEditing(false);
+      onRefresh();
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : '能力元数据更新失败');
+    } finally {
+      setSaving(false);
     }
   }
 
@@ -126,21 +191,80 @@ export function MarketplacePage({
                 <X />
               </button>
             </header>
-            <p className="drawer-description">{selected.description}</p>
-            <dl className="detail-list">
-              <div>
-                <dt>标识</dt>
-                <dd>agentdoor/{selected.slug}</dd>
-              </div>
-              <div>
-                <dt>兼容 Agent</dt>
-                <dd>{selected.compatibility.join(', ')}</dd>
-              </div>
-              <div>
-                <dt>标签</dt>
-                <dd>{selected.tags.join(', ') || '未分类'}</dd>
-              </div>
-            </dl>
+            {editing ? (
+              <form
+                className="form-stack"
+                onSubmit={(event) => {
+                  event.preventDefault();
+                  void saveMetadata();
+                }}
+              >
+                <label>
+                  能力名称
+                  <input value={name} maxLength={120} onChange={(event) => setName(event.target.value)} />
+                </label>
+                <label>
+                  能力描述
+                  <textarea
+                    value={description}
+                    maxLength={2000}
+                    onChange={(event) => setDescription(event.target.value)}
+                  />
+                </label>
+                <label>
+                  能力标签
+                  <input
+                    value={tags}
+                    placeholder="release, security"
+                    onChange={(event) => setTags(event.target.value)}
+                  />
+                </label>
+                <fieldset>
+                  <legend>兼容 Agent</legend>
+                  {(['codex', 'claude-code', 'cursor', 'gemini-cli'] as const).map((agent) => (
+                    <label key={agent}>
+                      <input
+                        type="checkbox"
+                        checked={compatibility.includes(agent)}
+                        onChange={() => toggleAgent(agent)}
+                      />
+                      {agent}
+                    </label>
+                  ))}
+                </fieldset>
+                <div className="row-actions">
+                  <Button type="submit" disabled={saving}>
+                    {saving ? '保存中…' : '保存元数据'}
+                  </Button>
+                  <Button type="button" variant="quiet" onClick={() => setEditing(false)}>
+                    取消
+                  </Button>
+                </div>
+              </form>
+            ) : (
+              <>
+                <p className="drawer-description">{selected.description}</p>
+                <dl className="detail-list">
+                  <div>
+                    <dt>标识</dt>
+                    <dd>agentdoor/{selected.slug}</dd>
+                  </div>
+                  <div>
+                    <dt>兼容 Agent</dt>
+                    <dd>{selected.compatibility.join(', ')}</dd>
+                  </div>
+                  <div>
+                    <dt>标签</dt>
+                    <dd>{selected.tags.join(', ') || '未分类'}</dd>
+                  </div>
+                </dl>
+                {canEditSelected ? (
+                  <Button variant="secondary" onClick={startEditing}>
+                    编辑元数据
+                  </Button>
+                ) : null}
+              </>
+            )}
             <div className="assurance">
               <ShieldCheck />
               <span>

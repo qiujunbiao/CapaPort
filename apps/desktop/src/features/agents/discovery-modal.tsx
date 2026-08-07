@@ -34,6 +34,13 @@ export function DiscoveryModal({
   const [spaceId, setSpaceId] = useState('');
   const [targetSpaceId, setTargetSpaceId] = useState('');
   const [version, setVersion] = useState('1.0.0');
+  const [pendingDraft, setPendingDraft] = useState<{
+    capabilityId: string;
+    draftId: string;
+    riskFindingDigests: string[];
+  }>();
+  const [riskAccepted, setRiskAccepted] = useState(false);
+  const [riskReason, setRiskReason] = useState('');
   const availableSpaces = useMemo(() => spaces.filter((space) => space.status === 'active'), [spaces]);
 
   useEffect(() => {
@@ -95,14 +102,20 @@ export function DiscoveryModal({
         componentType: selected.capability.componentType,
         slug: selected.capability.slug,
       });
-      const draft = await cloud.createCapabilityDraft({
-        session,
-        organizationId,
-        spaceId,
-        slug: selected.capability.slug,
-        agent: selected.agent.adapterId as AgentId,
-        archive,
-      });
+      const draft =
+        pendingDraft ??
+        (await cloud.createCapabilityDraft({
+          session,
+          organizationId,
+          spaceId,
+          slug: selected.capability.slug,
+          agent: selected.agent.adapterId as AgentId,
+          archive,
+        }));
+      if (draft.riskFindingDigests.length && (!riskAccepted || riskReason.trim().length < 3)) {
+        setPendingDraft(draft);
+        return;
+      }
       await cloud.submitPublication({
         session,
         organizationId,
@@ -110,6 +123,9 @@ export function DiscoveryModal({
         draftId: draft.draftId,
         targetSpaceId,
         version,
+        ...(draft.riskFindingDigests.length
+          ? { riskAcceptance: { findingDigests: draft.riskFindingDigests, reason: riskReason.trim() } }
+          : {}),
       });
       onPublished();
     } catch (caught) {
@@ -210,6 +226,28 @@ export function DiscoveryModal({
                 候选版本
                 <input value={version} onChange={(event) => setVersion(event.target.value)} />
               </label>
+              {pendingDraft?.riskFindingDigests.length ? (
+                <>
+                  <label>
+                    <input
+                      type="checkbox"
+                      checked={riskAccepted}
+                      onChange={(event) => setRiskAccepted(event.target.checked)}
+                    />
+                    我已确认 {pendingDraft.riskFindingDigests.length} 项可确认风险
+                  </label>
+                  <label>
+                    确认原因
+                    <textarea
+                      aria-label="风险确认原因"
+                      value={riskReason}
+                      onChange={(event) => setRiskReason(event.target.value)}
+                      rows={3}
+                      required
+                    />
+                  </label>
+                </>
+              ) : null}
             </div>
             <div className="modal__actions">
               <Button variant="quiet" onClick={onClose}>
@@ -217,7 +255,14 @@ export function DiscoveryModal({
               </Button>
               <Button
                 busy={busy}
-                disabled={!scan || scan.blocked || !spaceId || !targetSpaceId || !local.exportLocalPackage}
+                disabled={
+                  !scan ||
+                  scan.blocked ||
+                  !spaceId ||
+                  !targetSpaceId ||
+                  !local.exportLocalPackage ||
+                  Boolean(pendingDraft?.riskFindingDigests.length && (!riskAccepted || riskReason.trim().length < 3))
+                }
                 onClick={publish}
               >
                 <UploadCloud size={16} />

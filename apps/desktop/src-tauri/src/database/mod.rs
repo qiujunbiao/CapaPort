@@ -171,6 +171,21 @@ impl Database {
         Ok(())
     }
 
+    pub fn load_lock(&self, adapter_id: &str, capability_slug: &str, root_path: &str) -> RuntimeResult<Option<String>> {
+        self.connection.lock().query_row(
+            "SELECT lock_json FROM install_locks WHERE adapter_id=?1 AND capability_slug=?2 AND root_path=?3",
+            params![adapter_id, capability_slug, root_path], |row| row.get(0),
+        ).optional().map_err(|_| RuntimeError::Database)
+    }
+
+    pub fn remove_lock(&self, adapter_id: &str, capability_slug: &str, root_path: &str) -> RuntimeResult<()> {
+        self.connection.lock().execute(
+            "DELETE FROM install_locks WHERE adapter_id=?1 AND capability_slug=?2 AND root_path=?3",
+            params![adapter_id, capability_slug, root_path],
+        ).map_err(|_| RuntimeError::Database)?;
+        Ok(())
+    }
+
     pub fn save_backup(
         &self,
         id: &str,

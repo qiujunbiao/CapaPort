@@ -1,16 +1,18 @@
-import type { SpaceReviewPolicy, SpaceSummary } from '@agentdoor/contracts';
+import type { SpaceReviewPolicy, SpaceRole, SpaceSummary } from '@agentdoor/contracts';
 import { Archive, FolderKanban, Plus, UsersRound } from 'lucide-react';
 import { useState } from 'react';
-import type { WebClient } from '../../app/types';
+import type { OrganizationMember, SpaceMember, WebClient } from '../../app/types';
 import { Button, EmptyState, ErrorNotice, PageHeader, Panel, Status } from '../../components/ui';
 
 export function SpacesPage({
   client,
   spaces,
+  organizationMembers,
   onRefresh,
 }: {
   client: WebClient;
   spaces: SpaceSummary[];
+  organizationMembers: OrganizationMember[];
   onRefresh: () => Promise<void> | void;
 }) {
   const [creating, setCreating] = useState(false);
@@ -19,6 +21,14 @@ export function SpacesPage({
   const [type, setType] = useState<'team' | 'project'>('team');
   const [policy, setPolicy] = useState<SpaceReviewPolicy>('required');
   const [error, setError] = useState('');
+  const [managedSpace, setManagedSpace] = useState<SpaceSummary>();
+  const [spaceMembers, setSpaceMembers] = useState<SpaceMember[]>([]);
+  const [newUserId, setNewUserId] = useState('');
+  const [newRole, setNewRole] = useState<SpaceRole>('contributor');
+  async function loadMembers(space: SpaceSummary) {
+    setManagedSpace(space);
+    setSpaceMembers(await client.spaceMembers(space.id));
+  }
   async function create() {
     try {
       await client.createSpace({ name, slug, type, reviewPolicy: policy });
@@ -116,16 +126,26 @@ export function SpacesPage({
                 </div>
               </dl>
               {space.type === 'team' || space.type === 'project' ? (
-                <Button
-                  variant="quiet"
-                  onClick={async () => {
-                    await client.archiveSpace(space.id);
-                    await onRefresh();
-                  }}
-                >
-                  <Archive />
-                  归档空间
-                </Button>
+                <>
+                  <Button
+                    variant="secondary"
+                    aria-label={`管理${space.name}成员`}
+                    onClick={() => void loadMembers(space)}
+                  >
+                    <UsersRound />
+                    管理成员
+                  </Button>
+                  <Button
+                    variant="quiet"
+                    onClick={async () => {
+                      await client.archiveSpace(space.id);
+                      await onRefresh();
+                    }}
+                  >
+                    <Archive />
+                    归档空间
+                  </Button>
+                </>
               ) : null}
             </Panel>
           ))}
@@ -133,6 +153,102 @@ export function SpacesPage({
       ) : (
         <EmptyState title="暂无空间" description="创建团队或项目空间开始共享能力。" />
       )}
+      {managedSpace ? (
+        <Panel className="wide">
+          <header>
+            <h2>{managedSpace.name}成员</h2>
+            <Button variant="quiet" onClick={() => setManagedSpace(undefined)}>
+              关闭
+            </Button>
+          </header>
+          <div className="inline-form">
+            <label>
+              新成员
+              <select aria-label="新成员" value={newUserId} onChange={(event) => setNewUserId(event.target.value)}>
+                <option value="">选择组织成员</option>
+                {organizationMembers
+                  .filter((member) => !spaceMembers.some((item) => item.userId === member.userId))
+                  .map((member) => (
+                    <option key={member.userId} value={member.userId}>
+                      {member.displayName}
+                    </option>
+                  ))}
+              </select>
+            </label>
+            <label>
+              空间角色
+              <select
+                aria-label="空间角色"
+                value={newRole}
+                onChange={(event) => setNewRole(event.target.value as SpaceRole)}
+              >
+                <option value="manager">负责人</option>
+                <option value="reviewer">审核人</option>
+                <option value="contributor">贡献者</option>
+                <option value="viewer">访问者</option>
+              </select>
+            </label>
+            <Button
+              disabled={!newUserId}
+              onClick={async () => {
+                await client.addSpaceMember(managedSpace.id, newUserId, newRole);
+                setNewUserId('');
+                setSpaceMembers(await client.spaceMembers(managedSpace.id));
+              }}
+            >
+              添加成员
+            </Button>
+          </div>
+          <div className="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>成员</th>
+                  <th>角色</th>
+                  <th>操作</th>
+                </tr>
+              </thead>
+              <tbody>
+                {spaceMembers.map((member) => (
+                  <tr key={member.id}>
+                    <td>{member.displayName}</td>
+                    <td>
+                      <select
+                        aria-label={`${member.displayName}的空间角色`}
+                        value={member.role}
+                        onChange={async (event) => {
+                          await client.changeSpaceMemberRole(
+                            managedSpace.id,
+                            member.id,
+                            event.target.value as SpaceRole,
+                          );
+                          setSpaceMembers(await client.spaceMembers(managedSpace.id));
+                        }}
+                      >
+                        <option value="manager">负责人</option>
+                        <option value="reviewer">审核人</option>
+                        <option value="contributor">贡献者</option>
+                        <option value="viewer">访问者</option>
+                      </select>
+                    </td>
+                    <td>
+                      <Button
+                        variant="quiet"
+                        onClick={async () => {
+                          await client.removeSpaceMember(managedSpace.id, member.id);
+                          setSpaceMembers(await client.spaceMembers(managedSpace.id));
+                        }}
+                      >
+                        移除
+                      </Button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </Panel>
+      ) : null}
     </div>
   );
 }

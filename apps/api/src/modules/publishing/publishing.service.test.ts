@@ -1,4 +1,4 @@
-import type { CapabilityManifest } from '@agentdoor/capability-kit';
+import { buildArchive, type CapabilityManifest } from '@agentdoor/capability-kit';
 import { describe, expect, it, vi } from 'vitest';
 import type { AppError } from '../../platform/errors/app-error.js';
 import { type FrozenPublicationCandidate, type PublicationDataStore, PublishingService } from './publishing.service.js';
@@ -92,6 +92,48 @@ describe('PublishingService', () => {
     expect(repository.submit).toHaveBeenCalledWith(expect.objectContaining({ reviewRequired: true }));
   });
 
+  it('requires an explicit reason for every non-blocking risk finding', async () => {
+    const { service, repository } = setup({ type: 'organization', reviewPolicy: 'required' });
+    vi.mocked(repository.findDraftCandidate).mockResolvedValue({
+      ...candidate,
+      scanReport: {
+        ...candidate.scanReport,
+        findings: [
+          {
+            ruleId: 'SEC_EXECUTABLE_FILE',
+            severity: 'medium',
+            path: 'scripts/run.sh',
+            evidenceDigest: 'b'.repeat(64),
+            message: 'Executable file',
+            blocking: false,
+          },
+        ],
+      },
+    });
+    await expect(
+      service.submit(tenant, 'user-1', candidate.capabilityId, 'submit-risk-1', {
+        draftId: 'draft-1',
+        targetSpaceId: 'target-space',
+        version: '1.0.0',
+      }),
+    ).rejects.toMatchObject({ code: 'PUBLICATION_RISK_ACCEPTANCE_REQUIRED', statusCode: 409 });
+    await service.submit(tenant, 'user-1', candidate.capabilityId, 'submit-risk-2', {
+      draftId: 'draft-1',
+      targetSpaceId: 'target-space',
+      version: '1.0.0',
+      riskAcceptance: { findingDigests: ['b'.repeat(64)], reason: '业务需要执行经过审核的本地脚本' },
+    });
+    expect(repository.submit).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        riskAcceptance: expect.objectContaining({
+          findingDigests: ['b'.repeat(64)],
+          reason: '业务需要执行经过审核的本地脚本',
+          acceptedByUserId: 'user-1',
+        }),
+      }),
+    );
+  });
+
   it('replays a completed submission after its source draft is frozen', async () => {
     const { service, repository } = setup({ type: 'organization', reviewPolicy: 'required' });
     const stored = await repository.findPublication(tenant.organizationId, 'publication-1');
@@ -126,5 +168,21 @@ describe('PublishingService', () => {
         expectedDigest: 'a'.repeat(64),
       }),
     );
+  });
+
+  it('returns an all-added candidate diff when no published baseline exists', async () => {
+    const { service } = setup({ type: 'organization', reviewPolicy: 'required' });
+    const readArtifact = vi
+      .fn()
+      .mockResolvedValue({ bytes: buildArchive([{ path: 'README.md', content: new TextEncoder().encode('hello') }]) });
+    Object.assign(service, { artifacts: { readArtifact } });
+    const result = await service.candidateDiff(tenant, 'reviewer-1', 'publication-1');
+    expect(result).toMatchObject({
+      fromVersionId: null,
+      candidateDigest: 'a'.repeat(64),
+      added: ['README.md'],
+      modified: [],
+      removed: [],
+    });
   });
 });

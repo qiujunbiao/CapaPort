@@ -398,7 +398,7 @@ fn safe_relative(input: &str) -> RuntimeResult<PathBuf> {
     }
     Ok(path.to_path_buf())
 }
-fn validate_identifier(value: &str) -> RuntimeResult<()> {
+pub(crate) fn validate_identifier(value: &str) -> RuntimeResult<()> {
     if value.is_empty()
         || value.len() > 120
         || !value.chars().all(|character| {

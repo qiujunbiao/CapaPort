@@ -11,6 +11,7 @@ export function OrganizationSettingsPage({
   canManage,
   onSaved,
   onLogout,
+  onLeave,
 }: {
   client: WebClient;
   organization: OrganizationSummary;
@@ -18,6 +19,7 @@ export function OrganizationSettingsPage({
   canManage: boolean;
   onSaved: () => Promise<void> | void;
   onLogout: () => void;
+  onLeave: () => Promise<void>;
 }) {
   const [name, setName] = useState(organization.name);
   const [message, setMessage] = useState('');
@@ -103,6 +105,12 @@ export function OrganizationSettingsPage({
             <LogOut />
             退出登录
           </Button>
+          {organization.role !== 'owner' ? (
+            <Button variant="danger" onClick={() => void onLeave()}>
+              <LogOut />
+              退出当前组织
+            </Button>
+          ) : null}
         </Panel>
         <Panel className="wide">
           <div className="settings-title">

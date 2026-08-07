@@ -54,6 +54,12 @@ export class PublicationController {
     return this.publishing.scanReport(current.tenant, current.auth.userId, publicationId);
   }
 
+  @Get(':publicationId/diff')
+  candidateDiff(@Req() request: TenantRequest, @Param('publicationId') publicationId: string) {
+    const current = context(request);
+    return this.publishing.candidateDiff(current.tenant, current.auth.userId, publicationId);
+  }
+
   @Post(':publicationId/approve')
   approve(@Req() request: TenantRequest, @Param('publicationId') publicationId: string, @Body() body: unknown) {
     const current = context(request);

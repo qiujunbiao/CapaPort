@@ -4,11 +4,14 @@ import type {
   CapabilityVersionSummary,
   OrganizationRole,
   OrganizationSummary,
+  PublicationCandidateDiff,
   PublicationSummary,
   PublicUser,
   SpaceReviewPolicy,
+  SpaceRole,
   SpaceSummary,
   TokenPair,
+  UpdateCapabilityRequest,
 } from '@agentdoor/contracts';
 
 export type WebSession = Omit<TokenPair, 'expiresIn'> & { expiresIn?: number; organizationId?: string };
@@ -33,6 +36,15 @@ export type OrganizationInvitation = {
   createdAt: string;
 };
 
+export type SpaceMember = {
+  id: string;
+  userId: string;
+  displayName: string;
+  role: SpaceRole;
+  status: 'active' | 'disabled';
+  createdAt: string;
+};
+
 export type SessionSummary = {
   id: string;
   deviceName: string;
@@ -49,6 +61,16 @@ export type AnalyticsMetrics = {
   installationOutcomes: Record<string, number>;
   activeDevices: number;
 };
+export type NotificationItem = {
+  id: string;
+  type: string;
+  title: string;
+  body: string;
+  data: Record<string, unknown>;
+  readAt: string | null;
+  createdAt: string;
+};
+export type NotificationPage = { notifications: NotificationItem[]; unreadCount: number; nextCursor?: string };
 
 export interface WebClient {
   login(input: { kind: 'email' | 'phone'; target: string; password: string; deviceName: string }): Promise<TokenPair>;
@@ -59,6 +81,11 @@ export interface WebClient {
     displayName: string;
   }): Promise<{ challengeId: string; maskedTarget: string }>;
   verify(input: { challengeId: string; code: string }): Promise<{ verified: true }>;
+  startRecovery(input: {
+    kind: 'email' | 'phone';
+    target: string;
+  }): Promise<{ challengeId: string; maskedTarget: string }>;
+  completeRecovery(input: { challengeId: string; code: string; newPassword: string }): Promise<{ recovered: true }>;
   logout(): Promise<void>;
   me(): Promise<PublicUser>;
   organizations(): Promise<OrganizationSummary[]>;
@@ -66,6 +93,7 @@ export interface WebClient {
   switchOrganization(organizationId: string): Promise<void>;
   acceptInvitation(token: string): Promise<{ status: string; organizationId?: string }>;
   updateOrganization(organizationId: string, name: string): Promise<void>;
+  leaveOrganization(organizationId: string): Promise<void>;
   members(organizationId: string): Promise<OrganizationMember[]>;
   invitations(organizationId: string): Promise<OrganizationInvitation[]>;
   invite(
@@ -84,7 +112,12 @@ export interface WebClient {
   }): Promise<SpaceSummary>;
   updateSpacePolicy(spaceId: string, reviewPolicy: SpaceReviewPolicy): Promise<void>;
   archiveSpace(spaceId: string): Promise<void>;
+  spaceMembers(spaceId: string): Promise<SpaceMember[]>;
+  addSpaceMember(spaceId: string, userId: string, role: SpaceRole): Promise<void>;
+  changeSpaceMemberRole(spaceId: string, membershipId: string, role: SpaceRole): Promise<void>;
+  removeSpaceMember(spaceId: string, membershipId: string): Promise<void>;
   capabilities(query?: string): Promise<CapabilitySummary[]>;
+  updateCapability(capabilityId: string, input: UpdateCapabilityRequest): Promise<CapabilitySummary>;
   versions(capabilityId: string): Promise<CapabilityVersionSummary[]>;
   transitionVersion(
     capabilityId: string,
@@ -94,12 +127,15 @@ export interface WebClient {
   publications(status?: string): Promise<PublicationSummary[]>;
   publication(publicationId: string): Promise<PublicationSummary & { reviews?: Array<Record<string, unknown>> }>;
   scanReport(publicationId: string): Promise<Record<string, unknown>>;
+  publicationDiff(publicationId: string): Promise<PublicationCandidateDiff>;
   review(publicationId: string, decision: 'approve' | 'request-changes' | 'reject', reason: string): Promise<void>;
   withdrawPublication(publicationId: string): Promise<void>;
   audit(query?: { action?: string; cursor?: string }): Promise<AuditPage>;
   metrics(): Promise<AnalyticsMetrics>;
   sessions(): Promise<SessionSummary[]>;
   revokeSession(sessionId: string): Promise<void>;
+  notifications(): Promise<NotificationPage>;
+  markNotificationRead(notificationId: string): Promise<void>;
   deadLetters(): Promise<Array<Record<string, unknown>>>;
 }
 

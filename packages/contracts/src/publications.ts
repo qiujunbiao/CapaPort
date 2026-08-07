@@ -4,11 +4,19 @@ const semanticVersionSchema = z
   .string()
   .trim()
   .regex(/^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-[0-9A-Za-z.-]+)?$/);
+const riskAcceptanceSchema = z.object({
+  findingDigests: z
+    .array(z.string().regex(/^[a-f0-9]{64}$/))
+    .min(1)
+    .max(100),
+  reason: z.string().trim().min(3).max(2_000),
+});
 
 export const submitPublicationRequestSchema = z.object({
   draftId: z.uuid(),
   targetSpaceId: z.uuid(),
   version: semanticVersionSchema,
+  riskAcceptance: riskAcceptanceSchema.optional(),
 });
 export const reviewPublicationRequestSchema = z.object({ reason: z.string().trim().min(3).max(2_000) });
 export const publicationListQuerySchema = z.object({
@@ -21,6 +29,7 @@ export const promotePublicationRequestSchema = z.object({
   sourceVersionId: z.uuid(),
   targetSpaceId: z.uuid(),
   version: semanticVersionSchema,
+  riskAcceptance: riskAcceptanceSchema.optional(),
 });
 
 export type PublicationStatus = 'in_review' | 'published' | 'changes_requested' | 'rejected' | 'withdrawn';
@@ -68,6 +77,15 @@ export type CapabilityVersionSummary = {
 export type CapabilityVersionDiff = {
   fromVersionId: string;
   toVersionId: string;
+  added: string[];
+  modified: string[];
+  removed: string[];
+  recommendedChange: 'major' | 'minor' | 'patch';
+};
+
+export type PublicationCandidateDiff = {
+  fromVersionId: string | null;
+  candidateDigest: string;
   added: string[];
   modified: string[];
   removed: string[];

@@ -100,13 +100,22 @@ export function createCloudClient(
       session: input.session,
       organizationId: input.organizationId,
     });
-    await request(`/capabilities/${created.capability.id}/drafts/${created.draft.id}/revisions`, {
-      method: 'POST',
-      session: input.session,
-      organizationId: input.organizationId,
-      body: JSON.stringify({ artifactId: artifact.artifactId }),
-    });
-    return { capabilityId: created.capability.id, draftId: created.draft.id };
+    const revision = await request<{ scanReport: { findings: Array<{ blocking: boolean; evidenceDigest: string }> } }>(
+      `/capabilities/${created.capability.id}/drafts/${created.draft.id}/revisions`,
+      {
+        method: 'POST',
+        session: input.session,
+        organizationId: input.organizationId,
+        body: JSON.stringify({ artifactId: artifact.artifactId }),
+      },
+    );
+    return {
+      capabilityId: created.capability.id,
+      draftId: created.draft.id,
+      riskFindingDigests: revision.scanReport.findings
+        .filter((finding) => !finding.blocking)
+        .map((finding) => finding.evidenceDigest),
+    };
   }
 
   async function uploadArchive(
@@ -142,6 +151,8 @@ export function createCloudClient(
     login: (input) => request<TokenPair>('/auth/login', { method: 'POST', body: JSON.stringify(input) }),
     register: (input) => request('/auth/register', { method: 'POST', body: JSON.stringify(input) }),
     verify: (input) => request('/auth/verify', { method: 'POST', body: JSON.stringify(input) }),
+    startRecovery: (input) => request('/auth/recovery/start', { method: 'POST', body: JSON.stringify(input) }),
+    completeRecovery: (input) => request('/auth/recovery/complete', { method: 'POST', body: JSON.stringify(input) }),
     me: (session) => request<PublicUser>('/auth/me', { session }),
     organizations: (session) => request<OrganizationSummary[]>('/organizations', { session }),
     createOrganization: (session, input) =>
@@ -175,6 +186,9 @@ export function createCloudClient(
           supportedAgents,
         }),
       }),
+    notifications: (session, organizationId) => request('/notifications?limit=20', { session, organizationId }),
+    markNotificationRead: (session, organizationId, notificationId) =>
+      request(`/notifications/${notificationId}/read`, { method: 'PATCH', session, organizationId }),
     versions: (session, organizationId, capabilityId) =>
       request<CapabilityVersionSummary[]>(`/capabilities/${capabilityId}/versions`, { session, organizationId }),
     createInstallPlan: (input) =>
@@ -196,7 +210,12 @@ export function createCloudClient(
         session: input.session,
         organizationId: input.organizationId,
         headers: { 'idempotency-key': crypto.randomUUID() },
-        body: JSON.stringify({ draftId: input.draftId, targetSpaceId: input.targetSpaceId, version: input.version }),
+        body: JSON.stringify({
+          draftId: input.draftId,
+          targetSpaceId: input.targetSpaceId,
+          version: input.version,
+          ...(input.riskAcceptance ? { riskAcceptance: input.riskAcceptance } : {}),
+        }),
       });
       return { publicationId: publication.id };
     },

@@ -1,6 +1,6 @@
 use crate::credentials::CredentialStore;
 use crate::database::{Database, SyncQueueStatus};
-use crate::files::{ApplyResult, FileEngine, InstallPlan, InstallPreview};
+use crate::files::{validate_identifier, ApplyResult, FileEngine, InstallPlan, InstallPreview};
 use crate::paths::PathPolicy;
 use crate::projects::{
     BindProjectInput, ContextPackageExport, ContextPackageInput, LocalProjectBinding,
@@ -89,6 +89,14 @@ pub struct ExportPackageInput {
     pub root_path: String,
     pub component_type: String,
     pub slug: String,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct UninstallInput {
+    pub adapter_id: String,
+    pub capability_slug: String,
+    pub root_path: String,
 }
 
 pub struct Runtime {
@@ -400,6 +408,29 @@ impl Runtime {
     }
     pub fn rollback_install(&self, transaction_id: &str) -> RuntimeResult<ApplyResult> {
         self.engine.rollback(transaction_id, &self.database)
+    }
+    pub fn uninstall(&self, input: &UninstallInput) -> RuntimeResult<ApplyResult> {
+        validate_identifier(&input.adapter_id)?;
+        validate_slug(&input.capability_slug)?;
+        let root = Path::new(&input.root_path).canonicalize().map_err(|_| RuntimeError::PathNotAllowed)?;
+        if !self.engine.policy().roots().iter().any(|allowed| allowed == &root) { return Err(RuntimeError::PathNotAllowed); }
+        let lock_json = self.database.load_lock(&input.adapter_id, &input.capability_slug, &input.root_path)?.ok_or(RuntimeError::NotFound)?;
+        let lock: serde_json::Value = serde_json::from_str(&lock_json).map_err(|_| RuntimeError::InvalidInput)?;
+        let files = lock.get("files").and_then(|value| value.as_array()).ok_or(RuntimeError::InvalidInput)?;
+        let mut targets = Vec::new();
+        for file in files {
+            let relative = file.get("relativePath").and_then(|value| value.as_str()).ok_or(RuntimeError::InvalidInput)?;
+            let expected = file.get("afterDigest").and_then(|value| value.as_str()).ok_or(RuntimeError::InvalidInput)?;
+            let destination = self.engine.policy().resolve(&root, Path::new(relative))?;
+            if destination.exists() {
+                let current = hex::encode(Sha256::digest(std::fs::read(&destination).map_err(|_| RuntimeError::TransactionFailed)?));
+                if current != expected { return Err(RuntimeError::LocalModificationConflict); }
+                targets.push(destination);
+            }
+        }
+        for target in &targets { std::fs::remove_file(target).map_err(|_| RuntimeError::TransactionFailed)?; }
+        self.database.remove_lock(&input.adapter_id, &input.capability_slug, &input.root_path)?;
+        Ok(ApplyResult { transaction_id: format!("uninstall-{}", input.capability_slug), changed_files: targets.len(), state: "uninstalled".into() })
     }
     pub fn bind_project_directory(&self, input: &BindProjectInput) -> RuntimeResult<LocalProjectBinding> {
         self.projects.bind(&self.database, input)

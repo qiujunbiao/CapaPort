@@ -38,6 +38,7 @@ export type PublicationRecord = {
   candidateDigest: string;
   candidateManifest: CapabilityManifest;
   candidateScanReport: ScanReport;
+  riskAcceptance?: { findingDigests: string[]; reason: string; acceptedByUserId: string };
   version: string;
   reviewRequired: boolean;
   status: PublicationStatus;
@@ -82,6 +83,7 @@ export interface PublicationDataStore {
     version: string;
     idempotencyKey: string;
     reviewRequired: boolean;
+    riskAcceptance?: { findingDigests: string[]; reason: string; acceptedByUserId: string };
     candidate: FrozenPublicationCandidate;
   }): Promise<PublicationRecord>;
   findPublication(organizationId: string, publicationId: string): Promise<PublicationRecord | undefined>;
@@ -130,10 +132,19 @@ export class PublishingService {
     if (!candidate) this.denied();
     await this.spaces.authorize(tenant, userId, candidate.sourceSpaceId, 'content:submit');
     const target = await this.spaces.authorize(tenant, userId, input.targetSpaceId, 'content:submit');
-    return this.submitCandidate(tenant, userId, idempotencyKey, input.targetSpaceId, input.version, candidate, {
-      type: target.space.type,
-      reviewPolicy: target.space.reviewPolicy,
-    });
+    return this.submitCandidate(
+      tenant,
+      userId,
+      idempotencyKey,
+      input.targetSpaceId,
+      input.version,
+      candidate,
+      input.riskAcceptance,
+      {
+        type: target.space.type,
+        reviewPolicy: target.space.reviewPolicy,
+      },
+    );
   }
 
   async promote(
@@ -150,10 +161,19 @@ export class PublishingService {
     if (!candidate || candidate.capabilityId !== capabilityId) this.denied();
     await this.spaces.authorize(tenant, userId, candidate.sourceSpaceId, 'content:view-published');
     const target = await this.spaces.authorize(tenant, userId, input.targetSpaceId, 'content:submit');
-    return this.submitCandidate(tenant, userId, idempotencyKey, input.targetSpaceId, input.version, candidate, {
-      type: target.space.type,
-      reviewPolicy: target.space.reviewPolicy,
-    });
+    return this.submitCandidate(
+      tenant,
+      userId,
+      idempotencyKey,
+      input.targetSpaceId,
+      input.version,
+      candidate,
+      input.riskAcceptance,
+      {
+        type: target.space.type,
+        reviewPolicy: target.space.reviewPolicy,
+      },
+    );
   }
 
   async get(tenant: TenantContext, userId: string, publicationId: string): Promise<PublicationRecord> {
@@ -212,6 +232,35 @@ export class PublishingService {
 
   async scanReport(tenant: TenantContext, userId: string, publicationId: string): Promise<ScanReport> {
     return (await this.get(tenant, userId, publicationId)).candidateScanReport;
+  }
+
+  async candidateDiff(tenant: TenantContext, userId: string, publicationId: string) {
+    const publication = await this.get(tenant, userId, publicationId);
+    const candidateArtifact = await this.artifacts.readArtifact(tenant.organizationId, publication.candidateArtifactId);
+    const candidateFiles = extractArchive(candidateArtifact.bytes);
+    const baseline = (await this.repository.listVersions(tenant.organizationId, publication.capabilityId)).find(
+      (version) =>
+        version.spaceId === publication.targetSpaceId && ['published', 'deprecated'].includes(version.status),
+    );
+    if (!baseline) {
+      return {
+        fromVersionId: null,
+        candidateDigest: publication.candidateDigest,
+        added: candidateFiles.map((file) => file.path).sort(),
+        modified: [],
+        removed: [],
+        recommendedChange: 'minor' as const,
+      };
+    }
+    await this.spaces.authorize(tenant, userId, baseline.spaceId, 'content:view-published');
+    const baselineArtifact = await this.artifacts.readArtifact(tenant.organizationId, baseline.artifactId);
+    const packageDiff = diffPackages(extractArchive(baselineArtifact.bytes), candidateFiles);
+    return {
+      fromVersionId: baseline.id,
+      candidateDigest: publication.candidateDigest,
+      ...packageDiff,
+      recommendedChange: classifyVersion(packageDiff),
+    };
   }
 
   async versions(tenant: TenantContext, userId: string, capabilityId: string): Promise<PublishedVersionRecord[]> {
@@ -281,10 +330,28 @@ export class PublishingService {
     targetSpaceId: string,
     version: string,
     candidate: FrozenPublicationCandidate,
+    riskAcceptance: { findingDigests: string[]; reason: string } | undefined,
     target: { type: 'personal' | 'team' | 'project' | 'organization'; reviewPolicy: 'direct' | 'required' },
   ): Promise<PublicationRecord> {
     if (candidate.scanReport.blocked) {
       throw new AppError('PUBLICATION_SCAN_BLOCKED', 'Blocked capability packages cannot be published.', 409);
+    }
+    const riskDigests = [
+      ...new Set(
+        candidate.scanReport.findings.filter((finding) => !finding.blocking).map((finding) => finding.evidenceDigest),
+      ),
+    ].sort();
+    const acceptedDigests = [...new Set(riskAcceptance?.findingDigests ?? [])].sort();
+    if (
+      riskDigests.length &&
+      (riskDigests.length !== acceptedDigests.length ||
+        riskDigests.some((digest, index) => digest !== acceptedDigests[index]))
+    ) {
+      throw new AppError(
+        'PUBLICATION_RISK_ACCEPTANCE_REQUIRED',
+        'Every non-blocking risk must be explicitly accepted with a reason.',
+        409,
+      );
     }
     const reviewRequired =
       target.type === 'organization' ||
@@ -298,6 +365,15 @@ export class PublishingService {
       version,
       idempotencyKey,
       reviewRequired,
+      ...(riskDigests.length
+        ? {
+            riskAcceptance: {
+              findingDigests: riskDigests,
+              reason: riskAcceptance?.reason ?? '',
+              acceptedByUserId: userId,
+            },
+          }
+        : {}),
       candidate,
     });
   }

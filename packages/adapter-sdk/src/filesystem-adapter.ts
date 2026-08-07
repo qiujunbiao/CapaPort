@@ -316,6 +316,7 @@ export function createFilesystemAdapter(config: FilesystemAdapterConfig): AgentA
       if (lock.adapterId !== config.id || !isAllowedRoot(config, lock.rootPath)) {
         throw new Error('Install lock belongs to another adapter');
       }
+      const modified: string[] = [];
       for (const file of lock.files) {
         if (
           !isPathInside(lock.rootPath, file.destination, platform) ||
@@ -323,6 +324,13 @@ export function createFilesystemAdapter(config: FilesystemAdapterConfig): AgentA
         ) {
           throw new Error('Unsafe uninstall path');
         }
+        if (await exists(file.destination)) {
+          const current = new Uint8Array(await readFile(file.destination));
+          if (digest(current) !== file.digest) modified.push(file.relativePath);
+        }
+      }
+      if (modified.length) throw new Error(`Uninstall conflict: locally modified files: ${modified.join(', ')}`);
+      for (const file of lock.files) {
         await transaction.removeFile(file.destination);
       }
       const expectedLockPath = resolveInside(

@@ -64,6 +64,13 @@
       "when": 1786201200000,
       "tag": "0008_projects",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1786204800000,
+      "tag": "0009_publication_risk_acceptance",
+      "breakpoints": true
     }
   ]
 }

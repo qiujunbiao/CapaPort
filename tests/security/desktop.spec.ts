@@ -41,6 +41,7 @@ describe('desktop security gate', () => {
       'scan_local_package',
       'store_session',
       'sync_queue_status',
+      'uninstall',
     ]);
     expect(capability.permissions).toEqual(['core:default']);
     expect(JSON.stringify(capability)).not.toMatch(/shell:|fs:|remote/i);

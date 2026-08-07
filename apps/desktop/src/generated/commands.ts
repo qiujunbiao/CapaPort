@@ -68,6 +68,7 @@ export const localCommandNames = [
   'preview_install',
   'apply_install',
   'rollback_install',
+  'uninstall',
   'bind_project_directory',
   'list_project_bindings',
   'remove_project_binding',

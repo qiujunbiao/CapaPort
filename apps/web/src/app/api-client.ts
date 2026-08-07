@@ -42,6 +42,9 @@ export function createWebClient(baseUrl: string, sessionStore: WebSessionStore):
     login: (input) => request('/auth/login', { method: 'POST', body: input, authenticated: false }),
     register: (input) => request('/auth/register', { method: 'POST', body: input, authenticated: false }),
     verify: (input) => request('/auth/verify', { method: 'POST', body: input, authenticated: false }),
+    startRecovery: (input) => request('/auth/recovery/start', { method: 'POST', body: input, authenticated: false }),
+    completeRecovery: (input) =>
+      request('/auth/recovery/complete', { method: 'POST', body: input, authenticated: false }),
     logout: () => request('/auth/logout', { method: 'POST' }),
     me: () => request('/auth/me'),
     organizations: () => request('/organizations'),
@@ -52,6 +55,8 @@ export function createWebClient(baseUrl: string, sessionStore: WebSessionStore):
     acceptInvitation: (token) => request('/organizations/invitations/accept', { method: 'POST', body: { token } }),
     updateOrganization: (organizationId, name) =>
       request(`/organizations/${organizationId}`, { method: 'PATCH', body: { name }, ...org(organizationId) }),
+    leaveOrganization: (organizationId) =>
+      request(`/organizations/${organizationId}/leave`, { method: 'POST', ...org(organizationId) }),
     members: (organizationId) => request(`/organizations/${organizationId}/members`, org(organizationId)),
     invitations: (organizationId) => request(`/organizations/${organizationId}/invitations`, org(organizationId)),
     invite: (organizationId, input) =>
@@ -74,7 +79,16 @@ export function createWebClient(baseUrl: string, sessionStore: WebSessionStore):
     updateSpacePolicy: (spaceId, reviewPolicy) =>
       request(`/spaces/${spaceId}/review-policy`, { method: 'PATCH', body: { reviewPolicy } }),
     archiveSpace: (spaceId) => request(`/spaces/${spaceId}`, { method: 'DELETE' }),
+    spaceMembers: (spaceId) => request(`/spaces/${spaceId}/members`),
+    addSpaceMember: (spaceId, userId, role) =>
+      request(`/spaces/${spaceId}/members`, { method: 'POST', body: { userId, role } }),
+    changeSpaceMemberRole: (spaceId, membershipId, role) =>
+      request(`/spaces/${spaceId}/members/${membershipId}`, { method: 'PATCH', body: { role } }),
+    removeSpaceMember: (spaceId, membershipId) =>
+      request(`/spaces/${spaceId}/members/${membershipId}`, { method: 'DELETE' }),
     capabilities: (query = '') => request(`/capabilities?query=${encodeURIComponent(query)}&limit=100`),
+    updateCapability: (capabilityId, input) =>
+      request(`/capabilities/${capabilityId}`, { method: 'PATCH', body: input }),
     versions: (capabilityId) => request(`/capabilities/${capabilityId}/versions`),
     transitionVersion: (capabilityId, versionId, action) =>
       request(`/capabilities/${capabilityId}/versions/${versionId}/${action}`, { method: 'POST' }),
@@ -82,6 +96,7 @@ export function createWebClient(baseUrl: string, sessionStore: WebSessionStore):
       request(`/publications?limit=100${status ? `&status=${encodeURIComponent(status)}` : ''}`),
     publication: (publicationId) => request(`/publications/${publicationId}`),
     scanReport: (publicationId) => request(`/publications/${publicationId}/scan-report`),
+    publicationDiff: (publicationId) => request(`/publications/${publicationId}/diff`),
     review: (publicationId, decision, reason) =>
       request(`/publications/${publicationId}/${decision}`, { method: 'POST', body: { reason } }),
     withdrawPublication: (publicationId) => request(`/publications/${publicationId}/withdraw`, { method: 'POST' }),
@@ -94,6 +109,8 @@ export function createWebClient(baseUrl: string, sessionStore: WebSessionStore):
     metrics: () => request('/analytics/metrics'),
     sessions: () => request('/auth/sessions'),
     revokeSession: (sessionId) => request(`/auth/sessions/${sessionId}`, { method: 'DELETE' }),
+    notifications: () => request('/notifications?limit=20'),
+    markNotificationRead: (notificationId) => request(`/notifications/${notificationId}/read`, { method: 'PATCH' }),
     deadLetters: () => request('/notifications/dead-letters?limit=50'),
   };
 }
