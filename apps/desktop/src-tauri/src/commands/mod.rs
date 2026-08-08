@@ -396,6 +396,7 @@ impl Runtime {
         let report = discover_skill_packages(&self.trusted_skill_roots());
         let mut issues = report.issues;
         let mut skills = Vec::new();
+        let mut readable_roots = Vec::new();
         for package in report.packages {
             let digest = match package_digest(&package.package_root) {
                 Ok(digest) => digest,
@@ -411,17 +412,7 @@ impl Runtime {
                     continue;
                 }
             };
-            if self
-                .discovery_policy
-                .add_root(package.package_root.clone())
-                .is_err()
-            {
-                issues.push(DiscoveryIssue {
-                    path: package.package_root.to_string_lossy().into_owned(),
-                    reason: "path-not-allowed".into(),
-                });
-                continue;
-            }
+            readable_roots.push(package.package_root.clone());
             skills.push(DiscoveredLocalSkill {
                 adapter_id: package.adapter_id,
                 display_name: package.display_name,
@@ -433,6 +424,7 @@ impl Runtime {
                 digest,
             });
         }
+        self.discovery_policy.replace_roots(readable_roots)?;
         skills.sort_by(|left, right| {
             (&left.adapter_id, &left.slug, &left.source_path).cmp(&(
                 &right.adapter_id,
@@ -1710,6 +1702,19 @@ mod tests {
         assert!(zip
             .by_name("skills/safe-linked-files/alias.md")
             .is_ok());
+
+        symlink(&outside, safe.join("later-escape.md")).unwrap();
+        let refreshed = runtime.discover_local_skills().unwrap();
+        assert!(!refreshed
+            .skills
+            .iter()
+            .any(|skill| skill.slug == "safe-linked-files"));
+        assert!(matches!(
+            runtime.scan_local_package(&PathInput {
+                path: safe_path.to_string_lossy().into_owned(),
+            }),
+            Err(RuntimeError::PathNotAllowed)
+        ));
     }
 
     #[test]

@@ -36,6 +36,23 @@ impl PathPolicy {
         self.roots.read().clone()
     }
 
+    pub fn replace_roots(&self, roots: impl IntoIterator<Item = PathBuf>) -> RuntimeResult<()> {
+        let mut canonical_roots = Vec::new();
+        for root in roots {
+            let canonical = root
+                .canonicalize()
+                .map_err(|_| RuntimeError::PathNotAllowed)?;
+            if !canonical.is_dir() {
+                return Err(RuntimeError::PathNotAllowed);
+            }
+            canonical_roots.push(canonical);
+        }
+        canonical_roots.sort();
+        canonical_roots.dedup();
+        *self.roots.write() = canonical_roots;
+        Ok(())
+    }
+
     pub fn resolve(&self, root: &Path, relative: &Path) -> RuntimeResult<PathBuf> {
         if relative.as_os_str().is_empty()
             || relative.is_absolute()
