@@ -1,7 +1,7 @@
-import type { AgentId, CapabilitySummary } from '@agentdoor/contracts';
+import type { AgentId, CapabilitySummary, UpdateCheck } from '@agentdoor/contracts';
 import { AlertTriangle, Check, FileDiff, RotateCcw, X } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
-import { buildLocalInstallPlan } from '../../app/install-plan';
+import { buildLocalInstallPlan, selectInstallVersion } from '../../app/install-plan';
 import type { CloudClient, LocalClient, Session } from '../../app/types';
 import { Button, ErrorNotice, Status } from '../../components/ui';
 import type { AgentDescriptor, InstallPlan, InstallPreview } from '../../generated/commands';
@@ -38,6 +38,7 @@ export function InstallModal({
   organizationId,
   agents,
   online,
+  updateCheck,
   onClose,
   onInstalled,
 }: {
@@ -48,6 +49,7 @@ export function InstallModal({
   organizationId: string;
   agents: AgentDescriptor[];
   online: boolean;
+  updateCheck?: UpdateCheck;
   onClose: () => void;
   onInstalled: () => void;
 }) {
@@ -84,9 +86,10 @@ export function InstallModal({
             cloud.versions(session, organizationId, capability.id),
             cloud.devices(session, organizationId),
           ]);
-          const version = [...versions]
-            .filter((item) => item.status === 'published' || item.status === 'deprecated')
-            .sort((left, right) => right.version.localeCompare(left.version))[0];
+          const version = selectInstallVersion(
+            versions,
+            updateCheck?.action === 'update' ? updateCheck.availableVersionId : undefined,
+          );
           if (!version) throw new Error('该能力还没有可安装版本');
           const device =
             devices.find((item) => item.status === 'active') ??
@@ -105,11 +108,17 @@ export function InstallModal({
           });
           const response = await fetch(cloudPlan.download.url);
           if (!response.ok) throw new Error('能力包下载失败');
+          const installLock = await local.loadInstallLock({
+            adapterId: agent.adapterId,
+            capabilitySlug: capability.slug,
+            rootPath: agent.rootPath,
+          });
           localPlan = await buildLocalInstallPlan({
             archive: new Uint8Array(await response.arrayBuffer()),
             adapterId: agent.adapterId,
             rootPath: agent.rootPath,
             packageDigest: cloudPlan.digest,
+            ...(installLock ? { installedFiles: installLock.files } : {}),
           });
           if (!cancelled)
             setInstallMetadata({ deviceId: device.id, versionId: version.id, agent: agent.adapterId as AgentId });
@@ -130,7 +139,7 @@ export function InstallModal({
     return () => {
       cancelled = true;
     };
-  }, [agent, agents, capability, cloud, local, organizationId, session]);
+  }, [agent, agents, capability, cloud, local, organizationId, session, updateCheck]);
 
   const conflicts = preview?.changes.filter((change) => change.kind === 'conflict') ?? [];
   const resolved = conflicts.every((change) => choices[change.relativePath]);

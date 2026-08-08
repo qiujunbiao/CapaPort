@@ -190,6 +190,7 @@ export function localFixture(
     }),
     applyInstall: async (plan) => ({ transactionId: plan.transactionId, changedFiles: 1, state: 'applied' }),
     rollbackInstall: async (transactionId) => ({ transactionId, changedFiles: 1, state: 'rolled_back' }),
+    loadInstallLock: async () => undefined,
     uninstall: async () => ({ transactionId: 'uninstall-a', changedFiles: 1, state: 'uninstalled' }),
     bindProjectDirectory: async (input) => ({
       localBindingId: '11111111-1111-4111-8111-111111111111',

@@ -465,6 +465,7 @@ function AppContent({
           organizationId={organizationId}
           agents={agentsQuery.data ?? []}
           online={online}
+          {...(updateChecksQuery.data?.[installing.id] ? { updateCheck: updateChecksQuery.data[installing.id] } : {})}
           onClose={() => setInstalling(undefined)}
           onInstalled={() => {
             setInstalling(undefined);

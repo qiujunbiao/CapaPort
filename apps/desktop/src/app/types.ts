@@ -16,6 +16,7 @@ import type {
   AgentDescriptor,
   ApplyResult,
   ContextPackageExport,
+  InstallLock,
   InstallPlan,
   InstallPreview,
   LocalCapabilitySummary,
@@ -170,6 +171,11 @@ export interface LocalClient {
   previewInstall(plan: InstallPlan): Promise<InstallPreview>;
   applyInstall(plan: InstallPlan): Promise<ApplyResult>;
   rollbackInstall(transactionId: string): Promise<ApplyResult>;
+  loadInstallLock(input: {
+    adapterId: string;
+    capabilitySlug: string;
+    rootPath: string;
+  }): Promise<InstallLock | undefined>;
   uninstall(input: { adapterId: string; capabilitySlug: string; rootPath: string }): Promise<ApplyResult>;
   bindProjectDirectory(input: { spaceId: string; path: string; agents?: AgentId[] }): Promise<LocalProjectBinding>;
   listProjectBindings(spaceId: string): Promise<LocalProjectBinding[]>;

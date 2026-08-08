@@ -26,6 +26,15 @@ export type PreviewChange = {
 };
 export type InstallPreview = { transactionId: string; changes: PreviewChange[]; conflicts: number };
 export type ApplyResult = { transactionId: string; changedFiles: number; state: string };
+export type InstallLockFile = { relativePath: string; beforeDigest?: string; afterDigest: string };
+export type InstallLock = {
+  schemaVersion: string;
+  adapterId: string;
+  capabilitySlug: string;
+  packageDigest: string;
+  transactionId: string;
+  files: InstallLockFile[];
+};
 export type SyncQueueStatus = { pending: number; failed: number; nextAvailableAt?: string };
 export type LocalProjectBinding = {
   localBindingId: string;
@@ -68,6 +77,7 @@ export const localCommandNames = [
   'preview_install',
   'apply_install',
   'rollback_install',
+  'load_install_lock',
   'uninstall',
   'bind_project_directory',
   'list_project_bindings',

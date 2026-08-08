@@ -11,6 +11,7 @@ export function createLocalClient(): LocalClient {
     previewInstall: (plan: InstallPlan) => invoke('preview_install', { plan }),
     applyInstall: (plan: InstallPlan) => invoke('apply_install', { plan }),
     rollbackInstall: (transactionId) => invoke('rollback_install', { transactionId }),
+    loadInstallLock: (input) => invoke('load_install_lock', { input }),
     uninstall: (input) => invoke('uninstall', { input }),
     bindProjectDirectory: (input) => invoke('bind_project_directory', { input }),
     listProjectBindings: (spaceId) => invoke('list_project_bindings', { input: { spaceId } }),

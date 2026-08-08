@@ -99,6 +99,25 @@ pub struct UninstallInput {
     pub root_path: String,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct InstallLockFile {
+    pub relative_path: String,
+    pub before_digest: Option<String>,
+    pub after_digest: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct InstallLock {
+    pub schema_version: String,
+    pub adapter_id: String,
+    pub capability_slug: String,
+    pub package_digest: String,
+    pub transaction_id: String,
+    pub files: Vec<InstallLockFile>,
+}
+
 pub struct Runtime {
     database: Database,
     engine: FileEngine,
@@ -409,6 +428,20 @@ impl Runtime {
     pub fn rollback_install(&self, transaction_id: &str) -> RuntimeResult<ApplyResult> {
         self.engine.rollback(transaction_id, &self.database)
     }
+    pub fn load_install_lock(&self, input: &UninstallInput) -> RuntimeResult<Option<InstallLock>> {
+        validate_identifier(&input.adapter_id)?;
+        validate_slug(&input.capability_slug)?;
+        let root = Path::new(&input.root_path)
+            .canonicalize()
+            .map_err(|_| RuntimeError::PathNotAllowed)?;
+        if !self.engine.policy().roots().iter().any(|allowed| allowed == &root) {
+            return Err(RuntimeError::PathNotAllowed);
+        }
+        self.database
+            .load_lock(&input.adapter_id, &input.capability_slug, &input.root_path)?
+            .map(|json| serde_json::from_str(&json).map_err(|_| RuntimeError::Database))
+            .transpose()
+    }
     pub fn uninstall(&self, input: &UninstallInput) -> RuntimeResult<ApplyResult> {
         validate_identifier(&input.adapter_id)?;
         validate_slug(&input.capability_slug)?;
@@ -681,6 +714,40 @@ mod tests {
                 .unwrap()
                 .contains("very-private-token")
         );
+    }
+
+    #[test]
+    fn exposes_the_persisted_install_lock_for_safe_updates() {
+        let (root, runtime) = runtime();
+        let agent = runtime.detect_agents().unwrap().remove(0);
+        let plan = InstallPlan {
+            transaction_id: "tx-lock-read".into(),
+            adapter_id: "codex".into(),
+            capability_slug: "release".into(),
+            package_digest: "a".repeat(64),
+            root_path: agent.root_path.clone(),
+            writes: vec![crate::files::PlannedWrite {
+                relative_path: "skills/release/SKILL.md".into(),
+                content_base64: base64::engine::general_purpose::STANDARD.encode("# Release v2"),
+                content_digest: hex::encode(Sha256::digest(b"# Release v2")),
+                expected_digest: Some(hex::encode(Sha256::digest(b"# Release"))),
+            }],
+        };
+        runtime.apply_install(&plan).unwrap();
+
+        let lock = runtime
+            .load_install_lock(&UninstallInput {
+                adapter_id: "codex".into(),
+                capability_slug: "release".into(),
+                root_path: agent.root_path,
+            })
+            .unwrap()
+            .unwrap();
+
+        assert_eq!(lock.transaction_id, "tx-lock-read");
+        assert_eq!(lock.files[0].relative_path, "skills/release/SKILL.md");
+        assert_eq!(lock.files[0].after_digest, hex::encode(Sha256::digest(b"# Release v2")));
+        assert!(root.path().join(".agents/skills/release/SKILL.md").exists());
     }
 
     #[test]

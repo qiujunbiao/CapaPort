@@ -80,6 +80,14 @@ fn rollback_install(
 }
 #[cfg(feature = "tauri-app")]
 #[tauri::command]
+fn load_install_lock(
+    input: agentdoor_runtime::commands::UninstallInput,
+    state: tauri::State<'_, AppState>,
+) -> Result<Option<agentdoor_runtime::commands::InstallLock>, CommandError> {
+    state.runtime.load_install_lock(&input).map_err(Into::into)
+}
+#[cfg(feature = "tauri-app")]
+#[tauri::command]
 fn uninstall(
     input: agentdoor_runtime::commands::UninstallInput,
     state: tauri::State<'_, AppState>,
@@ -190,6 +198,7 @@ fn main() {
             preview_install,
             apply_install,
             rollback_install,
+            load_install_lock,
             uninstall,
             bind_project_directory,
             list_project_bindings,
