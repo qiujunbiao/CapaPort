@@ -7,7 +7,6 @@ import {
   Building2,
   ChevronDown,
   ClipboardCheck,
-  DoorOpen,
   FileClock,
   LayoutDashboard,
   Menu,
@@ -17,6 +16,7 @@ import {
   X,
 } from 'lucide-react';
 import { useEffect, useMemo, useState, useSyncExternalStore } from 'react';
+import { BrandLockup, BrandMark } from '../components/brand';
 import { ErrorNotice, LoadingBlock, Status } from '../components/ui';
 import { AnalyticsPage } from '../features/analytics/analytics-page';
 import { AuditPage } from '../features/audit/audit-page';
@@ -75,12 +75,7 @@ function OrganizationSetup({ client, onReady }: { client: WebClient; onReady: (o
   }
   return (
     <main className="setup-layout">
-      <div className="brand-lockup">
-        <span>
-          <DoorOpen />
-        </span>
-        <strong>CAPAPORT</strong>
-      </div>
+      <BrandLockup tone="dark" />
       <section className="setup-card">
         <p className="eyebrow">ORGANIZATION ONBOARDING</p>
         <h1>建立共享边界</h1>
@@ -214,7 +209,7 @@ function Console({ client, sessionStore }: { client: WebClient; sessionStore: We
   if (organizationsQuery.isLoading)
     return (
       <div className="app-loading">
-        <DoorOpen />
+        <BrandMark tone="light" />
         <LoadingBlock label="加载组织上下文" />
       </div>
     );
@@ -345,13 +340,7 @@ function Console({ client, sessionStore }: { client: WebClient; sessionStore: We
     <div className="web-shell">
       <aside className={mobileNav ? 'admin-sidebar open' : 'admin-sidebar'}>
         <div className="sidebar-brand">
-          <span>
-            <DoorOpen />
-          </span>
-          <div>
-            <strong>CAPAPORT</strong>
-            <small>CONTROL PLANE</small>
-          </div>
+          <BrandLockup tone="dark" context="CONTROL PLANE" />
           <button type="button" aria-label="关闭导航" onClick={() => setMobileNav(false)}>
             <X />
           </button>

@@ -1,7 +1,7 @@
 import { ArrowRight, KeyRound, ShieldCheck } from 'lucide-react';
 import { type FormEvent, useState } from 'react';
 import type { CloudClient, SessionStore } from '../../app/types';
-import { DoorMark } from '../../components/brand';
+import { BrandLockup } from '../../components/brand';
 import { Button, ErrorNotice } from '../../components/ui';
 
 export function AuthScreen({ cloud, sessionStore }: { cloud: CloudClient; sessionStore: SessionStore }) {
@@ -56,7 +56,7 @@ export function AuthScreen({ cloud, sessionStore }: { cloud: CloudClient; sessio
   return (
     <main className="auth-layout">
       <aside className="auth-story">
-        <DoorMark />
+        <BrandLockup tone="dark" context="CAPABILITY REGISTRY" />
         <div className="auth-story__copy">
           <p className="eyebrow">LOCAL FIRST · GOVERNED SHARING</p>
           <h2>让每一次有效的 AI 工作，成为组织可复用的能力。</h2>

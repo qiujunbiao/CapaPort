@@ -20,7 +20,7 @@ import {
   ShieldCheck,
 } from 'lucide-react';
 import { useEffect, useMemo, useState, useSyncExternalStore } from 'react';
-import { DoorMark } from '../components/brand';
+import { BrandLockup } from '../components/brand';
 import { Status } from '../components/ui';
 import { DiscoveryModal } from '../features/agents/discovery-modal';
 import { HomePage } from '../features/agents/home-page';
@@ -261,7 +261,7 @@ function AppContent({
   if (!organizationId)
     return (
       <div className="app-loading">
-        <DoorMark />
+        <BrandLockup tone="light" />
         <span>正在加载组织空间…</span>
       </div>
     );
@@ -427,7 +427,7 @@ function AppContent({
     <div className={`desktop-shell ${railCollapsed ? 'desktop-shell--collapsed' : ''}`}>
       <aside className="side-rail">
         <div className="side-rail__brand">
-          <DoorMark compact={railCollapsed} />
+          <BrandLockup tone="dark" context="CAPABILITY REGISTRY" compact={railCollapsed} />
           <button
             type="button"
             aria-label={railCollapsed ? '展开侧栏' : '收起侧栏'}

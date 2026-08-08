@@ -1,6 +1,7 @@
-import { ArrowRight, DoorOpen, ShieldCheck } from 'lucide-react';
+import { ArrowRight, ShieldCheck } from 'lucide-react';
 import { useState } from 'react';
 import type { WebClient, WebSessionStore } from '../../app/types';
+import { BrandLockup } from '../../components/brand';
 import { Button, ErrorNotice } from '../../components/ui';
 
 export function AuthPage({ client, sessionStore }: { client: WebClient; sessionStore: WebSessionStore }) {
@@ -50,12 +51,7 @@ export function AuthPage({ client, sessionStore }: { client: WebClient; sessionS
   return (
     <main className="auth-layout">
       <section className="auth-story">
-        <div className="brand-lockup">
-          <span>
-            <DoorOpen />
-          </span>
-          <strong>CAPAPORT</strong>
-        </div>
+        <BrandLockup tone="dark" />
         <div>
           <p className="eyebrow">ORGANIZATION CAPABILITY GOVERNANCE</p>
           <h1>

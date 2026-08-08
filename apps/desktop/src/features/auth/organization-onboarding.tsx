@@ -1,7 +1,7 @@
 import { ArrowRight, Building2, MailCheck } from 'lucide-react';
 import { type FormEvent, useState } from 'react';
 import type { CloudClient, Session } from '../../app/types';
-import { DoorMark } from '../../components/brand';
+import { BrandLockup } from '../../components/brand';
 import { Button, ErrorNotice } from '../../components/ui';
 
 export function OrganizationOnboarding({
@@ -42,7 +42,7 @@ export function OrganizationOnboarding({
   }
   return (
     <main className="onboarding-layout">
-      <DoorMark />
+      <BrandLockup tone="dark" context="CAPABILITY REGISTRY" />
       <section className="onboarding-card">
         <p className="eyebrow">ORGANIZATION SETUP</p>
         <h1>建立共享边界</h1>

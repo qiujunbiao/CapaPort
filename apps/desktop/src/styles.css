@@ -162,61 +162,51 @@ p {
   background: var(--red);
 }
 
-.door-brand {
+.brand-lockup {
   display: flex;
   align-items: center;
   gap: 14px;
-  color: #f5f2ea;
-  font-size: 14px;
-  font-weight: 800;
-  letter-spacing: 0.13em;
+  color: #f7f4ed;
 }
-.door-brand small {
+.brand-mark {
   display: block;
-  margin-top: 5px;
+  width: 46px;
+  height: 46px;
+  flex: 0 0 auto;
+}
+.brand-wordmark {
+  display: flex;
+  flex-direction: column;
+}
+.brand-wordmark strong {
+  color: inherit;
+  font:
+    600 14px / 1 "DM Mono",
+    monospace;
+  letter-spacing: 0.12em;
+}
+.brand-wordmark small {
+  margin-top: 6px;
   color: #777970;
   font:
     400 7px / 1 "DM Mono",
     monospace;
   letter-spacing: 0.13em;
 }
-.door-mark {
-  position: relative;
-  display: block;
-  width: 42px;
-  height: 50px;
-  flex: 0 0 auto;
+.brand-lockup--light {
+  color: #181a20;
 }
-.door-mark i {
-  position: absolute;
-  inset: 2px 13px 5px 5px;
-  border: 5px solid #f2eee5;
-  border-bottom: 0;
-  transform: skewY(8deg);
+.brand-lockup--compact .brand-mark {
+  width: 38px;
+  height: 38px;
 }
-.door-mark b,
-.door-mark em,
-.door-mark u {
-  position: absolute;
-  height: 2px;
-  width: 22px;
-  left: 20px;
-  bottom: 11px;
-  background: var(--orange);
-  transform-origin: left;
-  text-decoration: none;
-}
-.door-mark b {
-  transform: rotate(-20deg);
-}
-.door-mark em {
-  transform: rotate(2deg);
-}
-.door-mark u {
-  transform: rotate(23deg);
-}
-.door-brand--compact .door-mark {
-  transform: scale(0.8);
+@media (prefers-contrast: more) {
+  .brand-mark--dark {
+    filter: grayscale(1) brightness(4);
+  }
+  .brand-mark--light {
+    filter: grayscale(1) brightness(0);
+  }
 }
 
 .auth-layout {

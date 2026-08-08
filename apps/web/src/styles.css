@@ -322,21 +322,27 @@ select {
   gap: 12px;
   color: inherit;
 }
-.brand-lockup > span,
-.sidebar-brand > span {
-  width: 34px;
-  height: 34px;
-  display: grid;
-  place-items: center;
-  color: white;
-  background: var(--orange);
+.brand-mark {
+  display: block;
+  width: 38px;
+  height: 38px;
+  flex: 0 0 auto;
 }
-.brand-lockup svg {
-  width: 20px;
+.brand-wordmark {
+  display: flex;
+  flex-direction: column;
 }
-.brand-lockup strong {
+.brand-wordmark strong {
   font:
     600 15px "DM Mono",
+    monospace;
+  letter-spacing: 0.12em;
+}
+.brand-wordmark small {
+  margin-top: 4px;
+  color: #7e7f76;
+  font:
+    9px "DM Mono",
     monospace;
   letter-spacing: 0.12em;
 }
@@ -455,31 +461,18 @@ select {
   border-bottom: 1px solid #32332d;
   padding: 0 18px;
 }
-.sidebar-brand > span {
-  width: 32px;
-  height: 32px;
+.sidebar-brand > .brand-lockup {
+  min-width: 0;
+  flex: 1;
 }
-.sidebar-brand svg {
-  width: 18px;
+.sidebar-brand .brand-mark {
+  width: 34px;
+  height: 34px;
 }
-.sidebar-brand div {
-  display: flex;
-  flex-direction: column;
-}
-.sidebar-brand strong {
+.sidebar-brand .brand-wordmark strong {
   color: white;
-  font:
-    600 13px "DM Mono",
-    monospace;
+  font-size: 13px;
   letter-spacing: 0.1em;
-}
-.sidebar-brand small {
-  margin-top: 3px;
-  color: #7e7f76;
-  font:
-    9px "DM Mono",
-    monospace;
-  letter-spacing: 0.12em;
 }
 .sidebar-brand > button {
   display: none;
@@ -683,6 +676,18 @@ select {
   display: grid;
   place-items: center;
   background: var(--bone);
+}
+.app-loading > .brand-mark {
+  width: 56px;
+  height: 56px;
+}
+@media (prefers-contrast: more) {
+  .brand-mark--dark {
+    filter: grayscale(1) brightness(4);
+  }
+  .brand-mark--light {
+    filter: grayscale(1) brightness(0);
+  }
 }
 
 /* Dashboard */

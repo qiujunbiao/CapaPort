@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 192" role="img" aria-labelledby="title">
+  <title id="title">CapaPort logo for light backgrounds</title>
+  <g transform="translate(12 12) scale(.65625)">
+    <path fill="#181A20" d="M88 216V70c0-22.091 17.909-40 40-40h70v186h-42V74h-26v142H88Z"/>
+    <g fill="none" stroke="#FF6426" stroke-width="13" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M28 80h24c19 0 30 11 43 26l14 16c8 9 18 12 33 12h86"/>
+      <path d="M28 128h200"/>
+      <path d="M28 176h24c19 0 30-11 43-26l14-16"/>
+    </g>
+  </g>
+  <text x="214" y="117" fill="#181A20" font-family="'DM Mono', ui-monospace, SFMono-Regular, Menlo, monospace" font-size="62" font-weight="600" letter-spacing="7">CAPAPORT</text>
+</svg>

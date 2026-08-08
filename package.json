@@ -19,6 +19,7 @@
     "security:gate": "tsx scripts/security-gate.ts",
     "sdk:generate": "tsx --tsconfig apps/api/tsconfig.json scripts/generate-sdk.ts",
     "sdk:check": "tsx --tsconfig apps/api/tsconfig.json scripts/generate-sdk.ts --check",
+    "brand:assets": "tsx scripts/sync-brand-assets.ts",
     "brand:check": "tsx scripts/check-brand.ts",
     "migrations:check": "tsx scripts/check-migrations.ts",
     "images:build": "tsx scripts/build-images.ts",

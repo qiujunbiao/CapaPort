@@ -1,3 +1,5 @@
+<img src="brand/capaport-lockup-light.svg" alt="CapaPort" width="420" />
+
 # CapaPort
 
 CapaPort 是面向研发团队的组织级 AI 能力管理平台。它把 Skill、Prompt 和项目上下文统一为“能力包”，覆盖从本地发现、敏感信息扫描、沉淀审核，到跨 Agent 安装与安全更新的完整闭环。
