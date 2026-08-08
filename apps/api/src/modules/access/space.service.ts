@@ -86,15 +86,16 @@ export class SpaceService {
 
   async create(tenant: TenantContext, userId: string, input: CreateSpaceRequest): Promise<SpaceRecord> {
     if (tenant.organizationRole !== 'owner' && tenant.organizationRole !== 'admin') this.denied();
+    const spaceId = randomUUID();
     try {
       return await this.repository.createSpace({
-        id: randomUUID(),
+        id: spaceId,
         organizationId: tenant.organizationId,
         createdByMembershipId: tenant.membershipId,
         createdByUserId: userId,
         type: input.type,
         name: input.name,
-        slug: input.slug,
+        slug: input.slug ?? `space-${spaceId.replaceAll('-', '').slice(0, 12)}`,
         reviewPolicy: input.reviewPolicy,
       });
     } catch (error) {

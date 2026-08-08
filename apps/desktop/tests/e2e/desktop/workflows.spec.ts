@@ -20,6 +20,35 @@ async function injectClients(page: Page, options: { conflict?: boolean; pendingP
     const publications: Array<Record<string, unknown>> = [];
     const projectBindings: Array<Record<string, unknown>> = [];
     const localProjectBindings: Array<Record<string, unknown>> = [];
+    const spaces = [
+      {
+        id: '00000000-0000-4000-8000-000000000020',
+        organizationId: 'org-a',
+        type: 'personal',
+        name: '个人空间',
+        slug: 'personal',
+        reviewPolicy: 'direct',
+        status: 'active',
+      },
+      {
+        id: '00000000-0000-4000-8000-000000000022',
+        organizationId: 'org-a',
+        type: 'project',
+        name: '支付平台',
+        slug: 'payments',
+        reviewPolicy: 'required',
+        status: 'active',
+      },
+      {
+        id: '00000000-0000-4000-8000-000000000021',
+        organizationId: 'org-a',
+        type: 'organization',
+        name: '平台研发',
+        slug: 'organization',
+        reviewPolicy: 'required',
+        status: 'active',
+      },
+    ];
     const capability = {
       id: '00000000-0000-4000-8000-000000000010',
       organizationId: 'org-a',
@@ -49,35 +78,22 @@ async function injectClients(page: Page, options: { conflict?: boolean; pendingP
         membershipId: 'member-a',
         organizationRole: 'owner',
       }),
-      spaces: async () => [
-        {
-          id: '00000000-0000-4000-8000-000000000020',
+      spaces: async () => spaces,
+      createSpace: async (
+        _session: unknown,
+        _organizationId: string,
+        input: { type: 'team' | 'project'; name: string; reviewPolicy: 'direct' | 'required' },
+      ) => {
+        const space = {
+          id: '00000000-0000-4000-8000-000000000023',
           organizationId: 'org-a',
-          type: 'personal',
-          name: '个人空间',
-          slug: 'personal',
-          reviewPolicy: 'direct',
+          ...input,
+          slug: 'space-generated',
           status: 'active',
-        },
-        {
-          id: '00000000-0000-4000-8000-000000000022',
-          organizationId: 'org-a',
-          type: 'project',
-          name: '支付平台',
-          slug: 'payments',
-          reviewPolicy: 'required',
-          status: 'active',
-        },
-        {
-          id: '00000000-0000-4000-8000-000000000021',
-          organizationId: 'org-a',
-          type: 'organization',
-          name: '平台研发',
-          slug: 'organization',
-          reviewPolicy: 'required',
-          status: 'active',
-        },
-      ],
+        };
+        spaces.push(space);
+        return space;
+      },
       securityPolicy: async () => ({
         blockedSeverities: ['high', 'critical'],
         confirmationSeverities: ['medium'],
@@ -376,6 +392,19 @@ test('shows organization identifiers and lets an owner rename the organization',
   await expect(page.getByRole('status').filter({ hasText: '组织名称已更新' })).toBeVisible();
   await expect(page.getByLabel('当前组织')).toContainText('海岸香蕉团队');
   await page.screenshot({ path: '/tmp/capaport-organization-settings.png' });
+});
+
+test('creates a space from its display name without asking for a technical identifier', async ({ page }) => {
+  await injectClients(page);
+  await page.goto('/');
+  await page.getByRole('button', { name: '空间与策略', exact: true }).click();
+
+  await expect(page.getByLabel('英文标识')).toHaveCount(0);
+  await page.getByLabel('空间名称').fill('产品交付团队');
+  await page.getByRole('button', { name: '创建空间' }).click();
+
+  await expect(page.getByRole('button', { name: /产品交付团队/ })).toBeVisible();
+  await page.screenshot({ path: '/tmp/capaport-space-create-without-slug.png', fullPage: true });
 });
 
 test('search → install preview → resolve local update conflict', async ({ page }) => {

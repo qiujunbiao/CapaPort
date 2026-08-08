@@ -11,7 +11,8 @@ export const createSpaceRequestSchema = z.object({
     .string()
     .trim()
     .toLowerCase()
-    .regex(/^[a-z0-9][a-z0-9-]{1,62}$/),
+    .regex(/^[a-z0-9][a-z0-9-]{1,62}$/)
+    .optional(),
   reviewPolicy: spaceReviewPolicySchema.default('required'),
 });
 export const updateSpaceRequestSchema = z.object({ name: z.string().trim().min(2).max(120) });

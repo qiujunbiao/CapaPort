@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { SpacesGovernancePage } from './spaces-page';
 
 describe('SpacesGovernancePage', () => {
-  it('blocks invalid Chinese space identifiers before sending the request', () => {
+  it('creates a named space without exposing a technical identifier', async () => {
     const onCreate = vi.fn(async () => undefined);
     render(
       <SpacesGovernancePage
@@ -20,12 +20,17 @@ describe('SpacesGovernancePage', () => {
       />,
     );
 
-    fireEvent.change(screen.getByLabelText('空间名称'), { target: { value: '团队1' } });
-    fireEvent.change(screen.getByLabelText('英文标识'), { target: { value: '团队1' } });
+    expect(screen.queryByLabelText('英文标识')).not.toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText('空间名称'), { target: { value: '团队一' } });
+    fireEvent.click(screen.getByRole('button', { name: '创建空间' }));
 
-    expect(screen.getByText('仅支持小写英文字母、数字和连字符，且必须以字母或数字开头。')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: '创建空间' })).toBeDisabled();
-    expect(onCreate).not.toHaveBeenCalled();
+    await waitFor(() =>
+      expect(onCreate).toHaveBeenCalledWith({
+        type: 'team',
+        name: '团队一',
+        reviewPolicy: 'required',
+      }),
+    );
   });
 
   it('creates spaces and manages policy and membership', async () => {
@@ -67,13 +72,10 @@ describe('SpacesGovernancePage', () => {
     );
 
     fireEvent.change(screen.getByLabelText('空间名称'), { target: { value: 'Delivery' } });
-    fireEvent.change(screen.getByLabelText('英文标识'), { target: { value: 'delivery' } });
     fireEvent.change(screen.getByLabelText('创建空间审核策略'), { target: { value: 'direct' } });
     fireEvent.click(screen.getByRole('button', { name: '创建空间' }));
     await waitFor(() =>
-      expect(onCreate).toHaveBeenCalledWith(
-        expect.objectContaining({ name: 'Delivery', slug: 'delivery', reviewPolicy: 'direct' }),
-      ),
+      expect(onCreate).toHaveBeenCalledWith(expect.objectContaining({ name: 'Delivery', reviewPolicy: 'direct' })),
     );
     fireEvent.click(screen.getByRole('button', { name: /Platform/ }));
     fireEvent.change(screen.getByLabelText('已选空间审核策略'), { target: { value: 'direct' } });

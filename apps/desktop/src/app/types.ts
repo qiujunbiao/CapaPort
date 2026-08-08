@@ -228,7 +228,7 @@ export interface CloudClient {
   createSpace(
     session: Session,
     organizationId: string,
-    input: { type: 'team' | 'project'; name: string; slug: string; reviewPolicy: SpaceReviewPolicy },
+    input: { type: 'team' | 'project'; name: string; slug?: string | undefined; reviewPolicy: SpaceReviewPolicy },
   ): Promise<SpaceSummary>;
   updateSpacePolicy(
     session: Session,

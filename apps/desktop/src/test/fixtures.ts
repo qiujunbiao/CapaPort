@@ -123,6 +123,7 @@ export function cloudFixture(
       organizationId,
       status: 'active',
       ...input,
+      slug: input.slug ?? 'space-new',
     }),
     updateSpacePolicy: async () => undefined,
     archiveSpace: async () => undefined,

@@ -25,12 +25,7 @@ export function SpacesGovernancePage({
   spaces: SpaceSummary[];
   organizationMembers: OrganizationMember[];
   loadMembers: (spaceId: string) => Promise<SpaceMember[]>;
-  onCreate: (input: {
-    type: 'team' | 'project';
-    name: string;
-    slug: string;
-    reviewPolicy: SpaceReviewPolicy;
-  }) => Promise<void>;
+  onCreate: (input: { type: 'team' | 'project'; name: string; reviewPolicy: SpaceReviewPolicy }) => Promise<void>;
   onPolicy: (spaceId: string, policy: SpaceReviewPolicy) => Promise<void>;
   onArchive: (spaceId: string) => Promise<void>;
   onAddMember: (spaceId: string, userId: string, role: SpaceRole) => Promise<void>;
@@ -41,14 +36,12 @@ export function SpacesGovernancePage({
   const [members, setMembers] = useState<SpaceMember[]>([]);
   const [type, setType] = useState<'team' | 'project'>('team');
   const [name, setName] = useState('');
-  const [slug, setSlug] = useState('');
   const [reviewPolicy, setReviewPolicy] = useState<SpaceReviewPolicy>('required');
   const [newUserId, setNewUserId] = useState('');
   const [newRole, setNewRole] = useState<SpaceRole>('viewer');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
-  const createSpaceInput = createSpaceRequestSchema.safeParse({ type, name, slug, reviewPolicy });
-  const slugValid = !slug || createSpaceRequestSchema.shape.slug.safeParse(slug).success;
+  const createSpaceInput = createSpaceRequestSchema.safeParse({ type, name, reviewPolicy });
 
   async function run(operation: () => Promise<void>) {
     setBusy(true);
@@ -101,26 +94,6 @@ export function SpacesGovernancePage({
             <input aria-label="空间名称" value={name} onChange={(event) => setName(event.target.value)} />
           </label>
           <label>
-            英文标识
-            <input
-              aria-label="英文标识"
-              aria-invalid={!slugValid}
-              autoCapitalize="none"
-              maxLength={63}
-              placeholder="team-1"
-              spellCheck={false}
-              value={slug}
-              onChange={(event) => setSlug(event.target.value.toLowerCase())}
-            />
-            {!slugValid ? (
-              <small className="field-hint field-hint--error">
-                仅支持小写英文字母、数字和连字符，且必须以字母或数字开头。
-              </small>
-            ) : (
-              <small className="field-hint">用于空间地址，长度为 2–63 个字符。</small>
-            )}
-          </label>
-          <label>
             审核策略
             <select
               aria-label="创建空间审核策略"
@@ -135,7 +108,8 @@ export function SpacesGovernancePage({
             disabled={!online || !createSpaceInput.success || busy}
             onClick={() => {
               if (!createSpaceInput.success) return;
-              void run(() => onCreate(createSpaceInput.data));
+              const { type: validType, name: validName, reviewPolicy: validReviewPolicy } = createSpaceInput.data;
+              void run(() => onCreate({ type: validType, name: validName, reviewPolicy: validReviewPolicy }));
             }}
           >
             创建空间

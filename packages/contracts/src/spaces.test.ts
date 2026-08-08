@@ -14,6 +14,14 @@ describe('space contracts', () => {
     );
   });
 
+  it('accepts space creation without exposing a technical slug', () => {
+    expect(createSpaceRequestSchema.parse({ type: 'team', name: ' 团队一 ' })).toEqual({
+      type: 'team',
+      name: '团队一',
+      reviewPolicy: 'required',
+    });
+  });
+
   it('rejects non-organization member identifiers at the contract boundary', () => {
     expect(addSpaceMemberRequestSchema.safeParse({ userId: 'other-tenant', role: 'viewer' }).success).toBe(false);
   });
