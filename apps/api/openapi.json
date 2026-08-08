@@ -657,6 +657,20 @@
         ]
       }
     },
+    "/api/v1/notifications/dead-letters/{kind}/{jobId}/retry": {
+      "post": {
+        "operationId": "notification_retryDeadLetter",
+        "parameters": [],
+        "responses": {
+          "202": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Notification"
+        ]
+      }
+    },
     "/api/v1/organizations": {
       "get": {
         "operationId": "organization_list",

@@ -247,5 +247,6 @@ export function webFixture(
       notificationReadAt = '2026-08-08T00:01:00.000Z';
     },
     deadLetters: async () => [],
+    retryDeadLetter: async () => undefined,
   };
 }

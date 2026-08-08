@@ -102,7 +102,31 @@ export function SecurityPage({ client }: { client: WebClient }) {
           </div>
         </div>
         {deadLetters?.length ? (
-          <pre className="safe-json">{JSON.stringify(deadLetters, null, 2)}</pre>
+          <div className="session-list">
+            {deadLetters.map((job) => {
+              const kind = String(job.kind ?? 'operation') as 'operation' | 'outbox' | 'delivery';
+              const id = String(job.id ?? '');
+              return (
+                <article key={`${kind}:${id}`}>
+                  <span>
+                    <strong>{String(job.type ?? job.event_type ?? job.channel ?? kind)}</strong>
+                    <small>
+                      {kind} · 尝试 {String(job.attempts ?? 0)} 次 ·{' '}
+                      {String(job.last_error ?? job.error_code ?? '失败')}
+                    </small>
+                  </span>
+                  <Button
+                    onClick={async () => {
+                      await client.retryDeadLetter(kind, id);
+                      await load();
+                    }}
+                  >
+                    重新执行
+                  </Button>
+                </article>
+              );
+            })}
+          </div>
         ) : (
           <p className="quiet-copy">当前没有进入死信队列的通知或分析任务。</p>
         )}

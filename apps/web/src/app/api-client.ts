@@ -100,5 +100,6 @@ export function createWebClient(baseUrl: string, sessionStore: WebSessionStore):
     notifications: () => request('/notifications?limit=20'),
     markNotificationRead: (notificationId) => request(`/notifications/${notificationId}/read`, { method: 'PATCH' }),
     deadLetters: () => request('/notifications/dead-letters?limit=50'),
+    retryDeadLetter: (kind, jobId) => request(`/notifications/dead-letters/${kind}/${jobId}/retry`, { method: 'POST' }),
   };
 }

@@ -60,7 +60,20 @@ export class NotificationRepository implements NotificationDataStore {
   }
 
   async deadLetters(organizationId: string, limit: number) {
-    const [events, deliveries] = await Promise.all([
+    const [operations, events, deliveries] = await Promise.all([
+      this.database.pool.query<{
+        id: string;
+        type: string;
+        attempts: number;
+        max_attempts: number;
+        last_error: string | null;
+        updated_at: Date;
+      }>(
+        `SELECT id,type,attempts,max_attempts,last_error,updated_at FROM operation_jobs
+          WHERE (organization_id=$1 OR organization_id IS NULL) AND status='dead_letter'
+          ORDER BY updated_at DESC LIMIT $2`,
+        [organizationId, limit],
+      ),
       this.database.pool.query<{
         id: string;
         event_type: string;
@@ -90,9 +103,27 @@ export class NotificationRepository implements NotificationDataStore {
       ),
     ]);
     return [
+      ...operations.rows.map((operation) => ({ kind: 'operation' as const, ...operation })),
       ...events.rows.map((event) => ({ kind: 'outbox' as const, ...event })),
       ...deliveries.rows.map((delivery) => ({ kind: 'delivery' as const, ...delivery })),
     ].slice(0, limit);
+  }
+
+  async retryDeadLetter(
+    organizationId: string,
+    kind: 'operation' | 'outbox' | 'delivery',
+    id: string,
+  ): Promise<boolean> {
+    const statements = {
+      operation: `UPDATE operation_jobs SET status='pending',attempts=0,last_error=NULL,available_at=now(),updated_at=now()
+        WHERE (organization_id=$1 OR organization_id IS NULL) AND id=$2 AND status='dead_letter'`,
+      outbox: `UPDATE outbox_events SET failed_at=NULL,attempts=0,last_error=NULL,available_at=now()
+        WHERE organization_id=$1 AND id=$2 AND failed_at IS NOT NULL`,
+      delivery: `UPDATE notification_deliveries SET status='failed',attempts=0,error_code=NULL,updated_at=now()
+        WHERE organization_id=$1 AND id=$2 AND status='dead_letter'`,
+    } as const;
+    const result = await this.database.pool.query(statements[kind], [organizationId, id]);
+    return (result.rowCount ?? 0) === 1;
   }
 
   private record(row: NotificationRow): NotificationRecord {

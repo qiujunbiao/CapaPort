@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+import { DeleteObjectCommand, S3Client } from '@aws-sdk/client-s3';
 import { type Job, Queue, Worker } from 'bullmq';
 import nodemailer from 'nodemailer';
 import type { Pool, PoolClient } from 'pg';
@@ -19,6 +20,85 @@ type OutboxRow = {
 };
 
 const queueName = 'agentdoor-outbox';
+const operationQueueName = 'agentdoor-operations';
+
+export const OPERATION_JOB_TYPES = [
+  'server_scan',
+  'search_refresh',
+  'version_update_notifications',
+  'daily_aggregate',
+  'audit_archive',
+  'object_cleanup',
+] as const;
+export type OperationJobType = (typeof OPERATION_JOB_TYPES)[number];
+export type OperationJob = {
+  id: string;
+  organizationId?: string;
+  type: OperationJobType;
+  dedupKey: string;
+  payload: Record<string, unknown>;
+  attempts: number;
+  maxAttempts: number;
+};
+export interface OperationJobStateStore {
+  claim(job: OperationJob): Promise<boolean>;
+  complete(job: OperationJob): Promise<void>;
+  fail(job: OperationJob, errorCode: string, deadLetter: boolean): Promise<void>;
+}
+export type OperationJobHandlers = Record<OperationJobType, (job: OperationJob) => Promise<void>>;
+
+export class OperationJobRunner {
+  constructor(
+    private readonly store: OperationJobStateStore,
+    private readonly handlers: OperationJobHandlers,
+  ) {}
+
+  async run(job: OperationJob): Promise<void> {
+    if (!(await this.store.claim(job))) return;
+    try {
+      await this.handlers[job.type](job);
+      await this.store.complete(job);
+      platformMetrics.increment('agentdoor_operation_jobs_total', { status: 'completed', type: job.type });
+    } catch (error) {
+      const deadLetter = job.attempts + 1 >= job.maxAttempts;
+      await this.store.fail(job, safeErrorCode(error, 'OperationError'), deadLetter);
+      platformMetrics.increment('agentdoor_operation_jobs_total', {
+        status: deadLetter ? 'dead_letter' : 'retrying',
+        type: job.type,
+      });
+    }
+  }
+}
+
+class PostgresOperationJobStore implements OperationJobStateStore {
+  constructor(private readonly pool: Pool) {}
+
+  async claim(job: OperationJob): Promise<boolean> {
+    const result = await this.pool.query(
+      `UPDATE operation_jobs SET status='running',started_at=now(),updated_at=now()
+        WHERE id=$1 AND status='pending' AND available_at <= now()`,
+      [job.id],
+    );
+    return (result.rowCount ?? 0) === 1;
+  }
+
+  async complete(job: OperationJob): Promise<void> {
+    await this.pool.query(
+      `UPDATE operation_jobs SET status='completed',completed_at=now(),updated_at=now(),last_error=NULL
+        WHERE id=$1 AND status='running'`,
+      [job.id],
+    );
+  }
+
+  async fail(job: OperationJob, errorCode: string, deadLetter: boolean): Promise<void> {
+    await this.pool.query(
+      `UPDATE operation_jobs SET status=$2,attempts=attempts+1,last_error=$3,updated_at=now(),
+         available_at=now()+make_interval(secs => LEAST(900,power(2,attempts+1)::int))
+       WHERE id=$1 AND status='running'`,
+      [job.id, deadLetter ? 'dead_letter' : 'pending', errorCode],
+    );
+  }
+}
 
 function safeErrorCode(error: unknown, fallback: string): string {
   if (error && typeof error === 'object' && 'code' in error && typeof error.code === 'string') {
@@ -33,11 +113,44 @@ function safeErrorCode(error: unknown, fallback: string): string {
   return fallback;
 }
 
+export async function versionUpdateRecipients(pool: Pick<Pool, 'query'>, organizationId: string, versionId: string) {
+  const result = await pool.query<{ user_id: string }>(
+    `SELECT DISTINCT user_id FROM (
+       SELECT i.user_id FROM capability_versions published
+        JOIN installations i ON i.organization_id=published.organization_id
+          AND i.capability_id=published.capability_id AND i.status='installed' AND i.version_id<>published.id
+        WHERE published.organization_id=$1 AND published.id=$2
+       UNION
+       SELECT p.submitted_by_user_id FROM publications p
+        WHERE p.organization_id=$1 AND p.published_version_id=$2
+     ) recipients`,
+    [organizationId, versionId],
+  );
+  return result.rows.map((row) => row.user_id);
+}
+
+export async function replaceDailyAggregate(pool: Pick<Pool, 'query'>, day: string): Promise<void> {
+  await pool.query(
+    `INSERT INTO analytics_daily (organization_id,day,metrics,computed_at)
+     SELECT o.id,$1::date,jsonb_build_object(
+       'productEvents',(SELECT count(*) FROM product_events e WHERE e.organization_id=o.id AND e.occurred_at >= $1::date AND e.occurred_at < $1::date+1),
+       'publications',(SELECT count(*) FROM publications p WHERE p.organization_id=o.id AND p.created_at >= $1::date AND p.created_at < $1::date+1),
+       'installations',(SELECT count(*) FROM installation_analytics i WHERE i.organization_id=o.id AND i.occurred_at >= $1::date AND i.occurred_at < $1::date+1)
+     ),now() FROM organizations o WHERE o.status='active'
+     ON CONFLICT (organization_id,day) DO UPDATE SET metrics=EXCLUDED.metrics,computed_at=now()`,
+    [day],
+  );
+}
+
 export class OperationsWorker {
   private readonly queue: Queue<{ eventId: string }>;
   private readonly worker: Worker<{ eventId: string }>;
+  private readonly operationQueue: Queue<OperationJob>;
+  private readonly operationWorker: Worker<OperationJob>;
+  private readonly operationRunner: OperationJobRunner;
   private readonly transport: ReturnType<typeof nodemailer.createTransport>;
   private readonly sms: SmsProvider;
+  private readonly storage: S3Client;
 
   constructor(
     private readonly pool: Pool,
@@ -53,19 +166,42 @@ export class OperationsWorker {
       ...(redisUrl.password ? { password: decodeURIComponent(redisUrl.password) } : {}),
     };
     this.queue = new Queue(queueName, { connection });
+    this.operationQueue = new Queue(operationQueueName, { connection });
     this.transport = nodemailer.createTransport({
       host: config.notification.smtpHost,
       port: config.notification.smtpPort,
       secure: false,
     });
     this.sms = createSmsProvider(config);
+    this.storage = new S3Client({
+      endpoint: config.s3.endpoint,
+      region: config.s3.region,
+      forcePathStyle: true,
+      credentials: { accessKeyId: config.s3.accessKey, secretAccessKey: config.s3.secretKey },
+    });
+    this.operationRunner = new OperationJobRunner(new PostgresOperationJobStore(pool), {
+      server_scan: (job) => this.serverScan(job),
+      search_refresh: (job) => this.refreshSearchDocument(job),
+      version_update_notifications: (job) => this.deliverVersionUpdates(job),
+      daily_aggregate: (job) => this.replaceDailyAggregates(job),
+      audit_archive: (job) => this.archiveAuditLogs(job),
+      object_cleanup: () => this.cleanupExpiredUploads(),
+    });
     this.worker = new Worker(queueName, (job) => this.process(job), {
       connection,
       concurrency: 5,
     });
+    this.operationWorker = new Worker(operationQueueName, (job) => this.operationRunner.run(job.data), {
+      connection,
+      concurrency: 3,
+    });
     this.worker.on('error', (error) => {
       platformMetrics.increment('agentdoor_worker_errors_total', { operation: 'notification' });
       platformLogger.error('worker.notification.error', { code: safeErrorCode(error, 'WorkerError') });
+    });
+    this.operationWorker.on('error', (error) => {
+      platformMetrics.increment('agentdoor_worker_errors_total', { operation: 'durable_job' });
+      platformLogger.error('worker.operation.error', { code: safeErrorCode(error, 'WorkerError') });
     });
   }
 
@@ -88,7 +224,9 @@ export class OperationsWorker {
         },
       );
     }
-    return events.rowCount ?? 0;
+    await this.scheduleRecurringJobs();
+    const operations = await this.enqueuePendingOperations();
+    return (events.rowCount ?? 0) + operations;
   }
 
   async cleanupRetention(): Promise<void> {
@@ -101,8 +239,6 @@ export class OperationsWorker {
         `DELETE FROM outbox_events WHERE published_at < now() - interval '400 days'
           AND NOT EXISTS (SELECT 1 FROM notifications n WHERE n.source_event_id=outbox_events.id)`,
       );
-      await client.query("SET LOCAL agentdoor.audit_retention = 'on'");
-      await client.query('DELETE FROM audit_logs WHERE expires_at < now()');
       await client.query('COMMIT');
     } catch (error) {
       await client.query('ROLLBACK');
@@ -114,7 +250,215 @@ export class OperationsWorker {
 
   async close(): Promise<void> {
     await this.worker.close();
+    await this.operationWorker.close();
     await this.queue.close();
+    await this.operationQueue.close();
+    this.storage.destroy();
+  }
+
+  private async scheduleRecurringJobs(): Promise<void> {
+    const now = new Date();
+    const day = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() - 1));
+    const dayKey = day.toISOString().slice(0, 10);
+    const hourKey = now.toISOString().slice(0, 13);
+    await Promise.all([
+      this.createOperationJob('daily_aggregate', `daily:${dayKey}`, { day: dayKey }),
+      this.createOperationJob('audit_archive', `audit:${dayKey}`, { before: now.toISOString() }),
+      this.createOperationJob('object_cleanup', `objects:${hourKey}`, {}),
+    ]);
+  }
+
+  private async enqueuePendingOperations(): Promise<number> {
+    await this.pool.query(
+      `UPDATE operation_jobs SET status='pending',available_at=now(),updated_at=now(),last_error='WorkerLeaseExpired'
+        WHERE status='running' AND started_at < now()-interval '15 minutes'`,
+    );
+    const result = await this.pool.query<{
+      id: string;
+      organization_id: string | null;
+      type: OperationJobType;
+      dedup_key: string;
+      payload: Record<string, unknown>;
+      attempts: number;
+      max_attempts: number;
+    }>(
+      `SELECT id,organization_id,type,dedup_key,payload,attempts,max_attempts FROM operation_jobs
+        WHERE status='pending' AND available_at <= now() ORDER BY created_at LIMIT 100`,
+    );
+    for (const row of result.rows) {
+      const operation: OperationJob = {
+        id: row.id,
+        ...(row.organization_id ? { organizationId: row.organization_id } : {}),
+        type: row.type,
+        dedupKey: row.dedup_key,
+        payload: row.payload,
+        attempts: row.attempts,
+        maxAttempts: row.max_attempts,
+      };
+      await this.operationQueue.add(row.type, operation, {
+        jobId: `${row.id}-${row.attempts}`,
+        removeOnComplete: true,
+        removeOnFail: { age: 86_400, count: 10_000 },
+      });
+    }
+    return result.rowCount ?? 0;
+  }
+
+  private async createOperationJob(
+    type: OperationJobType,
+    dedupKey: string,
+    payload: Record<string, unknown>,
+    organizationId?: string,
+  ): Promise<void> {
+    await this.pool.query(
+      `INSERT INTO operation_jobs (id,organization_id,type,dedup_key,payload)
+       VALUES ($1,$2,$3,$4,$5::jsonb) ON CONFLICT (type,dedup_key) DO NOTHING`,
+      [randomUUID(), organizationId ?? null, type, dedupKey, JSON.stringify(payload)],
+    );
+  }
+
+  private async createFollowUpJobs(event: OutboxRow): Promise<void> {
+    if (event.event_type === 'publication.submitted') {
+      await this.createOperationJob(
+        'server_scan',
+        `publication:${event.aggregate_id}`,
+        { publicationId: event.aggregate_id },
+        event.organization_id ?? undefined,
+      );
+    }
+    if (event.event_type === 'capability.version.published') {
+      const versionId =
+        typeof event.payload.publishedVersionId === 'string' ? event.payload.publishedVersionId : event.aggregate_id;
+      const capabilityId = typeof event.payload.capabilityId === 'string' ? event.payload.capabilityId : undefined;
+      await Promise.all([
+        this.createOperationJob(
+          'search_refresh',
+          `version:${versionId}`,
+          { versionId, ...(capabilityId ? { capabilityId } : {}) },
+          event.organization_id ?? undefined,
+        ),
+        this.createOperationJob(
+          'version_update_notifications',
+          `event:${event.id}`,
+          { eventId: event.id, versionId },
+          event.organization_id ?? undefined,
+        ),
+      ]);
+    }
+  }
+
+  private async serverScan(job: OperationJob): Promise<void> {
+    const publicationId = this.payloadString(job, 'publicationId');
+    await this.pool.query(
+      `INSERT INTO server_scan_results (job_id,organization_id,publication_id,status,report,completed_at)
+       SELECT $2,p.organization_id,p.id,
+         CASE WHEN coalesce((p.candidate_scan_report->>'blocked')::boolean,false) THEN 'blocked' ELSE 'passed' END,
+         p.candidate_scan_report || jsonb_build_object('serverVerifiedAt',now()),now()
+       FROM publications p WHERE p.id=$1
+       ON CONFLICT (organization_id,publication_id) DO NOTHING`,
+      [publicationId, job.id],
+    );
+  }
+
+  private async refreshSearchDocument(job: OperationJob): Promise<void> {
+    const versionId = this.payloadString(job, 'versionId');
+    await this.pool.query(
+      `INSERT INTO capability_search_documents (capability_id,organization_id,document,version_id,refreshed_at)
+       SELECT c.id,c.organization_id,
+         concat_ws(' ',c.slug,c.name,c.description,array_to_string(ARRAY(SELECT jsonb_array_elements_text(c.tags)),' ')),
+         v.id,now()
+       FROM capability_versions v JOIN capabilities c ON c.id=v.capability_id AND c.organization_id=v.organization_id
+       WHERE v.id=$1 AND v.status IN ('published','deprecated')
+       ON CONFLICT (capability_id) DO UPDATE SET document=EXCLUDED.document,version_id=EXCLUDED.version_id,
+         organization_id=EXCLUDED.organization_id,refreshed_at=now()`,
+      [versionId],
+    );
+  }
+
+  private async deliverVersionUpdates(job: OperationJob): Promise<void> {
+    const eventId = this.payloadString(job, 'eventId');
+    const result = await this.pool.query<OutboxRow>('SELECT * FROM outbox_events WHERE id=$1', [eventId]);
+    const event = result.rows[0];
+    if (!event) return;
+    const recipients = await this.resolveRecipients(event);
+    await this.prepareNotifications(event, recipients);
+    await this.deliver(event.id);
+  }
+
+  private async replaceDailyAggregates(job: OperationJob): Promise<void> {
+    const day = this.payloadString(job, 'day');
+    await replaceDailyAggregate(this.pool, day);
+  }
+
+  private async archiveAuditLogs(_job: OperationJob): Promise<void> {
+    const client = await this.pool.connect();
+    try {
+      await client.query('BEGIN');
+      const groups = await client.query<{
+        organization_id: string;
+        period_start: Date;
+        period_end: Date;
+        row_count: number;
+        payload: unknown;
+        checksum: string;
+      }>(
+        `SELECT organization_id,date_trunc('month',min(created_at)) AS period_start,
+          date_trunc('month',min(created_at))+interval '1 month' AS period_end,count(*)::int AS row_count,
+          jsonb_agg(to_jsonb(a) ORDER BY created_at,id) AS payload,
+          md5(jsonb_agg(to_jsonb(a) ORDER BY created_at,id)::text) AS checksum
+         FROM (SELECT * FROM audit_logs WHERE expires_at < now() ORDER BY created_at) a
+         GROUP BY organization_id,date_trunc('month',created_at)`,
+      );
+      for (const group of groups.rows) {
+        await client.query(
+          `INSERT INTO audit_archives
+            (id,organization_id,period_start,period_end,row_count,payload,checksum)
+           VALUES ($1,$2,$3,$4,$5,$6::jsonb,$7)
+           ON CONFLICT (organization_id,period_start,period_end) DO NOTHING`,
+          [
+            randomUUID(),
+            group.organization_id,
+            group.period_start,
+            group.period_end,
+            group.row_count,
+            JSON.stringify(group.payload),
+            group.checksum,
+          ],
+        );
+      }
+      await client.query("SET LOCAL agentdoor.audit_retention = 'on'");
+      await client.query(
+        `DELETE FROM audit_logs a USING audit_archives archive
+          WHERE a.organization_id=archive.organization_id AND a.expires_at < now()
+            AND a.created_at >= archive.period_start AND a.created_at < archive.period_end`,
+      );
+      await client.query('COMMIT');
+    } catch (error) {
+      await client.query('ROLLBACK');
+      throw error;
+    } finally {
+      client.release();
+    }
+  }
+
+  private async cleanupExpiredUploads(): Promise<void> {
+    const uploads = await this.pool.query<{ id: string; object_key: string }>(
+      `SELECT id,object_key FROM artifact_uploads WHERE status='pending' AND expires_at < now()
+        ORDER BY expires_at LIMIT 100`,
+    );
+    for (const upload of uploads.rows) {
+      await this.storage.send(new DeleteObjectCommand({ Bucket: this.config.s3.bucket, Key: upload.object_key }));
+      await this.pool.query(
+        "UPDATE artifact_uploads SET status='expired',failure_code='expired' WHERE id=$1 AND status='pending'",
+        [upload.id],
+      );
+    }
+  }
+
+  private payloadString(job: OperationJob, key: string): string {
+    const value = job.payload[key];
+    if (typeof value !== 'string' || !value) throw new Error(`OperationPayloadMissing_${key}`);
+    return value;
   }
 
   private async process(job: Job<{ eventId: string }>): Promise<void> {
@@ -131,6 +475,7 @@ export class OperationsWorker {
       const recipients = await this.resolveRecipients(event);
       await this.prepareNotifications(event, recipients);
       await this.deliver(event.id);
+      await this.createFollowUpJobs(event);
       await this.pool.query(
         'UPDATE outbox_events SET published_at=now(),last_error=NULL WHERE id=$1 AND published_at IS NULL',
         [event.id],
@@ -179,12 +524,7 @@ export class OperationsWorker {
       return result.rows.map((row) => row.submitted_by_user_id);
     }
     if (event.aggregate_type === 'capability_version') {
-      const result = await this.pool.query<{ user_id: string }>(
-        `SELECT DISTINCT i.user_id FROM installations i
-          WHERE i.organization_id=$1 AND i.version_id=$2 AND i.status='installed'`,
-        [event.organization_id, event.aggregate_id],
-      );
-      return result.rows.map((row) => row.user_id);
+      return versionUpdateRecipients(this.pool, event.organization_id, event.aggregate_id);
     }
     if (event.aggregate_type === 'device') {
       const result = await this.pool.query<{ user_id: string }>(

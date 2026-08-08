@@ -570,8 +570,12 @@ export class PublishingRepository implements PublicationDataStore {
       [
         randomUUID(),
         input.eventType,
-        input.resourceType ?? 'publication',
-        input.publicationId,
+        input.eventType.startsWith('capability.version.') && typeof input.metadata.publishedVersionId === 'string'
+          ? 'capability_version'
+          : (input.resourceType ?? 'publication'),
+        input.eventType.startsWith('capability.version.') && typeof input.metadata.publishedVersionId === 'string'
+          ? input.metadata.publishedVersionId
+          : input.publicationId,
         input.organizationId,
         JSON.stringify(input.metadata),
       ],

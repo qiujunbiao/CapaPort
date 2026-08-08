@@ -21,6 +21,7 @@ export interface NotificationDataStore {
   ): Promise<{ notifications: NotificationRecord[]; unreadCount: number; nextCursor?: string }>;
   markRead(organizationId: string, userId: string, notificationId: string): Promise<NotificationRecord | undefined>;
   deadLetters(organizationId: string, limit: number): Promise<unknown[]>;
+  retryDeadLetter(organizationId: string, kind: 'operation' | 'outbox' | 'delivery', id: string): Promise<boolean>;
 }
 
 @Injectable()
@@ -42,5 +43,19 @@ export class NotificationService {
       throw new AppError('ACCESS_DENIED', 'Dead-letter visibility is restricted.', 403);
     }
     return this.repository.deadLetters(tenant.organizationId, limit);
+  }
+
+  async retryDeadLetter(
+    tenant: TenantContext,
+    kind: 'operation' | 'outbox' | 'delivery',
+    id: string,
+  ): Promise<{ accepted: true }> {
+    if (!['owner', 'admin'].includes(tenant.organizationRole)) {
+      throw new AppError('ACCESS_DENIED', 'Only organization administrators can retry failed jobs.', 403);
+    }
+    if (!(await this.repository.retryDeadLetter(tenant.organizationId, kind, id))) {
+      throw new AppError('ACCESS_DENIED', 'The failed job is unavailable.', 403);
+    }
+    return { accepted: true };
   }
 }

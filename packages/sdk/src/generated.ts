@@ -231,6 +231,11 @@ export const apiOperations = [
     operationId: 'notification_deadLetters',
   },
   {
+    method: 'POST',
+    path: '/notifications/dead-letters/{kind}/{jobId}/retry',
+    operationId: 'notification_retryDeadLetter',
+  },
+  {
     method: 'GET',
     path: '/organizations',
     operationId: 'organization_list',

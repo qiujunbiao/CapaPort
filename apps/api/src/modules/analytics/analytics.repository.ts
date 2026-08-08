@@ -22,7 +22,7 @@ export class AnalyticsRepository implements AnalyticsDataStore {
   }
 
   async metrics(organizationId: string, from: Date, to: Date) {
-    const [events, publications, installations, devices] = await Promise.all([
+    const [events, publications, installations, devices, daily] = await Promise.all([
       this.database.pool.query<{ event_name: string; count: string }>(
         `SELECT event_name,count(*)::text AS count FROM product_events
           WHERE organization_id=$1 AND occurred_at >= $2 AND occurred_at < $3
@@ -46,6 +46,11 @@ export class AnalyticsRepository implements AnalyticsDataStore {
           WHERE organization_id=$1 AND status='active' AND last_seen_at >= $2 AND last_seen_at < $3`,
         [organizationId, from, to],
       ),
+      this.database.pool.query<{ day: string; metrics: Record<string, number> }>(
+        `SELECT day,metrics FROM analytics_daily
+          WHERE organization_id=$1 AND day >= $2::date AND day < $3::date ORDER BY day`,
+        [organizationId, from, to],
+      ),
     ]);
     return {
       range: { from: from.toISOString(), to: to.toISOString() },
@@ -53,6 +58,7 @@ export class AnalyticsRepository implements AnalyticsDataStore {
       publicationFunnel: Object.fromEntries(publications.rows.map((row) => [row.status, Number(row.count)])),
       installationOutcomes: Object.fromEntries(installations.rows.map((row) => [row.outcome, Number(row.count)])),
       activeDevices: Number(devices.rows[0]?.count ?? 0),
+      daily: daily.rows.map((row) => ({ day: row.day, metrics: row.metrics })),
     };
   }
 }

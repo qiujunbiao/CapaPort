@@ -61,6 +61,7 @@ export type AnalyticsMetrics = {
   publicationFunnel: Record<string, number>;
   installationOutcomes: Record<string, number>;
   activeDevices: number;
+  daily?: Array<{ day: string; metrics: Record<string, number> }>;
 };
 export type NotificationItem = {
   id: string;
@@ -139,6 +140,7 @@ export interface WebClient {
   notifications(): Promise<NotificationPage>;
   markNotificationRead(notificationId: string): Promise<void>;
   deadLetters(): Promise<Array<Record<string, unknown>>>;
+  retryDeadLetter(kind: 'operation' | 'outbox' | 'delivery', jobId: string): Promise<void>;
 }
 
 export type WebSessionStore = {
