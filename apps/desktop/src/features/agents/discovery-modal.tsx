@@ -4,10 +4,28 @@ import { ArrowLeft, CheckCircle2, FileSearch, LoaderCircle, Radar, ShieldAlert, 
 import { useEffect, useMemo, useState } from 'react';
 import type { CloudClient, LocalClient, Session } from '../../app/types';
 import { Button, ErrorNotice, Status } from '../../components/ui';
-import type { AgentDescriptor, LocalCapabilitySummary, LocalScanReport } from '../../generated/commands';
+import type {
+  AgentDescriptor,
+  DiscoveryIssue,
+  LocalCapabilitySummary,
+  LocalScanReport,
+} from '../../generated/commands';
 import { scanArchiveBeforeUpload } from '../../security/client-scan';
 
-type Selected = { agent: AgentDescriptor; capability: LocalCapabilitySummary };
+type Selected = {
+  agent: AgentDescriptor;
+  capability: LocalCapabilitySummary;
+  sourcePath?: string;
+  sourceKind?: 'global' | 'shared' | 'plugin' | 'workspace';
+  linked?: boolean;
+};
+
+const sourceLabels = {
+  global: '全局安装',
+  shared: '共享目录',
+  plugin: '插件提供',
+  workspace: '项目级',
+} as const;
 
 function archiveBytes(value: string): Uint8Array {
   const decoded = atob(value);
@@ -35,6 +53,7 @@ export function DiscoveryModal({
 }) {
   const [agents, setAgents] = useState<AgentDescriptor[]>([]);
   const [inventory, setInventory] = useState<Selected[]>([]);
+  const [discoveryIssues, setDiscoveryIssues] = useState<DiscoveryIssue[]>([]);
   const [selected, setSelected] = useState<Selected>();
   const [scan, setScan] = useState<LocalScanReport>();
   const [loading, setLoading] = useState(true);
@@ -78,19 +97,50 @@ export function DiscoveryModal({
     let cancelled = false;
     (async () => {
       try {
-        const detected = await local.detectAgents();
-        const discovered = (
+        const [detected, skillDiscovery] = await Promise.all([local.detectAgents(), local.discoverLocalSkills()]);
+        const nativeCapabilities = (
           await Promise.all(
             detected.map(async (agent) =>
               (
                 await local.inventoryAgent({ adapterId: agent.adapterId, rootPath: agent.rootPath })
-              ).map((capability) => ({ agent, capability })),
+              )
+                .filter((capability) => capability.componentType !== 'skill')
+                .map((capability) => ({ agent, capability })),
             ),
           )
         ).flat();
+        const discoveredSkills: Selected[] = skillDiscovery.skills.map((skill) => ({
+          agent: {
+            adapterId: skill.adapterId,
+            displayName: skill.displayName,
+            scope: skill.scope,
+            rootPath: skill.sourcePath,
+          },
+          capability: {
+            slug: skill.slug,
+            componentType: 'skill',
+            relativePath: '',
+            digest: skill.digest,
+          },
+          sourcePath: skill.sourcePath,
+          sourceKind: skill.sourceKind,
+          linked: skill.linked,
+        }));
+        const detectedAgents = [...detected];
+        for (const skill of skillDiscovery.skills) {
+          if (!detectedAgents.some((agent) => agent.adapterId === skill.adapterId && agent.scope === skill.scope)) {
+            detectedAgents.push({
+              adapterId: skill.adapterId,
+              displayName: skill.displayName,
+              scope: skill.scope,
+              rootPath: skill.sourcePath,
+            });
+          }
+        }
         if (!cancelled) {
-          setAgents(detected);
-          setInventory(discovered);
+          setAgents(detectedAgents);
+          setInventory([...nativeCapabilities, ...discoveredSkills]);
+          setDiscoveryIssues(skillDiscovery.issues);
           setSpaceId(draftSpaces.find((space) => space.type === 'personal')?.id ?? draftSpaces[0]?.id ?? '');
           setTargetSpaceId(
             publicationSpaces.find((space) => space.type === 'organization')?.id ?? publicationSpaces[0]?.id ?? '',
@@ -113,8 +163,10 @@ export function DiscoveryModal({
     setError('');
     setBusy(true);
     try {
-      const root = item.agent.rootPath.replace(/[\\/]$/, '');
-      setScan(await local.scanLocalPackage(`${root}/${item.capability.relativePath}`));
+      const path = item.sourcePath
+        ? item.sourcePath
+        : `${item.agent.rootPath.replace(/[\\/]$/, '')}/${item.capability.relativePath}`;
+      setScan(await local.scanLocalPackage(path));
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : '安全扫描失败');
     } finally {
@@ -132,6 +184,7 @@ export function DiscoveryModal({
         rootPath: selected.agent.rootPath,
         componentType: selected.capability.componentType,
         slug: selected.capability.slug,
+        ...(selected.sourcePath ? { sourcePath: selected.sourcePath } : {}),
       });
       const localPolicyReport = await scanArchiveBeforeUpload(archiveBytes(archive.archiveBase64), securityPolicy);
       setPreUploadScan(localPolicyReport);
@@ -354,6 +407,7 @@ export function DiscoveryModal({
                 </strong>
               </span>
               <small>只读取 Codex、Claude Code、Cursor 与 Gemini CLI 的已知能力目录。</small>
+              {discoveryIssues.length ? <small>另有 {discoveryIssues.length} 个路径未能读取</small> : null}
             </div>
             {loading ? (
               <div className="skeleton-lines">
@@ -364,12 +418,20 @@ export function DiscoveryModal({
             ) : inventory.length ? (
               <div className="inventory-list">
                 {inventory.map((item) => (
-                  <div className="inventory-row" key={`${item.agent.rootPath}-${item.capability.relativePath}`}>
+                  <div
+                    className="inventory-row"
+                    key={item.sourcePath ?? `${item.agent.rootPath}-${item.capability.relativePath}`}
+                  >
                     <span className="inventory-type">{item.capability.componentType.toUpperCase()}</span>
                     <div>
                       <strong>{item.capability.slug}</strong>
                       <small>
-                        {item.agent.displayName} · {item.agent.scope === 'user' ? '用户级' : '项目级'}
+                        {item.agent.displayName} ·{' '}
+                        {item.sourceKind
+                          ? `${sourceLabels[item.sourceKind]}${item.linked ? ' · 符号链接' : ''}`
+                          : item.agent.scope === 'user'
+                            ? '用户级'
+                            : '项目级'}
                       </small>
                     </div>
                     <span className="mono">{item.capability.digest.slice(0, 10)}</span>

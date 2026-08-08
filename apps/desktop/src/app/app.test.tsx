@@ -132,6 +132,46 @@ describe('desktop application safety workflows', () => {
     expect(screen.getByRole('button', { name: '创建云端草稿' })).toBeDisabled();
   });
 
+  it('shows linked global skills and scans their canonical source path', async () => {
+    const local = localFixture();
+    const sourcePath = '/external/shared/linked-global';
+    local.discoverLocalSkills = async () => ({
+      skills: [
+        {
+          adapterId: 'codex',
+          displayName: 'Codex',
+          scope: 'user',
+          sourceKind: 'global',
+          linked: true,
+          sourcePath,
+          slug: 'linked-global',
+          digest: 'f'.repeat(64),
+        },
+      ],
+      issues: [{ path: '/broken/skill', reason: 'broken-symlink' }],
+    });
+    const scanLocalPackage = vi.fn(local.scanLocalPackage);
+    local.scanLocalPackage = scanLocalPackage;
+    render(
+      <DesktopApp
+        cloud={cloudFixture()}
+        local={local}
+        sessionStore={createMemorySessionStore({
+          accessToken: 'token',
+          refreshToken: 'refresh',
+          organizationId: 'org-a',
+        })}
+      />,
+    );
+
+    fireEvent.click(await screen.findByRole('button', { name: '本地发现' }));
+    expect(await screen.findByText(/全局安装 · 符号链接/)).toBeInTheDocument();
+    expect(screen.getByText('另有 1 个路径未能读取')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: '导入 linked-global' }));
+
+    await waitFor(() => expect(scanLocalPackage).toHaveBeenCalledWith(sourcePath));
+  });
+
   it('saves discovered capabilities to the personal space before publishing to the organization', async () => {
     const cloud = cloudFixture();
     cloud.spaces = async () => [
