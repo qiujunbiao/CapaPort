@@ -100,6 +100,13 @@ fn detect_agents(
 }
 #[cfg(feature = "tauri-app")]
 #[tauri::command]
+fn discover_local_skills(
+    state: tauri::State<'_, AppState>,
+) -> Result<capaport_runtime::commands::LocalSkillDiscoveryResult, CommandError> {
+    state.runtime.discover_local_skills().map_err(Into::into)
+}
+#[cfg(feature = "tauri-app")]
+#[tauri::command]
 fn inventory_agent(
     input: InventoryInput,
     state: tauri::State<'_, AppState>,
@@ -315,6 +322,7 @@ fn main() {
         .manage(AppState { runtime })
         .invoke_handler(tauri::generate_handler![
             detect_agents,
+            discover_local_skills,
             inventory_agent,
             scan_local_package,
             read_managed_file,

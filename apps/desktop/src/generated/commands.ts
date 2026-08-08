@@ -1,5 +1,17 @@
 export type AgentDescriptor = { adapterId: string; displayName: string; scope: 'user' | 'workspace'; rootPath: string };
 export type LocalCapabilitySummary = { slug: string; componentType: string; relativePath: string; digest: string };
+export type DiscoveredLocalSkill = {
+  adapterId: 'codex' | 'claude-code' | 'cursor' | 'gemini-cli';
+  displayName: string;
+  scope: 'user' | 'workspace';
+  sourceKind: 'global' | 'shared' | 'plugin' | 'workspace';
+  linked: boolean;
+  sourcePath: string;
+  slug: string;
+  digest: string;
+};
+export type DiscoveryIssue = { path: string; reason: string };
+export type LocalSkillDiscoveryResult = { skills: DiscoveredLocalSkill[]; issues: DiscoveryIssue[] };
 export type ScanFinding = {
   rule: string;
   severity: 'critical' | 'high' | 'medium' | 'low';
@@ -90,6 +102,7 @@ export type ContextPackageExport = {
 
 export const localCommandNames = [
   'detect_agents',
+  'discover_local_skills',
   'inventory_agent',
   'scan_local_package',
   'read_managed_file',

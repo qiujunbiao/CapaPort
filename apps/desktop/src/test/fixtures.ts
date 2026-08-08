@@ -435,6 +435,21 @@ export function localFixture(
     detectAgents: async () => [
       { adapterId: 'codex', displayName: 'Codex', scope: 'user', rootPath: '[authorized-root]' },
     ],
+    discoverLocalSkills: async () => ({
+      skills: [
+        {
+          adapterId: 'codex',
+          displayName: 'Codex',
+          scope: 'user',
+          sourceKind: 'shared',
+          linked: false,
+          sourcePath: '[authorized-root]/skills/release-helper',
+          slug: 'release-helper',
+          digest: 'b'.repeat(64),
+        },
+      ],
+      issues: [],
+    }),
     inventoryAgent: async () => [
       { slug: 'release-helper', componentType: 'skill', relativePath: 'skills/release-helper', digest: 'b'.repeat(64) },
     ],

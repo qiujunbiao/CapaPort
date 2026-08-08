@@ -31,6 +31,7 @@ import type {
   LocalCapabilitySummary,
   LocalProjectBinding,
   LocalScanReport,
+  LocalSkillDiscoveryResult,
   ManagedFileContent,
   ProjectInventory,
   SyncQueueStatus,
@@ -380,6 +381,7 @@ export interface CloudClient {
 
 export interface LocalClient {
   detectAgents(): Promise<AgentDescriptor[]>;
+  discoverLocalSkills(): Promise<LocalSkillDiscoveryResult>;
   inventoryAgent(input: { adapterId: string; rootPath: string }): Promise<LocalCapabilitySummary[]>;
   scanLocalPackage(path: string): Promise<LocalScanReport>;
   readManagedFile(input: { rootPath: string; relativePath: string }): Promise<ManagedFileContent>;
@@ -388,6 +390,7 @@ export interface LocalClient {
     rootPath: string;
     componentType: string;
     slug: string;
+    sourcePath?: string;
   }): Promise<LocalPackageExport>;
   previewInstall(plan: InstallPlan): Promise<InstallPreview>;
   applyInstall(plan: InstallPlan): Promise<ApplyResult>;

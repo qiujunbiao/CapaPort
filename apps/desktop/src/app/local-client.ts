@@ -5,6 +5,7 @@ import type { LocalClient, LocalPackageExport } from './types';
 export function createLocalClient(): LocalClient {
   return {
     detectAgents: () => invoke('detect_agents'),
+    discoverLocalSkills: () => invoke('discover_local_skills'),
     inventoryAgent: (input) => invoke('inventory_agent', { input }),
     scanLocalPackage: (path) => invoke('scan_local_package', { input: { path } }),
     readManagedFile: (input) => invoke('read_managed_file', { input }),
