@@ -1,7 +1,7 @@
-use agentdoor_runtime::RuntimeError;
-use agentdoor_runtime::commands::{ExportPackageInput, Runtime, UninstallInput};
-use agentdoor_runtime::credentials::MemoryCredentialStore;
-use agentdoor_runtime::files::{ChangeKind, InstallPlan, PlannedWrite};
+use capaport_runtime::RuntimeError;
+use capaport_runtime::commands::{ExportPackageInput, Runtime, UninstallInput};
+use capaport_runtime::credentials::MemoryCredentialStore;
+use capaport_runtime::files::{ChangeKind, InstallPlan, PlannedWrite};
 use base64::Engine;
 use serde::Serialize;
 use sha2::{Digest, Sha256};
@@ -43,7 +43,7 @@ fn plan(root: &Path, id: &str, content: &[u8], expected_digest: Option<String>) 
 }
 
 fn run() -> Result<HarnessReport, Box<dyn std::error::Error>> {
-    let fixture = std::env::temp_dir().join(format!("agentdoor-runtime-harness-{}", Uuid::new_v4()));
+    let fixture = std::env::temp_dir().join(format!("capaport-runtime-harness-{}", Uuid::new_v4()));
     let home = fixture.join("home");
     let project = fixture.join("project");
     let root = project.join(".agents");

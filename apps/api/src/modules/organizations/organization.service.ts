@@ -6,7 +6,7 @@ import type {
   OrganizationSummary,
   TenantContext,
   UpdateOrganizationRequest,
-} from '@agentdoor/contracts/organizations';
+} from '@capaport/contracts/organizations';
 import { Inject, Injectable } from '@nestjs/common';
 import type { AppConfig } from '../../config/config.js';
 import { APP_CONFIG } from '../../config/config.js';

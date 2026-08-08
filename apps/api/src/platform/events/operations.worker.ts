@@ -19,8 +19,8 @@ type OutboxRow = {
   published_at: Date | null;
 };
 
-const queueName = 'agentdoor-outbox';
-const operationQueueName = 'agentdoor-operations';
+const queueName = 'capaport-outbox';
+const operationQueueName = 'capaport-operations';
 
 export const OPERATION_JOB_TYPES = [
   'server_scan',
@@ -59,11 +59,11 @@ export class OperationJobRunner {
     try {
       await this.handlers[job.type](job);
       await this.store.complete(job);
-      platformMetrics.increment('agentdoor_operation_jobs_total', { status: 'completed', type: job.type });
+      platformMetrics.increment('capaport_operation_jobs_total', { status: 'completed', type: job.type });
     } catch (error) {
       const deadLetter = job.attempts + 1 >= job.maxAttempts;
       await this.store.fail(job, safeErrorCode(error, 'OperationError'), deadLetter);
-      platformMetrics.increment('agentdoor_operation_jobs_total', {
+      platformMetrics.increment('capaport_operation_jobs_total', {
         status: deadLetter ? 'dead_letter' : 'retrying',
         type: job.type,
       });
@@ -198,11 +198,11 @@ export class OperationsWorker {
       concurrency: 3,
     });
     this.worker.on('error', (error) => {
-      platformMetrics.increment('agentdoor_worker_errors_total', { operation: 'notification' });
+      platformMetrics.increment('capaport_worker_errors_total', { operation: 'notification' });
       platformLogger.error('worker.notification.error', { code: safeErrorCode(error, 'WorkerError') });
     });
     this.operationWorker.on('error', (error) => {
-      platformMetrics.increment('agentdoor_worker_errors_total', { operation: 'durable_job' });
+      platformMetrics.increment('capaport_worker_errors_total', { operation: 'durable_job' });
       platformLogger.error('worker.operation.error', { code: safeErrorCode(error, 'WorkerError') });
     });
   }
@@ -428,7 +428,7 @@ export class OperationsWorker {
           ],
         );
       }
-      await client.query("SET LOCAL agentdoor.audit_retention = 'on'");
+      await client.query("SET LOCAL capaport.audit_retention = 'on'");
       await client.query(
         `DELETE FROM audit_logs a USING audit_archives archive
           WHERE a.organization_id=archive.organization_id AND a.expires_at < now()
@@ -494,7 +494,7 @@ export class OperationsWorker {
          VALUES ($1,'organization',$2,'organization.deletion_completed',$3::jsonb)`,
         [randomUUID(), organizationId, JSON.stringify({ deletedObjectCount: objects.rows.length })],
       );
-      await client.query("SET LOCAL agentdoor.lifecycle_delete = 'on'");
+      await client.query("SET LOCAL capaport.lifecycle_delete = 'on'");
       await client.query(
         'UPDATE audit_logs SET organization_id=NULL,actor_membership_id=NULL WHERE organization_id=$1',
         [organizationId],
@@ -596,10 +596,10 @@ export class OperationsWorker {
         'UPDATE outbox_events SET published_at=now(),last_error=NULL WHERE id=$1 AND published_at IS NULL',
         [event.id],
       );
-      platformMetrics.increment('agentdoor_worker_jobs_total', { status: 'completed', type: event.event_type });
+      platformMetrics.increment('capaport_worker_jobs_total', { status: 'completed', type: event.event_type });
       jobLogger.info('worker.outbox.completed', { eventType: event.event_type, recipientCount: recipients.length });
     } catch (error) {
-      platformMetrics.increment('agentdoor_worker_jobs_total', { status: 'failed', type: event.event_type });
+      platformMetrics.increment('capaport_worker_jobs_total', { status: 'failed', type: event.event_type });
       jobLogger.error('worker.outbox.failed', { eventType: event.event_type, error });
       const failure = await this.pool.query<{ attempts: number }>(
         `UPDATE outbox_events SET attempts=attempts+1,last_error=$2,
@@ -765,7 +765,7 @@ export class OperationsWorker {
           await this.transport.sendMail({
             from: this.config.notification.smtpFrom,
             to: delivery.target,
-            messageId: `<${sourceEventId}.${delivery.user_id}@agentdoor.local>`,
+            messageId: `<${sourceEventId}.${delivery.user_id}@capaport.local>`,
             subject: delivery.title,
             text: delivery.body,
           });

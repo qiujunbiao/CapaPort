@@ -1,4 +1,4 @@
-import { normalizePackagePath } from '@agentdoor/capability-kit';
+import { normalizePackagePath } from '@capaport/capability-kit';
 import type { ScanFinding, ScanPolicy } from './types.js';
 
 const sensitiveNames = new Set(['.env', '.env.local', 'id_rsa', 'id_ed25519', 'credentials', 'credentials.json']);

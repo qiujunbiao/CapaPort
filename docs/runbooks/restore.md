@@ -10,10 +10,10 @@ then schedule production cutover.
 
 ```sh
 export CONFIRM_RESTORE=RESTORE
-export BACKUP_DIR='/srv/agentdoor-backups/20260808T010000Z'
-export DATABASE_URL='postgres://restore-user:REDACTED@restore-db.example.com:5432/agentdoor?sslmode=require'
+export BACKUP_DIR='/srv/capaport-backups/20260808T010000Z'
+export DATABASE_URL='postgres://restore-user:REDACTED@restore-db.example.com:5432/capaport?sslmode=require'
 export S3_ENDPOINT='https://restore-s3.internal.example.com'
-export S3_BUCKET='agentdoor-restore'
+export S3_BUCKET='capaport-restore'
 export S3_ACCESS_KEY='REDACTED'
 export S3_SECRET_KEY='REDACTED'
 infra/deploy/restore.sh

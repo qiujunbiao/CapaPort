@@ -1,4 +1,4 @@
-import { buildArchive } from '@agentdoor/capability-kit';
+import { buildArchive } from '@capaport/capability-kit';
 import { describe, expect, it, vi } from 'vitest';
 import { guardedUpload, scanArchiveBeforeUpload } from './client-scan';
 

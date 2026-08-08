@@ -1,14 +1,14 @@
 import { randomUUID } from 'node:crypto';
-import type { CapabilityManifest } from '@agentdoor/capability-kit';
-import type { AgentId } from '@agentdoor/contracts/capabilities';
+import type { CapabilityManifest } from '@capaport/capability-kit';
+import type { AgentId } from '@capaport/contracts/capabilities';
 import type {
   CreateInstallPlanRequest,
   RegisterDeviceRequest,
   ReportInstallationRequest,
   UpdateDeviceRequest,
-} from '@agentdoor/contracts/distribution';
-import type { TenantContext } from '@agentdoor/contracts/organizations';
-import type { VersionStatus } from '@agentdoor/contracts/publications';
+} from '@capaport/contracts/distribution';
+import type { TenantContext } from '@capaport/contracts/organizations';
+import type { VersionStatus } from '@capaport/contracts/publications';
 import { Inject, Injectable } from '@nestjs/common';
 import { AppError } from '../../platform/errors/app-error.js';
 import { StorageService } from '../../platform/storage/storage.service.js';

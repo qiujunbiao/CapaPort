@@ -1,4 +1,4 @@
-import type { CapabilitySummary, PublicationSummary, SpaceSummary } from '@agentdoor/contracts';
+import type { CapabilitySummary, PublicationSummary, SpaceSummary } from '@capaport/contracts';
 import { ArrowUpRight, Box, Layers3, Send, Users } from 'lucide-react';
 import type { AnalyticsMetrics, OrganizationMember } from '../../app/types';
 import { PageHeader, Panel, Status } from '../../components/ui';

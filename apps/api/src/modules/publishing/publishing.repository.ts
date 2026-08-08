@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import type { PublicationListQuery, PublicationStatus, VersionStatus } from '@agentdoor/contracts/publications';
+import type { PublicationListQuery, PublicationStatus, VersionStatus } from '@capaport/contracts/publications';
 import { Inject, Injectable } from '@nestjs/common';
 import type { PoolClient } from 'pg';
 import type { DatabaseService } from '../../platform/database/database.service.js';

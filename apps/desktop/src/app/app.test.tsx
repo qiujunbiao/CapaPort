@@ -8,7 +8,7 @@ describe('desktop application safety workflows', () => {
   it('protects authenticated routes and exposes accessible login errors', async () => {
     const cloud = cloudFixture({ loginError: '账号或密码错误' });
     render(<DesktopApp cloud={cloud} local={localFixture()} sessionStore={createMemorySessionStore()} />);
-    expect(screen.getByRole('heading', { name: '进入 Agentdoor' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: '进入 CapaPort' })).toBeInTheDocument();
     fireEvent.change(screen.getByLabelText('邮箱或手机号'), { target: { value: 'person@example.com' } });
     fireEvent.change(screen.getByLabelText('密码'), { target: { value: 'bad-password' } });
     fireEvent.click(screen.getByRole('button', { name: '登录' }));
@@ -29,7 +29,7 @@ describe('desktop application safety workflows', () => {
 
   it('keeps local discovery available offline while disabling cloud actions', async () => {
     localStorage.setItem(
-      'agentdoor:cache:org-a:capabilities',
+      'capaport:cache:org-a:capabilities',
       JSON.stringify(await cloudFixture().capabilities({ accessToken: 'token', refreshToken: 'refresh' }, 'org-a')),
     );
     const sessionStore = createMemorySessionStore({
@@ -116,7 +116,7 @@ describe('desktop application safety workflows', () => {
     fireEvent.click(await screen.findByRole('button', { name: '安装' }));
     fireEvent.click(await screen.findByRole('button', { name: '查看差异' }));
     expect(await screen.findByText(/# Local managed content/)).toBeInTheDocument();
-    expect(screen.getByText(/# managed by Agentdoor/)).toBeInTheDocument();
+    expect(screen.getByText(/# managed by CapaPort/)).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: '导入本地为草稿' }));
     expect(await screen.findByText('本地版本已保存为个人草稿')).toBeInTheDocument();
     fireEvent.click(screen.getByLabelText('使用组织版本'));
@@ -327,6 +327,6 @@ describe('desktop application safety workflows', () => {
     fireEvent.click(screen.getByRole('button', { name: '退出登录' }));
 
     await waitFor(() => expect(logout).toHaveBeenCalledWith(expect.objectContaining({ accessToken: 'token' })));
-    expect(await screen.findByRole('heading', { name: '进入 Agentdoor' })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: '进入 CapaPort' })).toBeInTheDocument();
   });
 });

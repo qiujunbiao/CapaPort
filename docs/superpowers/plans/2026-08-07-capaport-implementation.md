@@ -1,8 +1,8 @@
-# Agentdoor Full MVP Implementation Plan
+# CapaPort Full MVP Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Build the complete runnable Agentdoor MVP covering account and organization management, four-level spaces, canonical capability packages, review and publishing, secure local discovery and installation for four Agent tools, Web administration, CLI, audit, analytics, and Docker deployment.
+**Goal:** Build the complete runnable CapaPort MVP covering account and organization management, four-level spaces, canonical capability packages, review and publishing, secure local discovery and installation for four Agent tools, Web administration, CLI, audit, analytics, and Docker deployment.
 
 **Architecture:** A pnpm/Turborepo monorepo contains a NestJS modular-monolith API, React Web console, React/Tauri desktop client, TypeScript CLI, shared contracts, a canonical capability toolkit, security scanner, and Agent adapter SDK. PostgreSQL stores transactional tenant data, S3-compatible storage stores immutable artifacts, Redis backs jobs and rate limits, and Docker Compose runs the complete backend dependency set.
 
@@ -46,7 +46,7 @@
 - Modify: `.gitignore`
 
 **Interfaces:**
-- Produces: workspace scripts `build`, `dev`, `test`, `typecheck`, `lint`, `format`; branded IDs and shared enums from `@agentdoor/domain-types`.
+- Produces: workspace scripts `build`, `dev`, `test`, `typecheck`, `lint`, `format`; branded IDs and shared enums from `@capaport/domain-types`.
 
 - [ ] **Step 1: Write the failing domain-type test**
 
@@ -62,7 +62,7 @@ describe('domain types', () => {
 });
 ```
 
-- [ ] **Step 2: Run `pnpm install && pnpm test --filter @agentdoor/domain-types` and verify the missing module or export failure.**
+- [ ] **Step 2: Run `pnpm install && pnpm test --filter @capaport/domain-types` and verify the missing module or export failure.**
 - [ ] **Step 3: Implement the workspace configuration and domain types.**
 
 ```ts
@@ -86,13 +86,13 @@ export const SpaceType = {
 **Interfaces:**
 - Produces: `parseManifest(yaml: string): CapabilityManifest`, `hashPackage(files): Promise<string>`, `buildArchive(root): Promise<Uint8Array>`, `diffPackages(a,b): PackageDiff`, `classifyVersion(diff): major|minor|patch`.
 
-- [ ] **Step 1: Add tests for the exact `agentdoor.io/v1alpha1` manifest, normalized file ordering, stable SHA-256, archive traversal rejection, structural diffs, and semantic-version classification.**
-- [ ] **Step 2: Run `pnpm test --filter @agentdoor/capability-kit`; expect schema and helper imports to fail.**
+- [ ] **Step 1: Add tests for the exact `capaport.io/v1alpha1` manifest, normalized file ordering, stable SHA-256, archive traversal rejection, structural diffs, and semantic-version classification.**
+- [ ] **Step 2: Run `pnpm test --filter @capaport/capability-kit`; expect schema and helper imports to fail.**
 - [ ] **Step 3: Implement Zod manifest validation and canonical path normalization.**
 
 ```ts
 export const manifestSchema = z.object({
-  schemaVersion: z.literal('agentdoor.io/v1alpha1'),
+  schemaVersion: z.literal('capaport.io/v1alpha1'),
   kind: z.literal('CapabilityPackage'),
   metadata: z.object({ slug: slugSchema, name: z.string().min(1).max(120), description: z.string().max(2000), tags: z.array(slugSchema).max(20) }),
   spec: z.object({ components: z.array(componentSchema).min(1), compatibility: compatibilitySchema, permissions: permissionsSchema, entrypoints: z.record(z.string()), dependencies: z.array(dependencySchema) }),
@@ -144,7 +144,7 @@ export type ScanFinding = {
 - [ ] **Step 4: Implement an outbox table and `publishAfterCommit(event)` transaction helper.**
 - [ ] **Step 5: Build multi-stage non-root OCI targets and Compose services `api`, `worker`, `migrate`, `postgres`, `redis`, `minio`, and `mailpit`.**
 - [ ] **Step 6: Run `docker compose -f infra/compose/compose.yaml up -d --build`; expect all health checks to become healthy.**
-- [ ] **Step 7: Run `pnpm test --filter @agentdoor/api`, stop and restart Compose, and verify data volume recovery.**
+- [ ] **Step 7: Run `pnpm test --filter @capaport/api`, stop and restart Compose, and verify data volume recovery.**
 - [ ] **Step 8: Commit with `git commit -m "feat: add containerized API platform"`.**
 
 ### Task 5: Identity and Session Security
@@ -336,14 +336,14 @@ export type ScanFinding = {
 - Test: `apps/cli/src/**/*.test.ts`, `tests/e2e/cli/*.spec.ts`
 
 **Interfaces:**
-- Produces commands `agentdoor auth`, `org`, `search`, `pull`, `publish`, `install`, `sync`, and `doctor`, with JSON output mode and meaningful exit codes.
+- Produces commands `capaport auth`, `org`, `search`, `pull`, `publish`, `install`, `sync`, and `doctor`, with JSON output mode and meaningful exit codes.
 
 - [ ] **Step 1: Add failing parser, credential, JSON output, interactive confirmation, non-TTY, adapter, offline, and exit-code tests.**
 - [ ] **Step 2: Implement system credential storage, generated API client, adapter loading, and redacted diagnostics.**
 - [ ] **Step 3: Implement all commands with `--json`, organization selection, idempotency keys, and explicit destructive confirmations.**
 - [ ] **Step 4: Run CLI E2E against Compose using temporary Agent directories; expect publish/install/update journeys to pass.**
 - [ ] **Step 5: Build standalone distribution artifacts and smoke-test on Linux container and current host.**
-- [ ] **Step 6: Commit with `git commit -m "feat: add complete agentdoor CLI"`.**
+- [ ] **Step 6: Commit with `git commit -m "feat: add complete capaport CLI"`.**
 
 ### Task 17: Project Spaces and Selective Context Sync
 
@@ -397,7 +397,7 @@ export type ScanFinding = {
 ### Task 20: Final Cross-Platform Acceptance and Release
 
 **Files:**
-- Create: `tests/acceptance/agentdoor-mvp.spec.ts`, `docs/user-guide/*`, `docs/admin-guide/*`, `CHANGELOG.md`, `README.md`
+- Create: `tests/acceptance/capaport-mvp.spec.ts`, `docs/user-guide/*`, `docs/admin-guide/*`, `CHANGELOG.md`, `README.md`
 - Modify: root scripts and release workflow.
 
 **Interfaces:**
@@ -408,7 +408,7 @@ export type ScanFinding = {
 - [ ] **Step 3: Build Web assets, API/Worker/Migrate images, macOS and Windows desktop artifacts through CI, and Linux CLI artifact.**
 - [ ] **Step 4: Start the documented local stack and manually verify login, organization, discovery, review, install, update conflict, project sync, audit, and restart persistence.**
 - [ ] **Step 5: Write exact setup, environment, user, administrator, security, backup, restore, and troubleshooting documentation using verified commands only.**
-- [ ] **Step 6: Run `git diff --check`, confirm a clean tree, tag the verified MVP commit, and commit with `git commit -m "release: complete Agentdoor MVP"`.**
+- [ ] **Step 6: Run `git diff --check`, confirm a clean tree, tag the verified MVP commit, and commit with `git commit -m "release: complete CapaPort MVP"`.**
 
 ## Completion Definition
 

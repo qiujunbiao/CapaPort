@@ -1,6 +1,6 @@
-import { extractArchive } from '@agentdoor/capability-kit';
-import type { OrganizationSecurityPolicy } from '@agentdoor/contracts';
-import { defaultScanPolicy, type ScanPolicy, type ScanReport, scanPackage } from '@agentdoor/security-scan';
+import { extractArchive } from '@capaport/capability-kit';
+import type { OrganizationSecurityPolicy } from '@capaport/contracts';
+import { defaultScanPolicy, type ScanPolicy, type ScanReport, scanPackage } from '@capaport/security-scan';
 
 export async function scanArchiveBeforeUpload(
   archive: Uint8Array,

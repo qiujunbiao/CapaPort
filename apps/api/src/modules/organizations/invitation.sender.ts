@@ -21,7 +21,7 @@ export class MailpitOrganizationInvitationSender implements OrganizationInvitati
   }
 
   async send(invitation: InvitationDelivery): Promise<void> {
-    const link = `agentdoor://invitations/accept?token=${encodeURIComponent(invitation.token)}`;
+    const link = `capaport://invitations/accept?token=${encodeURIComponent(invitation.token)}`;
     if (invitation.kind === 'phone') {
       await this.sms.send({
         to: invitation.target,
@@ -34,7 +34,7 @@ export class MailpitOrganizationInvitationSender implements OrganizationInvitati
     await this.transport.sendMail({
       from: this.config.notification.smtpFrom,
       to: invitation.target,
-      subject: `Join ${invitation.organizationName} on Agentdoor`,
+      subject: `Join ${invitation.organizationName} on CapaPort`,
       text: `You were invited to ${invitation.organizationName}. Open this link to accept: ${link}\n\nThis invitation expires in 7 days.`,
     });
   }

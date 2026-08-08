@@ -1,4 +1,4 @@
-import type { AgentId, SpaceSummary } from '@agentdoor/contracts';
+import type { AgentId, SpaceSummary } from '@capaport/contracts';
 import { Check, FileCheck2, FolderGit2, Link2, Plus, RefreshCw, Shield, Trash2, X } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Button, EmptyState, PageHeader, Panel, Status } from '../../components/ui';

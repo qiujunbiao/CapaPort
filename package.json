@@ -1,5 +1,5 @@
 {
-  "name": "agentdoor",
+  "name": "capaport",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -22,9 +22,9 @@
     "images:build": "tsx scripts/build-images.ts",
     "stack:smoke": "tsx scripts/smoke-stack.ts",
     "acceptance": "tsx scripts/acceptance-stack.ts",
-    "artifacts:cli": "pnpm --filter @agentdoor/cli build && tsx scripts/package-cli.ts",
+    "artifacts:cli": "pnpm --filter @capaport/cli build && tsx scripts/package-cli.ts",
     "release:verify": "pnpm lint && pnpm typecheck && pnpm test && pnpm security:gate && pnpm build && pnpm acceptance",
-    "container:test": "pnpm --filter @agentdoor/api test -- tests/container-release.spec.ts",
+    "container:test": "pnpm --filter @capaport/api test -- tests/container-release.spec.ts",
     "docker:up": "docker compose -f infra/compose/compose.yaml up -d --build --wait",
     "docker:down": "docker compose -f infra/compose/compose.yaml down"
   },

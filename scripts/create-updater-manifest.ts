@@ -47,7 +47,7 @@ export async function createUpdaterManifest(input: {
     `${JSON.stringify(
       {
         version: input.version,
-        notes: input.notes ?? `Agentdoor ${input.version}`,
+        notes: input.notes ?? `CapaPort ${input.version}`,
         pub_date: input.publishedAt ?? new Date().toISOString(),
         platforms: {
           'darwin-aarch64': macEntry,

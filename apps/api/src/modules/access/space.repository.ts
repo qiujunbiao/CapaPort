@@ -5,7 +5,7 @@ import type {
   SpaceSummary,
   SpaceType,
   UpdateSpaceRequest,
-} from '@agentdoor/contracts/spaces';
+} from '@capaport/contracts/spaces';
 import { Inject, Injectable } from '@nestjs/common';
 import { and, asc, eq, ne, or } from 'drizzle-orm';
 import { users } from '../../db/schema/identity.js';

@@ -1,4 +1,4 @@
-name: agentdoor-production
+name: capaport-production
 
 x-backend-environment: &backend-environment
   NODE_ENV: production
@@ -28,7 +28,7 @@ x-backend-environment: &backend-environment
   SMS_PROVIDER_TOKEN_FILE: /run/secrets/sms_provider_token
   SMS_SENDER: ${SMS_SENDER:?Set SMS_SENDER}
   SMS_TIMEOUT_MS: ${SMS_TIMEOUT_MS:-5000}
-  AGENTDOOR_SERVICE: ${AGENTDOOR_SERVICE:-backend}
+  CAPAPORT_SERVICE: ${CAPAPORT_SERVICE:-backend}
 
 x-backend-security: &backend-security
   user: 10001:10001
@@ -54,24 +54,24 @@ x-backend-security: &backend-security
 services:
   migrate:
     <<: *backend-security
-    image: ${AGENTDOOR_REGISTRY:?Set AGENTDOOR_REGISTRY}/agentdoor-migrate:${AGENTDOOR_IMAGE_TAG:?Set immutable AGENTDOOR_IMAGE_TAG}
+    image: ${CAPAPORT_REGISTRY:?Set CAPAPORT_REGISTRY}/capaport-migrate:${CAPAPORT_IMAGE_TAG:?Set immutable CAPAPORT_IMAGE_TAG}
     environment:
       <<: *backend-environment
-      AGENTDOOR_SERVICE: migrate
+      CAPAPORT_SERVICE: migrate
     restart: no
 
   api:
     <<: *backend-security
-    image: ${AGENTDOOR_REGISTRY:?Set AGENTDOOR_REGISTRY}/agentdoor-api:${AGENTDOOR_IMAGE_TAG:?Set immutable AGENTDOOR_IMAGE_TAG}
+    image: ${CAPAPORT_REGISTRY:?Set CAPAPORT_REGISTRY}/capaport-api:${CAPAPORT_IMAGE_TAG:?Set immutable CAPAPORT_IMAGE_TAG}
     environment:
       <<: *backend-environment
-      AGENTDOOR_SERVICE: api
+      CAPAPORT_SERVICE: api
     depends_on:
       migrate:
         condition: service_completed_successfully
     restart: unless-stopped
     ports:
-      - ${AGENTDOOR_BIND_ADDRESS:-127.0.0.1}:${AGENTDOOR_API_PORT:-3210}:3100
+      - ${CAPAPORT_BIND_ADDRESS:-127.0.0.1}:${CAPAPORT_API_PORT:-3210}:3100
     healthcheck:
       test: [CMD, node, -e, "fetch('http://127.0.0.1:3100/api/v1/health/ready').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"]
       interval: 10s
@@ -81,10 +81,10 @@ services:
 
   worker:
     <<: *backend-security
-    image: ${AGENTDOOR_REGISTRY:?Set AGENTDOOR_REGISTRY}/agentdoor-worker:${AGENTDOOR_IMAGE_TAG:?Set immutable AGENTDOOR_IMAGE_TAG}
+    image: ${CAPAPORT_REGISTRY:?Set CAPAPORT_REGISTRY}/capaport-worker:${CAPAPORT_IMAGE_TAG:?Set immutable CAPAPORT_IMAGE_TAG}
     environment:
       <<: *backend-environment
-      AGENTDOOR_SERVICE: worker
+      CAPAPORT_SERVICE: worker
     depends_on:
       migrate:
         condition: service_completed_successfully
@@ -98,18 +98,18 @@ networks:
 
 secrets:
   database_url:
-    file: ${AGENTDOOR_SECRETS_DIR:?Set AGENTDOOR_SECRETS_DIR}/database_url
+    file: ${CAPAPORT_SECRETS_DIR:?Set CAPAPORT_SECRETS_DIR}/database_url
   s3_access_key:
-    file: ${AGENTDOOR_SECRETS_DIR:?Set AGENTDOOR_SECRETS_DIR}/s3_access_key
+    file: ${CAPAPORT_SECRETS_DIR:?Set CAPAPORT_SECRETS_DIR}/s3_access_key
   s3_secret_key:
-    file: ${AGENTDOOR_SECRETS_DIR:?Set AGENTDOOR_SECRETS_DIR}/s3_secret_key
+    file: ${CAPAPORT_SECRETS_DIR:?Set CAPAPORT_SECRETS_DIR}/s3_secret_key
   jwt_secret:
-    file: ${AGENTDOOR_SECRETS_DIR:?Set AGENTDOOR_SECRETS_DIR}/jwt_secret
+    file: ${CAPAPORT_SECRETS_DIR:?Set CAPAPORT_SECRETS_DIR}/jwt_secret
   refresh_token_pepper:
-    file: ${AGENTDOOR_SECRETS_DIR:?Set AGENTDOOR_SECRETS_DIR}/refresh_token_pepper
+    file: ${CAPAPORT_SECRETS_DIR:?Set CAPAPORT_SECRETS_DIR}/refresh_token_pepper
   verification_pepper:
-    file: ${AGENTDOOR_SECRETS_DIR:?Set AGENTDOOR_SECRETS_DIR}/verification_pepper
+    file: ${CAPAPORT_SECRETS_DIR:?Set CAPAPORT_SECRETS_DIR}/verification_pepper
   metrics_token:
-    file: ${AGENTDOOR_SECRETS_DIR:?Set AGENTDOOR_SECRETS_DIR}/metrics_token
+    file: ${CAPAPORT_SECRETS_DIR:?Set CAPAPORT_SECRETS_DIR}/metrics_token
   sms_provider_token:
-    file: ${AGENTDOOR_SECRETS_DIR:?Set AGENTDOOR_SECRETS_DIR}/sms_provider_token
+    file: ${CAPAPORT_SECRETS_DIR:?Set CAPAPORT_SECRETS_DIR}/sms_provider_token

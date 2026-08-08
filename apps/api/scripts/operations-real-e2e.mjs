@@ -1,8 +1,8 @@
 import { randomUUID } from 'node:crypto';
 
-const api = process.env.AGENTDOOR_API_URL ?? 'http://localhost:3210/api/v1';
-const stamp = process.env.AGENTDOOR_E2E_STAMP;
-if (!stamp) throw new Error('AGENTDOOR_E2E_STAMP is required and must match a publication E2E fixture.');
+const api = process.env.CAPAPORT_API_URL ?? 'http://localhost:3210/api/v1';
+const stamp = process.env.CAPAPORT_E2E_STAMP;
+if (!stamp) throw new Error('CAPAPORT_E2E_STAMP is required and must match a publication E2E fixture.');
 
 const password = `V7!qZ2#${stamp}Lm9@Xr4`;
 const ownerEmail = `owner.publish.${stamp}@example.com`;

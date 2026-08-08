@@ -1,5 +1,5 @@
-import { requestArtifactUploadSchema } from '@agentdoor/contracts/capabilities';
-import { zodFieldErrors } from '@agentdoor/contracts/errors';
+import { requestArtifactUploadSchema } from '@capaport/contracts/capabilities';
+import { zodFieldErrors } from '@capaport/contracts/errors';
 import { Body, Controller, Inject, Param, Post, Req, UseGuards } from '@nestjs/common';
 import { AppError } from '../../platform/errors/app-error.js';
 import { TenantGuard, type TenantRequest } from '../../platform/tenancy/tenant.guard.js';

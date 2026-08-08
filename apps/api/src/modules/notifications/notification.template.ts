@@ -46,7 +46,7 @@ export function notificationForEvent(event: {
   payload: Record<string, unknown>;
 }): NotificationTemplate {
   const message = messages[event.eventType] ?? {
-    title: 'Agentdoor activity',
+    title: 'CapaPort activity',
     body: 'There is new activity in your organization.',
   };
   return { type: event.eventType, ...message, data: { aggregateId: event.aggregateId } };

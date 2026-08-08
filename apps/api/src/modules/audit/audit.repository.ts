@@ -1,4 +1,4 @@
-import type { AuditQuery } from '@agentdoor/contracts/operations';
+import type { AuditQuery } from '@capaport/contracts/operations';
 import { Inject, Injectable } from '@nestjs/common';
 import type { DatabaseService } from '../../platform/database/database.service.js';
 import type { AuditDataStore, AuditRecord } from './audit.service.js';

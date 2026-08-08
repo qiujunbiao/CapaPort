@@ -3,8 +3,8 @@ import {
   registerDeviceRequestSchema,
   reportInstallationRequestSchema,
   updateDeviceRequestSchema,
-} from '@agentdoor/contracts/distribution';
-import { zodFieldErrors } from '@agentdoor/contracts/errors';
+} from '@capaport/contracts/distribution';
+import { zodFieldErrors } from '@capaport/contracts/errors';
 import {
   Body,
   Controller,

@@ -4,7 +4,7 @@ import { createServer } from 'node:net';
 import { resolve } from 'node:path';
 
 const repositoryRoot = resolve(import.meta.dirname, '..');
-const project = `agentdoor-acceptance-${process.pid}-${Date.now()}`.toLowerCase();
+const project = `capaport-acceptance-${process.pid}-${Date.now()}`.toLowerCase();
 const composeFile = resolve(repositoryRoot, 'infra/compose/compose.yaml');
 const keep = process.argv.includes('--keep');
 
@@ -53,14 +53,14 @@ const stackEnvironment = {
 const composeArguments = ['compose', '-p', project, '-f', composeFile];
 
 try {
-  run('pnpm', ['--filter', '@agentdoor/capability-kit', 'build'], stackEnvironment);
+  run('pnpm', ['--filter', '@capaport/capability-kit', 'build'], stackEnvironment);
   run('docker', [...composeArguments, 'up', '-d', '--build', '--wait'], stackEnvironment);
   await waitForReady(apiBase);
   const acceptanceEnvironment = {
     ...stackEnvironment,
-    AGENTDOOR_API_URL: apiBase,
-    AGENTDOOR_MAILPIT_URL: `http://127.0.0.1:${mailpitPort}`,
-    AGENTDOOR_ACCEPTANCE_STAMP: `${Date.now()}-${process.pid}`,
+    CAPAPORT_API_URL: apiBase,
+    CAPAPORT_MAILPIT_URL: `http://127.0.0.1:${mailpitPort}`,
+    CAPAPORT_ACCEPTANCE_STAMP: `${Date.now()}-${process.pid}`,
   };
   await new Promise<void>((resolveRun, reject) => {
     const child = spawn('pnpm', ['exec', 'vitest', 'run', '--config', 'vitest.acceptance.config.ts'], {

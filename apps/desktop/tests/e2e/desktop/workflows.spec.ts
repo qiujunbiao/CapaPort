@@ -222,14 +222,14 @@ async function injectClients(page: Page, options: { conflict?: boolean } = {}) {
       rescheduleWrite: async () => undefined,
       retryFailedWrites: async () => undefined,
     };
-    Object.defineProperty(window, '__AGENTDOOR_E2E__', { value: { cloud, local, sessionStore: store } });
+    Object.defineProperty(window, '__CAPAPORT_E2E__', { value: { cloud, local, sessionStore: store } });
   }, options);
 }
 
 test('discover → import → scan → submit for review', async ({ page }) => {
   await injectClients(page);
   await page.goto('/');
-  await page.screenshot({ path: '/tmp/agentdoor-desktop-home.png', fullPage: true });
+  await page.screenshot({ path: '/tmp/capaport-desktop-home.png', fullPage: true });
   await page.getByRole('button', { name: '本地发现' }).click();
   await page.getByRole('button', { name: '导入 release-helper' }).click();
   await expect(page.getByText('安全检查通过')).toBeVisible();
@@ -245,7 +245,7 @@ test('search → install preview → resolve local update conflict', async ({ pa
   await page.getByPlaceholder('搜索名称、标签或发布者').fill('发布');
   await page.getByRole('button', { name: '安装' }).click();
   await expect(page.getByText('rules/security.md')).toBeVisible();
-  await page.screenshot({ path: '/tmp/agentdoor-install-conflict.png', fullPage: true });
+  await page.screenshot({ path: '/tmp/capaport-install-conflict.png', fullPage: true });
   await page.getByLabel('保留本地版本').click();
   await page.getByRole('button', { name: '确认安装' }).click();
   await page.getByRole('button', { name: '完成' }).click();
@@ -266,7 +266,7 @@ test('bind multiple project directories → explicitly select → secure sync', 
   await expect(page.getByText('src/index.ts')).toBeVisible();
   await expect(page.getByRole('checkbox', { name: /src\/index\.ts/ })).toBeDisabled();
   await page.getByRole('checkbox', { name: /docs\/policy\.yaml/ }).uncheck();
-  await page.screenshot({ path: '/tmp/agentdoor-project-context.png', fullPage: true });
+  await page.screenshot({ path: '/tmp/capaport-project-context.png', fullPage: true });
   await page.getByRole('button', { name: '同步 1 个文件' }).click();
   await expect(page.getByText(/已同步 1 个显式选择的上下文文件/)).toBeVisible();
 });

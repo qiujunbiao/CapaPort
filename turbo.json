@@ -1,10 +1,10 @@
 {
   "$schema": "https://turbo.build/schema.json",
   "globalPassThroughEnv": [
-    "AGENTDOOR_ACCEPTANCE_STAMP",
-    "AGENTDOOR_API_URL",
-    "AGENTDOOR_MAILPIT_URL",
-    "AGENTDOOR_REGISTRY",
+    "CAPAPORT_ACCEPTANCE_STAMP",
+    "CAPAPORT_API_URL",
+    "CAPAPORT_MAILPIT_URL",
+    "CAPAPORT_REGISTRY",
     "npm_package_version"
   ],
   "tasks": {

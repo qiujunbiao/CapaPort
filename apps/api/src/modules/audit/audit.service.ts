@@ -1,5 +1,5 @@
-import type { AuditQuery } from '@agentdoor/contracts/operations';
-import type { TenantContext } from '@agentdoor/contracts/organizations';
+import type { AuditQuery } from '@capaport/contracts/operations';
+import type { TenantContext } from '@capaport/contracts/organizations';
 import { Inject, Injectable } from '@nestjs/common';
 import { AppError } from '../../platform/errors/app-error.js';
 import { redactAuditMetadata } from './audit.policy.js';

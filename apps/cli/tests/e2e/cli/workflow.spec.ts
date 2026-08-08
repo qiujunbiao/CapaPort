@@ -1,15 +1,15 @@
 import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import type { OrganizationSummary, SpaceSummary } from '@agentdoor/contracts';
+import type { OrganizationSummary, SpaceSummary } from '@capaport/contracts';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { ApiClient } from '../../../src/client.js';
 import { MemoryCredentialStore } from '../../../src/credentials.js';
 import { runCli } from '../../../src/main.js';
 
-const apiUrl = process.env.AGENTDOOR_API_URL ?? 'http://127.0.0.1:3210/api/v1';
-const mailpitUrl = process.env.AGENTDOOR_MAILPIT_URL ?? 'http://127.0.0.1:8025';
-const password = 'Agentdoor!2026-Test';
+const apiUrl = process.env.CAPAPORT_API_URL ?? 'http://127.0.0.1:3210/api/v1';
+const mailpitUrl = process.env.CAPAPORT_MAILPIT_URL ?? 'http://127.0.0.1:8025';
+const password = 'CapaPort!2026-Test';
 
 async function json<T>(response: Response): Promise<T> {
   const payload = (await response.json()) as T & { message?: string };
@@ -30,7 +30,7 @@ async function verificationCode(email: string): Promise<string> {
   throw new Error('Verification email was not delivered.');
 }
 
-describe('CLI against the containerized Agentdoor API', () => {
+describe('CLI against the containerized CapaPort API', () => {
   let workspace = '';
   let previousCwd = '';
   const credentials = new MemoryCredentialStore();
@@ -45,7 +45,7 @@ describe('CLI against the containerized Agentdoor API', () => {
   const slug = 'cli-release-test';
 
   beforeAll(async () => {
-    workspace = await mkdtemp(join(tmpdir(), 'agentdoor-cli-e2e-'));
+    workspace = await mkdtemp(join(tmpdir(), 'capaport-cli-e2e-'));
     previousCwd = process.cwd();
     process.chdir(workspace);
     const registration = await json<{ challengeId: string }>(

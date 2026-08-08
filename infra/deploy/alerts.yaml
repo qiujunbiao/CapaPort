@@ -1,37 +1,37 @@
 groups:
-  - name: agentdoor
+  - name: capaport
     rules:
-      - alert: AgentdoorApiUnavailable
-        expr: up{job="agentdoor-api"} == 0
+      - alert: CapaPortApiUnavailable
+        expr: up{job="capaport-api"} == 0
         for: 2m
         labels: { severity: critical }
-        annotations: { summary: "Agentdoor API is unavailable" }
-      - alert: AgentdoorHighErrorRate
-        expr: sum(rate(agentdoor_http_requests_total{status=~"5.."}[5m])) / clamp_min(sum(rate(agentdoor_http_requests_total[5m])), 1) > 0.02
+        annotations: { summary: "CapaPort API is unavailable" }
+      - alert: CapaPortHighErrorRate
+        expr: sum(rate(capaport_http_requests_total{status=~"5.."}[5m])) / clamp_min(sum(rate(capaport_http_requests_total[5m])), 1) > 0.02
         for: 10m
         labels: { severity: critical }
-        annotations: { summary: "Agentdoor 5xx rate is above 2 percent" }
-      - alert: AgentdoorAuthorizationDenialsSpike
-        expr: sum(increase(agentdoor_http_errors_total{code=~"ACCESS_DENIED|TENANT_ACCESS_DENIED"}[10m])) > 100
+        annotations: { summary: "CapaPort 5xx rate is above 2 percent" }
+      - alert: CapaPortAuthorizationDenialsSpike
+        expr: sum(increase(capaport_http_errors_total{code=~"ACCESS_DENIED|TENANT_ACCESS_DENIED"}[10m])) > 100
         labels: { severity: warning }
         annotations: { summary: "Authorization denials spiked" }
-      - alert: AgentdoorRefreshReplayDetected
-        expr: sum(increase(agentdoor_http_errors_total{code="AUTH_REFRESH_REPLAY"}[5m])) > 0
+      - alert: CapaPortRefreshReplayDetected
+        expr: sum(increase(capaport_http_errors_total{code="AUTH_REFRESH_REPLAY"}[5m])) > 0
         labels: { severity: critical }
         annotations: { summary: "Refresh token replay was detected" }
-      - alert: AgentdoorSecurityScanBlocked
-        expr: sum(increase(agentdoor_http_errors_total{code=~".*SCAN.*"}[15m])) > 20
+      - alert: CapaPortSecurityScanBlocked
+        expr: sum(increase(capaport_http_errors_total{code=~".*SCAN.*"}[15m])) > 20
         labels: { severity: warning }
         annotations: { summary: "Capability security scans are blocking unusually often" }
-      - alert: AgentdoorUploadFailures
-        expr: sum(increase(agentdoor_http_errors_total{code=~".*UPLOAD.*"}[10m])) > 10
+      - alert: CapaPortUploadFailures
+        expr: sum(increase(capaport_http_errors_total{code=~".*UPLOAD.*"}[10m])) > 10
         labels: { severity: warning }
         annotations: { summary: "Artifact uploads are failing" }
-      - alert: AgentdoorInstallationFailures
-        expr: sum(increase(agentdoor_http_errors_total{code=~".*INSTALLATION.*"}[10m])) > 10
+      - alert: CapaPortInstallationFailures
+        expr: sum(increase(capaport_http_errors_total{code=~".*INSTALLATION.*"}[10m])) > 10
         labels: { severity: warning }
         annotations: { summary: "Capability installations are failing" }
-      - alert: AgentdoorWorkerFailures
-        expr: sum(increase(agentdoor_worker_jobs_total{status="failed"}[10m])) > 5
+      - alert: CapaPortWorkerFailures
+        expr: sum(increase(capaport_worker_jobs_total{status="failed"}[10m])) > 5
         labels: { severity: critical }
         annotations: { summary: "Background job failures exceeded threshold" }

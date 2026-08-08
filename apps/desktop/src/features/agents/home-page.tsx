@@ -1,4 +1,4 @@
-import type { CapabilitySummary } from '@agentdoor/contracts';
+import type { CapabilitySummary } from '@capaport/contracts';
 import { ArrowRight, Bot, CircleAlert, CloudOff, Download, Radar, RefreshCw, ShieldCheck } from 'lucide-react';
 import { Button, EmptyState, Metric, PageHeader, Panel, Status } from '../../components/ui';
 import type { AgentDescriptor } from '../../generated/commands';
@@ -148,7 +148,7 @@ export function HomePage({
               <div className="data-table__row" key={capability.id}>
                 <span>
                   <strong>{capability.name}</strong>
-                  <small>agentdoor/{capability.slug}</small>
+                  <small>capaport/{capability.slug}</small>
                 </span>
                 <span>组织可见</span>
                 <span className="mono">{capability.compatibility.join(' · ')}</span>

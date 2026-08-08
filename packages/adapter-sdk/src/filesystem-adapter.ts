@@ -2,7 +2,7 @@ import { createHash } from 'node:crypto';
 import { access, lstat, readdir, readFile } from 'node:fs/promises';
 import { homedir } from 'node:os';
 import { basename, extname } from 'node:path';
-import { hashPackage, type PackageFile } from '@agentdoor/capability-kit';
+import { hashPackage, type PackageFile } from '@capaport/capability-kit';
 import { stringify } from 'yaml';
 import { assertRelativePath, isPathInside, joinPlatform, resolveInside } from './paths.js';
 import type {
@@ -176,7 +176,7 @@ export function createFilesystemAdapter(config: FilesystemAdapterConfig): AgentA
         content: file.content,
       }));
       const manifest: CanonicalPackage['manifest'] = {
-        schemaVersion: 'agentdoor.io/v1alpha1',
+        schemaVersion: 'capaport.io/v1alpha1',
         kind: 'CapabilityPackage',
         metadata: { slug: localCapability.slug, name: localCapability.name, description: '', tags: [] },
         spec: {
@@ -188,10 +188,10 @@ export function createFilesystemAdapter(config: FilesystemAdapterConfig): AgentA
         },
       };
       const canonicalFiles = [
-        { path: 'agentdoor.yaml', content: encoder.encode(stringify(manifest, { lineWidth: 0 })) },
+        { path: 'capaport.yaml', content: encoder.encode(stringify(manifest, { lineWidth: 0 })) },
         {
           path: 'README.md',
-          content: encoder.encode(`# ${localCapability.name}\n\nImported from ${config.displayName} by Agentdoor.\n`),
+          content: encoder.encode(`# ${localCapability.name}\n\nImported from ${config.displayName} by CapaPort.\n`),
         },
         ...files,
       ];
@@ -236,10 +236,10 @@ export function createFilesystemAdapter(config: FilesystemAdapterConfig): AgentA
         }
       }
       entries.sort((left, right) => left.relativePath.localeCompare(right.relativePath));
-      const lockRelativePath = `.agentdoor/locks/${config.id}/${pkg.manifest.metadata.slug}.json`;
+      const lockRelativePath = `.capaport/locks/${config.id}/${pkg.manifest.metadata.slug}.json`;
       const installedAt = (config.environment.now?.() ?? new Date()).toISOString();
       const lock: InstallLock = {
-        schemaVersion: 'agentdoor.io/install-lock/v1',
+        schemaVersion: 'capaport.io/install-lock/v1',
         adapterId: config.id,
         capabilitySlug: pkg.manifest.metadata.slug,
         packageDigest: pkg.digest,
@@ -294,7 +294,7 @@ export function createFilesystemAdapter(config: FilesystemAdapterConfig): AgentA
       try {
         const expectedLockPath = resolveInside(
           plan.rootPath,
-          `.agentdoor/locks/${config.id}/${plan.capabilitySlug}.json`,
+          `.capaport/locks/${config.id}/${plan.capabilitySlug}.json`,
           platform,
         );
         if (expectedLockPath !== plan.lock.lockPath) errors.push('Unexpected lock path');
@@ -335,7 +335,7 @@ export function createFilesystemAdapter(config: FilesystemAdapterConfig): AgentA
       }
       const expectedLockPath = resolveInside(
         lock.rootPath,
-        `.agentdoor/locks/${config.id}/${lock.capabilitySlug}.json`,
+        `.capaport/locks/${config.id}/${lock.capabilitySlug}.json`,
         platform,
       );
       if (expectedLockPath !== lock.lockPath) throw new Error('Unsafe uninstall lock path');

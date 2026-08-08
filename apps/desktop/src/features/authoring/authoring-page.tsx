@@ -6,9 +6,9 @@ import {
   importEditablePackage,
   updatePackageMetadata,
   validateEditablePackage,
-} from '@agentdoor/capability-kit';
-import type { CapabilitySummary, OrganizationSecurityPolicy, PublicationSummary, SpaceSummary } from '@agentdoor/contracts';
-import type { ScanReport } from '@agentdoor/security-scan';
+} from '@capaport/capability-kit';
+import type { CapabilitySummary, OrganizationSecurityPolicy, PublicationSummary, SpaceSummary } from '@capaport/contracts';
+import type { ScanReport } from '@capaport/security-scan';
 import { FileClock, Save, Send } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import type { CloudClient, LocalPackageExport, Session } from '../../app/types';

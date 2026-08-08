@@ -39,10 +39,10 @@ describe('telemetry', () => {
 
   it('exports bounded Prometheus counters and gauges', () => {
     const metrics = new MetricsRegistry();
-    metrics.increment('agentdoor_http_requests_total', { method: 'GET', status: '200' });
-    metrics.setGauge('agentdoor_outbox_pending', 7);
-    expect(metrics.render()).toContain('agentdoor_http_requests_total{method="GET",status="200"} 1');
-    expect(metrics.render()).toContain('agentdoor_outbox_pending 7');
+    metrics.increment('capaport_http_requests_total', { method: 'GET', status: '200' });
+    metrics.setGauge('capaport_outbox_pending', 7);
+    expect(metrics.render()).toContain('capaport_http_requests_total{method="GET",status="200"} 1');
+    expect(metrics.render()).toContain('capaport_outbox_pending 7');
     expect(() => metrics.increment('bad metric', {})).toThrow('Invalid metric name');
   });
 });

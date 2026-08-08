@@ -14,10 +14,10 @@ afterEach(async () => {
 
 describe('desktop release artifacts', () => {
   it('writes verifiable checksums and provenance metadata for every bundle file', async () => {
-    const root = await mkdtemp(join(tmpdir(), 'agentdoor-desktop-artifacts-'));
+    const root = await mkdtemp(join(tmpdir(), 'capaport-desktop-artifacts-'));
     fixtures.push(root);
     await mkdir(join(root, 'dmg'));
-    await writeFile(join(root, 'dmg', 'Agentdoor.dmg'), 'signed-bundle');
+    await writeFile(join(root, 'dmg', 'CapaPort.dmg'), 'signed-bundle');
     const result = await packageDesktopRelease({
       root,
       platform: 'macos',
@@ -27,28 +27,28 @@ describe('desktop release artifacts', () => {
       generatedAt: '2026-08-08T00:00:00.000Z',
     });
     const digest = createHash('sha256').update('signed-bundle').digest('hex');
-    expect(await readFile(result.checksumsPath, 'utf8')).toBe(`${digest}  dmg/Agentdoor.dmg\n`);
+    expect(await readFile(result.checksumsPath, 'utf8')).toBe(`${digest}  dmg/CapaPort.dmg\n`);
     expect(JSON.parse(await readFile(result.metadataPath, 'utf8'))).toMatchObject({
       version: '0.2.0',
       platform: 'macos',
       arch: 'universal',
       commit: 'abc123',
-      artifacts: [{ path: 'dmg/Agentdoor.dmg', sha256: digest }],
+      artifacts: [{ path: 'dmg/CapaPort.dmg', sha256: digest }],
     });
   });
 
   it('builds a signed multi-platform Tauri update manifest', async () => {
-    const root = await mkdtemp(join(tmpdir(), 'agentdoor-updater-manifest-'));
+    const root = await mkdtemp(join(tmpdir(), 'capaport-updater-manifest-'));
     fixtures.push(root);
-    await writeFile(join(root, 'Agentdoor.app.tar.gz'), 'mac');
-    await writeFile(join(root, 'Agentdoor.app.tar.gz.sig'), 'mac-signature');
-    await writeFile(join(root, 'Agentdoor.nsis.zip'), 'windows');
-    await writeFile(join(root, 'Agentdoor.nsis.zip.sig'), 'windows-signature');
+    await writeFile(join(root, 'CapaPort.app.tar.gz'), 'mac');
+    await writeFile(join(root, 'CapaPort.app.tar.gz.sig'), 'mac-signature');
+    await writeFile(join(root, 'CapaPort.nsis.zip'), 'windows');
+    await writeFile(join(root, 'CapaPort.nsis.zip.sig'), 'windows-signature');
     const output = join(root, 'latest.json');
     await createUpdaterManifest({
       root,
       version: '0.2.0',
-      repository: 'example/agentdoor',
+      repository: 'example/capaport',
       tag: 'v0.2.0',
       output,
       publishedAt: '2026-08-08T00:00:00.000Z',

@@ -1,4 +1,4 @@
-import type { AgentId, CapabilitySummary, UpdateCheck } from '@agentdoor/contracts';
+import type { AgentId, CapabilitySummary, UpdateCheck } from '@capaport/contracts';
 import { AlertTriangle, Check, FileDiff, RotateCcw, Undo2, X } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { buildLocalInstallPlan, selectInstallVersion } from '../../app/install-plan';
@@ -16,7 +16,7 @@ function decodeBase64Text(value: string): string {
 }
 
 function testPlan(capability: CapabilitySummary, agent: AgentDescriptor): InstallPlan {
-  const bytes = new TextEncoder().encode('# managed by Agentdoor');
+  const bytes = new TextEncoder().encode('# managed by CapaPort');
   let binary = '';
   for (const byte of bytes) binary += String.fromCharCode(byte);
   return {
@@ -368,7 +368,7 @@ export function InstallModal({
           </span>
           <div>
             <strong>{capability.name}</strong>
-            <small>agentdoor/{capability.slug}</small>
+            <small>capaport/{capability.slug}</small>
           </div>
           <Status tone="good">签名下载</Status>
         </div>

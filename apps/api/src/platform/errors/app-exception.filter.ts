@@ -14,7 +14,7 @@ export class AppExceptionFilter implements ExceptionFilter {
     const requestId = request.requestId ?? request.raw?.requestId;
 
     if (exception instanceof AppError) {
-      platformMetrics.increment('agentdoor_http_errors_total', {
+      platformMetrics.increment('capaport_http_errors_total', {
         code: exception.code,
         status: String(exception.statusCode),
       });
@@ -45,7 +45,7 @@ export class AppExceptionFilter implements ExceptionFilter {
       const statusCode = exception.getStatus();
       const response = exception.getResponse();
       const message = typeof response === 'string' ? response : exception.message;
-      platformMetrics.increment('agentdoor_http_errors_total', {
+      platformMetrics.increment('capaport_http_errors_total', {
         code: `HTTP_${statusCode}`,
         status: String(statusCode),
       });
@@ -53,7 +53,7 @@ export class AppExceptionFilter implements ExceptionFilter {
       return;
     }
 
-    platformMetrics.increment('agentdoor_http_errors_total', { code: 'INTERNAL_ERROR', status: '500' });
+    platformMetrics.increment('capaport_http_errors_total', { code: 'INTERNAL_ERROR', status: '500' });
     platformLogger.error('http.request.unhandled_exception', { requestId, error: exception });
 
     reply.status(HttpStatus.INTERNAL_SERVER_ERROR).send({

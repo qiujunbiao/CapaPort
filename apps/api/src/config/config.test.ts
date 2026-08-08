@@ -4,20 +4,20 @@ import { parseConfig } from './config.js';
 const validEnvironment = {
   NODE_ENV: 'test',
   PORT: '3100',
-  DATABASE_URL: 'postgres://agentdoor:agentdoor@localhost:5432/agentdoor',
+  DATABASE_URL: 'postgres://capaport:capaport@localhost:5432/capaport',
   REDIS_URL: 'redis://localhost:6379',
   S3_ENDPOINT: 'http://localhost:9000',
   S3_PUBLIC_ENDPOINT: 'https://objects.example.com',
   S3_REGION: 'us-east-1',
-  S3_BUCKET: 'agentdoor',
-  S3_ACCESS_KEY: 'agentdoor',
-  S3_SECRET_KEY: 'agentdoor-secret',
+  S3_BUCKET: 'capaport',
+  S3_ACCESS_KEY: 'capaport',
+  S3_SECRET_KEY: 'capaport-secret',
   JWT_SECRET: 'jwt-secret-that-is-longer-than-thirty-two-characters',
   REFRESH_TOKEN_PEPPER: 'refresh-pepper-that-is-longer-than-thirty-two-characters',
   VERIFICATION_PEPPER: 'verification-pepper-longer-than-thirty-two-characters',
   SMTP_HOST: 'localhost',
   SMTP_PORT: '1025',
-  SMTP_FROM: 'Agentdoor <no-reply@agentdoor.local>',
+  SMTP_FROM: 'CapaPort <no-reply@capaport.local>',
 };
 
 describe('configuration', () => {
@@ -25,7 +25,7 @@ describe('configuration', () => {
     expect(parseConfig(validEnvironment)).toMatchObject({
       nodeEnv: 'test',
       port: 3100,
-      s3: { bucket: 'agentdoor', publicEndpoint: 'https://objects.example.com' },
+      s3: { bucket: 'capaport', publicEndpoint: 'https://objects.example.com' },
       auth: { accessTtlSeconds: 900, refreshTtlDays: 30 },
     });
   });
@@ -49,12 +49,12 @@ describe('configuration', () => {
         ...production,
         SMS_PROVIDER_URL: 'https://sms.example.com/v1/messages',
         SMS_PROVIDER_TOKEN: 'sms-provider-secret-token',
-        SMS_SENDER: 'Agentdoor',
+        SMS_SENDER: 'CapaPort',
         S3_SERVER_SIDE_ENCRYPTION: 'AES256',
         S3_KMS_KEY_ID: '',
       }),
     ).toMatchObject({
-      notification: { sms: { endpoint: 'https://sms.example.com/v1/messages', sender: 'Agentdoor' } },
+      notification: { sms: { endpoint: 'https://sms.example.com/v1/messages', sender: 'CapaPort' } },
     });
   });
 
@@ -64,8 +64,8 @@ describe('configuration', () => {
       parseConfig({
         ...validEnvironment,
         S3_SERVER_SIDE_ENCRYPTION: 'aws:kms',
-        S3_KMS_KEY_ID: 'alias/agentdoor',
+        S3_KMS_KEY_ID: 'alias/capaport',
       }),
-    ).toMatchObject({ s3: { encryption: { algorithm: 'aws:kms', kmsKeyId: 'alias/agentdoor' } } });
+    ).toMatchObject({ s3: { encryption: { algorithm: 'aws:kms', kmsKeyId: 'alias/capaport' } } });
   });
 });

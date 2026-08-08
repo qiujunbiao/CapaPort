@@ -1,6 +1,6 @@
 import { createHash, randomUUID } from 'node:crypto';
-import type { RequestArtifactUpload } from '@agentdoor/contracts/capabilities';
-import type { TenantContext } from '@agentdoor/contracts/organizations';
+import type { RequestArtifactUpload } from '@capaport/contracts/capabilities';
+import type { TenantContext } from '@capaport/contracts/organizations';
 import { Inject, Injectable } from '@nestjs/common';
 import { AppError } from '../../platform/errors/app-error.js';
 import { StorageService } from '../../platform/storage/storage.service.js';

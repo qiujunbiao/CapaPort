@@ -37,7 +37,7 @@ export function AuthPage({ client, sessionStore }: { client: WebClient; sessionS
         await client.verify({ challengeId, code });
         setMode('login');
       } else {
-        const tokens = await client.login({ kind, target, password, deviceName: 'Agentdoor Web Console' });
+        const tokens = await client.login({ kind, target, password, deviceName: 'CapaPort Web Console' });
         sessionStore.set(tokens);
       }
     } catch (caught) {
@@ -54,7 +54,7 @@ export function AuthPage({ client, sessionStore }: { client: WebClient; sessionS
           <span>
             <DoorOpen />
           </span>
-          <strong>AGENTDOOR</strong>
+          <strong>CAPAPORT</strong>
         </div>
         <div>
           <p className="eyebrow">ORGANIZATION CAPABILITY GOVERNANCE</p>

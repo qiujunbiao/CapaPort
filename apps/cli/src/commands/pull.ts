@@ -1,5 +1,5 @@
 import { access, writeFile } from 'node:fs/promises';
-import type { CapabilitySummary, CapabilityVersionSummary } from '@agentdoor/contracts';
+import type { CapabilitySummary, CapabilityVersionSummary } from '@capaport/contracts';
 import type { ApiClient } from '../client.js';
 import type { CliOutput } from '../output.js';
 import { CancelledError, type ParsedCommand, stringFlag, UsageError } from '../parser.js';
@@ -7,7 +7,7 @@ import type { Prompter } from '../prompt.js';
 
 export async function pullCommand(parsed: ParsedCommand, api: ApiClient, output: CliOutput, prompt: Prompter) {
   const slug = stringFlag(parsed, 'slug') ?? parsed.subcommand;
-  if (!slug) throw new UsageError('用法：agentdoor pull <slug> [--output file.zip]');
+  if (!slug) throw new UsageError('用法：capaport pull <slug> [--output file.zip]');
   const capabilities = await api.request<CapabilitySummary[]>(
     `/capabilities?query=${encodeURIComponent(slug)}&limit=100`,
   );
@@ -24,7 +24,7 @@ export async function pullCommand(parsed: ParsedCommand, api: ApiClient, output:
     (await api.request<{ id: string; supportedAgents: string[] }>('/devices', {
       method: 'POST',
       body: {
-        name: 'Agentdoor CLI',
+        name: 'CapaPort CLI',
         platform: process.platform === 'darwin' ? 'macos' : process.platform === 'win32' ? 'windows' : 'linux',
         appVersion: '0.1.0',
         supportedAgents: [agent],

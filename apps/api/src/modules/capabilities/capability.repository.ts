@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
-import type { CapabilityManifest } from '@agentdoor/capability-kit';
-import type { AgentId, CapabilitySearchQuery, UpdateCapabilityRequest } from '@agentdoor/contracts/capabilities';
-import type { ScanReport } from '@agentdoor/security-scan';
+import type { CapabilityManifest } from '@capaport/capability-kit';
+import type { AgentId, CapabilitySearchQuery, UpdateCapabilityRequest } from '@capaport/contracts/capabilities';
+import type { ScanReport } from '@capaport/security-scan';
 import { Inject, Injectable } from '@nestjs/common';
 import { and, desc, eq, ilike, inArray, or, sql } from 'drizzle-orm';
 import { capabilities, capabilityDrafts, capabilityVersions, draftRevisions } from '../../db/schema/capabilities.js';

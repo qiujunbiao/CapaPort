@@ -1,5 +1,5 @@
-import type { AgentId, ArtifactUploadPlan, CapabilitySummary } from '@agentdoor/contracts';
-import { scanPackage } from '@agentdoor/security-scan';
+import type { AgentId, ArtifactUploadPlan, CapabilitySummary } from '@capaport/contracts';
+import { scanPackage } from '@capaport/security-scan';
 import { adapters } from '../adapters.js';
 import type { ApiClient } from '../client.js';
 import type { CliOutput } from '../output.js';

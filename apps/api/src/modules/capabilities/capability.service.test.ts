@@ -1,4 +1,4 @@
-import { buildArchive } from '@agentdoor/capability-kit';
+import { buildArchive } from '@capaport/capability-kit';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { CapabilityService } from './capability.service.js';
 
@@ -15,7 +15,7 @@ const capability = {
   ownerUserId: 'user-a',
   status: 'active' as const,
 };
-const manifest = `schemaVersion: agentdoor.io/v1alpha1
+const manifest = `schemaVersion: capaport.io/v1alpha1
 kind: CapabilityPackage
 metadata:
   slug: release-helper
@@ -38,7 +38,7 @@ spec:
 
 function archive(skillBody: string, includeReadme = true): Uint8Array {
   return buildArchive([
-    { path: 'agentdoor.yaml', content: new TextEncoder().encode(manifest) },
+    { path: 'capaport.yaml', content: new TextEncoder().encode(manifest) },
     ...(includeReadme ? [{ path: 'README.md', content: new TextEncoder().encode('# Release helper') }] : []),
     { path: 'skills/release/SKILL.md', content: new TextEncoder().encode(skillBody) },
   ]);

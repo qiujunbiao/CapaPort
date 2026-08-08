@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
-import { AgentdoorClient, type AgentdoorSdkError, type SdkSession } from './client.js';
+import { CapaPortClient, type CapaPortSdkError, type SdkSession } from './client.js';
 
-describe('AgentdoorClient', () => {
+describe('CapaPortClient', () => {
   it('shares auth, tenant, refresh, and one stable idempotency key across retry', async () => {
     let session: SdkSession = {
       accessToken: 'expired-access',
@@ -19,8 +19,8 @@ describe('AgentdoorClient', () => {
       }
       return Response.json({ id: 'capability-1' }, { status: 201 });
     });
-    const client = new AgentdoorClient({
-      baseUrl: 'https://agentdoor.example/api/v1',
+    const client = new CapaPortClient({
+      baseUrl: 'https://capaport.example/api/v1',
       fetch: fetcher,
       session: () => session,
       saveSession: (next) => {
@@ -41,8 +41,8 @@ describe('AgentdoorClient', () => {
   });
 
   it('returns structured API errors without leaking response internals', async () => {
-    const client = new AgentdoorClient({
-      baseUrl: 'https://agentdoor.example/api/v1',
+    const client = new CapaPortClient({
+      baseUrl: 'https://capaport.example/api/v1',
       fetch: async () =>
         Response.json(
           { code: 'VALIDATION_ERROR', message: 'Invalid input', fieldErrors: { name: ['Required'] } },
@@ -51,11 +51,11 @@ describe('AgentdoorClient', () => {
     });
     await expect(client.request('/auth/register', { method: 'POST', authenticated: false, body: {} })).rejects.toEqual(
       expect.objectContaining({
-        name: 'AgentdoorSdkError',
+        name: 'CapaPortSdkError',
         code: 'VALIDATION_ERROR',
         statusCode: 400,
         fieldErrors: { name: ['Required'] },
-      }) as AgentdoorSdkError,
+      }) as CapaPortSdkError,
     );
   });
 });

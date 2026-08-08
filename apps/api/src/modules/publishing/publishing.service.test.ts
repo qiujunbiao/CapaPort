@@ -1,11 +1,11 @@
-import { buildArchive, type CapabilityManifest } from '@agentdoor/capability-kit';
+import { buildArchive, type CapabilityManifest } from '@capaport/capability-kit';
 import { describe, expect, it, vi } from 'vitest';
 import type { AppError } from '../../platform/errors/app-error.js';
 import { type FrozenPublicationCandidate, type PublicationDataStore, PublishingService } from './publishing.service.js';
 
 const tenant = { organizationId: 'org-1', membershipId: 'membership-1', organizationRole: 'member' as const };
 const manifest = {
-  apiVersion: 'agentdoor.io/v1alpha1',
+  apiVersion: 'capaport.io/v1alpha1',
   kind: 'CapabilityPackage',
   metadata: { slug: 'release-helper', name: 'Release Helper', version: '1.0.0' },
   spec: { compatibility: { agents: ['codex'] }, components: [], entrypoints: {} },

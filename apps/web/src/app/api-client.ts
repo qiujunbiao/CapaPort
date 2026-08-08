@@ -1,4 +1,4 @@
-import { AgentdoorClient } from '@agentdoor/sdk';
+import { CapaPortClient } from '@capaport/sdk';
 import type { WebClient, WebSessionStore } from './types';
 
 type RequestOptions = {
@@ -11,7 +11,7 @@ type RequestOptions = {
 
 export function createWebClient(baseUrl: string, sessionStore: WebSessionStore): WebClient {
   const api = baseUrl.replace(/\/$/, '');
-  const sdk = new AgentdoorClient({
+  const sdk = new CapaPortClient({
     baseUrl: api,
     session: () => sessionStore.get(),
     saveSession: (session) => sessionStore.set(session),

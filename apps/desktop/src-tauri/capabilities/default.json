@@ -1,7 +1,7 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "main-window",
-  "description": "Minimal capability set for the Agentdoor main window",
+  "description": "Minimal capability set for the CapaPort main window",
   "windows": ["main"],
   "permissions": ["core:default", "updater:default", "process:allow-restart"]
 }

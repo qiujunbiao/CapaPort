@@ -5,8 +5,8 @@ import {
   refreshRequestSchema,
   registerRequestSchema,
   verificationRequestSchema,
-} from '@agentdoor/contracts/auth';
-import { zodFieldErrors } from '@agentdoor/contracts/errors';
+} from '@capaport/contracts/auth';
+import { zodFieldErrors } from '@capaport/contracts/errors';
 import {
   Body,
   Controller,
@@ -116,7 +116,7 @@ export class AuthController {
     const data = await this.identity.exportAccount(userId);
     return new StreamableFile(Buffer.from(JSON.stringify(data)), {
       type: 'application/json; charset=utf-8',
-      disposition: `attachment; filename="agentdoor-account-${userId}.json"`,
+      disposition: `attachment; filename="capaport-account-${userId}.json"`,
     });
   }
 

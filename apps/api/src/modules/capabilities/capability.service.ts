@@ -5,18 +5,18 @@ import {
   hashPackage,
   type PackageFile,
   parseManifest,
-} from '@agentdoor/capability-kit';
+} from '@capaport/capability-kit';
 import type {
   AgentId,
   CapabilitySearchQuery,
   CapabilitySummary,
   CreateCapabilityRequest,
   UpdateCapabilityRequest,
-} from '@agentdoor/contracts/capabilities';
-import type { TenantContext } from '@agentdoor/contracts/organizations';
-import type { SpaceSummary } from '@agentdoor/contracts/spaces';
-import type { ScanReport } from '@agentdoor/security-scan';
-import { scanPackage } from '@agentdoor/security-scan';
+} from '@capaport/contracts/capabilities';
+import type { TenantContext } from '@capaport/contracts/organizations';
+import type { SpaceSummary } from '@capaport/contracts/spaces';
+import type { ScanReport } from '@capaport/security-scan';
+import { scanPackage } from '@capaport/security-scan';
 import { Inject, Injectable } from '@nestjs/common';
 import { AppError } from '../../platform/errors/app-error.js';
 import { SpaceService } from '../access/space.service.js';
@@ -255,7 +255,7 @@ export class CapabilityService {
     if (!draft || draft.spaceId !== capability.spaceId) this.denied();
     const { bytes } = await this.artifacts.readArtifact(tenant.organizationId, artifactId);
     const files = this.validateArchive(bytes, capability.slug);
-    const manifestFile = files.find((file) => file.path === 'agentdoor.yaml');
+    const manifestFile = files.find((file) => file.path === 'capaport.yaml');
     if (!manifestFile) throw new AppError('CAPABILITY_PACKAGE_INVALID', 'Package manifest is required.', 400);
     let manifest: CapabilityManifest;
     try {
@@ -303,8 +303,8 @@ export class CapabilityService {
       throw new AppError('CAPABILITY_ARCHIVE_INVALID', this.safeValidationMessage(error), 400);
     }
     const paths = new Set(files.map((file) => file.path));
-    if (!paths.has('agentdoor.yaml') || !paths.has('README.md')) {
-      throw new AppError('CAPABILITY_PACKAGE_INVALID', 'Package requires agentdoor.yaml and README.md.', 400);
+    if (!paths.has('capaport.yaml') || !paths.has('README.md')) {
+      throw new AppError('CAPABILITY_PACKAGE_INVALID', 'Package requires capaport.yaml and README.md.', 400);
     }
     if (!slug) throw new AppError('CAPABILITY_PACKAGE_INVALID', 'Capability slug is required.', 400);
     return files;

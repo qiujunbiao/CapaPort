@@ -8,13 +8,13 @@ import './styles.css';
 
 declare global {
   interface Window {
-    __AGENTDOOR_WEB_E2E__?: { client: WebClient; sessionStore: WebSessionStore };
+    __CAPAPORT_WEB_E2E__?: { client: WebClient; sessionStore: WebSessionStore };
   }
 }
 
-const sessionStore = window.__AGENTDOOR_WEB_E2E__?.sessionStore ?? createBrowserSessionStore();
+const sessionStore = window.__CAPAPORT_WEB_E2E__?.sessionStore ?? createBrowserSessionStore();
 const client =
-  window.__AGENTDOOR_WEB_E2E__?.client ??
+  window.__CAPAPORT_WEB_E2E__?.client ??
   createWebClient(import.meta.env.VITE_API_URL ?? 'http://127.0.0.1:3210/api/v1', sessionStore);
 const root = document.getElementById('root');
 if (!root) throw new Error('Application root is missing.');

@@ -3,7 +3,7 @@ import type {
   OrganizationRole,
   OrganizationSummary,
   UpdateOrganizationRequest,
-} from '@agentdoor/contracts/organizations';
+} from '@capaport/contracts/organizations';
 import { Inject, Injectable } from '@nestjs/common';
 import { and, desc, eq, gt, isNull, ne } from 'drizzle-orm';
 import { sessions, userIdentities, users } from '../../db/schema/identity.js';

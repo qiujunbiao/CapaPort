@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import type { ProjectContextSummary } from '@agentdoor/contracts/projects';
+import type { ProjectContextSummary } from '@capaport/contracts/projects';
 import { Inject, Injectable } from '@nestjs/common';
 import { and, desc, eq } from 'drizzle-orm';
 import { devices } from '../../db/schema/distribution.js';

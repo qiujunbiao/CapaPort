@@ -70,7 +70,7 @@ const dependencySchema = z
 
 export const manifestSchema = z
   .object({
-    schemaVersion: z.literal('agentdoor.io/v1alpha1'),
+    schemaVersion: z.literal('capaport.io/v1alpha1'),
     kind: z.literal('CapabilityPackage'),
     metadata: z
       .object({

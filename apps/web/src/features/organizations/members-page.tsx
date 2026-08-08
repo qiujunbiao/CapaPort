@@ -1,4 +1,4 @@
-import type { OrganizationRole } from '@agentdoor/contracts';
+import type { OrganizationRole } from '@capaport/contracts';
 import { MailPlus, MoreHorizontal, UserRound, X } from 'lucide-react';
 import { useState } from 'react';
 import type { OrganizationInvitation, OrganizationMember, WebClient } from '../../app/types';

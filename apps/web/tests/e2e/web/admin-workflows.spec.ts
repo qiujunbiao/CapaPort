@@ -170,14 +170,14 @@ async function injectConsole(page: Page) {
       revokeSession: async () => undefined,
       deadLetters: async () => [],
     };
-    Object.defineProperty(window, '__AGENTDOOR_WEB_E2E__', { value: { client, sessionStore } });
+    Object.defineProperty(window, '__CAPAPORT_WEB_E2E__', { value: { client, sessionStore } });
   });
 }
 
 test('admin invitation and space management', async ({ page }) => {
   await injectConsole(page);
   await page.goto('/');
-  await page.screenshot({ path: '/tmp/agentdoor-web-dashboard.png', fullPage: true });
+  await page.screenshot({ path: '/tmp/capaport-web-dashboard.png', fullPage: true });
   await page.getByRole('button', { name: '成员与邀请' }).click();
   await page.getByLabel('邀请邮箱或手机号').fill('new@example.com');
   await page.getByLabel('组织角色').selectOption('auditor');

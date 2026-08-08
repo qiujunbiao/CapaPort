@@ -1,4 +1,4 @@
-import type { OrganizationSummary, PublicUser } from '@agentdoor/contracts';
+import type { OrganizationSummary, PublicUser } from '@capaport/contracts';
 import { Building2, Download, LogOut, Save, ShieldCheck, Trash2, UserRoundCog } from 'lucide-react';
 import { useState } from 'react';
 import type { OrganizationMember, WebClient } from '../../app/types';
@@ -107,7 +107,7 @@ export function OrganizationSettingsPage({
             variant="secondary"
             onClick={() =>
               void action(async () => {
-                download(await client.exportOrganization(organization.id), `agentdoor-${organization.slug}.json`);
+                download(await client.exportOrganization(organization.id), `capaport-${organization.slug}.json`);
               }, '组织数据已导出')
             }
           >
@@ -147,7 +147,7 @@ export function OrganizationSettingsPage({
             variant="secondary"
             onClick={() =>
               void action(async () => {
-                download(await client.exportAccount(), 'agentdoor-account.json');
+                download(await client.exportAccount(), 'capaport-account.json');
               }, '账号数据已导出')
             }
           >
@@ -270,7 +270,7 @@ export function OrganizationSettingsPage({
             <ShieldCheck />
             <div>
               <h2>数据保护边界</h2>
-              <p>Agentdoor 默认不上传业务源码、绝对路径、令牌与本地密钥。</p>
+              <p>CapaPort 默认不上传业务源码、绝对路径、令牌与本地密钥。</p>
             </div>
           </div>
           <div className="assurance-grid">

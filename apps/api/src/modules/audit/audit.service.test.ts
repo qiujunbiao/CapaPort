@@ -1,4 +1,4 @@
-import type { TenantContext } from '@agentdoor/contracts/organizations';
+import type { TenantContext } from '@capaport/contracts/organizations';
 import { describe, expect, it, vi } from 'vitest';
 import { AppError } from '../../platform/errors/app-error.js';
 import { type AuditDataStore, AuditService } from './audit.service.js';

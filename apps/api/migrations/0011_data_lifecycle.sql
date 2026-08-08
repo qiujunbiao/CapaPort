@@ -33,12 +33,12 @@ CREATE INDEX IF NOT EXISTS "lifecycle_audit_scope_idx" ON "lifecycle_audit_event
 CREATE OR REPLACE FUNCTION prevent_audit_log_mutation() RETURNS trigger AS $$
 BEGIN
   IF TG_OP = 'DELETE'
-    AND current_setting('agentdoor.audit_retention', true) = 'on'
+    AND current_setting('capaport.audit_retention', true) = 'on'
     AND OLD.expires_at < now() THEN
     RETURN OLD;
   END IF;
   IF TG_OP = 'UPDATE'
-    AND current_setting('agentdoor.lifecycle_delete', true) = 'on'
+    AND current_setting('capaport.lifecycle_delete', true) = 'on'
     AND OLD.organization_id IS NOT NULL
     AND NEW.organization_id IS NULL
     AND NEW.actor_membership_id IS NULL

@@ -1,4 +1,4 @@
-import type { OrganizationRole, PublicationSummary } from '@agentdoor/contracts';
+import type { OrganizationRole, PublicationSummary } from '@capaport/contracts';
 import type { SpaceMember, WebClient } from '../app/types';
 
 export function webFixture(

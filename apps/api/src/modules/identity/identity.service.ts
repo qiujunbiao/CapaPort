@@ -7,7 +7,7 @@ import type {
   RecoveryStartRequest,
   RegisterRequest,
   TokenPair,
-} from '@agentdoor/contracts/auth';
+} from '@capaport/contracts/auth';
 import { Inject, Injectable } from '@nestjs/common';
 import { hash as argonHash, verify as argonVerify } from '@node-rs/argon2';
 import { AppError } from '../../platform/errors/app-error.js';

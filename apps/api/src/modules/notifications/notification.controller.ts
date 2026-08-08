@@ -1,5 +1,5 @@
-import { zodFieldErrors } from '@agentdoor/contracts/errors';
-import { notificationQuerySchema } from '@agentdoor/contracts/operations';
+import { zodFieldErrors } from '@capaport/contracts/errors';
+import { notificationQuerySchema } from '@capaport/contracts/operations';
 import {
   Controller,
   Get,

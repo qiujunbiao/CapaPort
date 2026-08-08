@@ -1,6 +1,6 @@
 import { createHmac, randomUUID } from 'node:crypto';
-import type { MetricsQuery, ProductEvent } from '@agentdoor/contracts/operations';
-import type { TenantContext } from '@agentdoor/contracts/organizations';
+import type { MetricsQuery, ProductEvent } from '@capaport/contracts/operations';
+import type { TenantContext } from '@capaport/contracts/organizations';
 import { Inject, Injectable } from '@nestjs/common';
 import type { AppConfig } from '../../config/config.js';
 import { APP_CONFIG } from '../../config/config.js';

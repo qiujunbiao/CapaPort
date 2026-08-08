@@ -14,8 +14,8 @@ import type {
   SpaceSummary,
   TenantContext,
   TokenPair,
-} from '@agentdoor/contracts';
-import { AgentdoorClient, AgentdoorSdkError } from '@agentdoor/sdk';
+} from '@capaport/contracts';
+import { CapaPortClient, CapaPortSdkError } from '@capaport/sdk';
 import type {
   CloudClient,
   DeviceSummary,
@@ -46,7 +46,7 @@ export function createCloudClient(
   baseUrl = import.meta.env.VITE_API_URL || 'http://127.0.0.1:3210/api/v1',
   sessionStore?: SessionStore,
 ): CloudClient {
-  const sdk = new AgentdoorClient({
+  const sdk = new CapaPortClient({
     baseUrl,
     ...(sessionStore
       ? {
@@ -70,7 +70,7 @@ export function createCloudClient(
         ...(organizationId ? { organizationId } : {}),
       });
     } catch (error) {
-      if (error instanceof AgentdoorSdkError) throw new CloudError(error.code, error.message, error.fieldErrors);
+      if (error instanceof CapaPortSdkError) throw new CloudError(error.code, error.message, error.fieldErrors);
       throw error;
     }
   }
@@ -229,7 +229,7 @@ export function createCloudClient(
         session,
         organizationId,
         body: JSON.stringify({
-          name: navigator.userAgent.includes('Windows') ? 'Agentdoor Windows' : 'Agentdoor Mac',
+          name: navigator.userAgent.includes('Windows') ? 'CapaPort Windows' : 'CapaPort Mac',
           platform: navigator.userAgent.includes('Windows') ? 'windows' : 'macos',
           appVersion: '0.1.0',
           supportedAgents,

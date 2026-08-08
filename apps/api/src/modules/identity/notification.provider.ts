@@ -34,11 +34,11 @@ export class MailpitVerificationSender implements VerificationSender {
       return;
     }
     const action =
-      challenge.purpose === 'verify_identity' ? 'verify your Agentdoor account' : 'reset your Agentdoor password';
+      challenge.purpose === 'verify_identity' ? 'verify your CapaPort account' : 'reset your CapaPort password';
     await this.transport.sendMail({
       from: this.config.notification.smtpFrom,
       to: challenge.target,
-      subject: `Agentdoor security code: ${challenge.code}`,
+      subject: `CapaPort security code: ${challenge.code}`,
       text: `Use ${challenge.code} to ${action}. It expires in ${this.config.auth.verificationTtlMinutes} minutes. If you did not request this, ignore this message.`,
     });
   }

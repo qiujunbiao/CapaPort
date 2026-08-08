@@ -43,8 +43,8 @@ jobs:
       - run: pnpm artifacts:cli
       - uses: actions/upload-artifact@v4
         with:
-          name: agentdoor-cli
-          path: artifacts/agentdoor-cli.mjs*
+          name: capaport-cli
+          path: artifacts/capaport-cli.mjs*
           if-no-files-found: error
 
   web:
@@ -64,12 +64,12 @@ jobs:
         env:
           CAPAPORT_API_URL: ${{ vars.CAPAPORT_API_URL }}
         run: test -n "$CAPAPORT_API_URL"
-      - run: pnpm --filter @agentdoor/web build
+      - run: pnpm --filter @capaport/web build
         env:
           VITE_API_URL: ${{ vars.CAPAPORT_API_URL }}
       - uses: actions/upload-artifact@v4
         with:
-          name: agentdoor-web
+          name: capaport-web
           path: apps/web/dist/**/*
           if-no-files-found: error
 
@@ -84,13 +84,13 @@ jobs:
       matrix:
         include:
           - os: macos-14
-            artifact: agentdoor-macos
+            artifact: capaport-macos
             platform: macos
             arch: universal
             target: universal-apple-darwin
             bundle: apps/desktop/src-tauri/target/universal-apple-darwin/release/bundle
           - os: windows-2025
-            artifact: agentdoor-windows
+            artifact: capaport-windows
             platform: windows
             arch: x86_64
             target: x86_64-pc-windows-msvc
@@ -140,7 +140,7 @@ jobs:
         run: |
           if (-not $env:WINDOWS_CERTIFICATE -or -not $env:WINDOWS_CERTIFICATE_PASSWORD) { throw 'Windows signing secrets are required.' }
           $bytes = [Convert]::FromBase64String($env:WINDOWS_CERTIFICATE)
-          $path = Join-Path $env:RUNNER_TEMP 'agentdoor-signing.pfx'
+          $path = Join-Path $env:RUNNER_TEMP 'capaport-signing.pfx'
           [IO.File]::WriteAllBytes($path, $bytes)
           $password = ConvertTo-SecureString $env:WINDOWS_CERTIFICATE_PASSWORD -AsPlainText -Force
           $certificate = Import-PfxCertificate -FilePath $path -CertStoreLocation Cert:\CurrentUser\My -Password $password
@@ -176,7 +176,7 @@ jobs:
         with:
           path: ${{ matrix.bundle }}
           format: spdx-json
-          output-file: ${{ matrix.bundle }}/agentdoor.spdx.json
+          output-file: ${{ matrix.bundle }}/capaport.spdx.json
           upload-artifact: false
       - run: >-
           pnpm exec tsx scripts/package-desktop-release.ts
@@ -247,7 +247,7 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - uses: actions/download-artifact@v4
         with:
-          pattern: agentdoor-*
+          pattern: capaport-*
           path: release-assets
       - name: Create signed updater manifest
         env:
@@ -269,6 +269,6 @@ jobs:
             release-assets/**/*.nsis.zip.sig
             release-assets/**/SHA256SUMS
             release-assets/**/release-metadata.json
-            release-assets/**/agentdoor.spdx.json
+            release-assets/**/capaport.spdx.json
             release-assets/**/*.mjs
             release-assets/**/*.sha256

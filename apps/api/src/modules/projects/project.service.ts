@@ -1,13 +1,13 @@
 import { randomUUID } from 'node:crypto';
-import { extractArchive } from '@agentdoor/capability-kit';
-import type { TenantContext } from '@agentdoor/contracts/organizations';
+import { extractArchive } from '@capaport/capability-kit';
+import type { TenantContext } from '@capaport/contracts/organizations';
 import type {
   CreateProjectBindingRequest,
   ProjectBindingSummary,
   ProjectContextSummary,
   RegisterProjectContextRequest,
-} from '@agentdoor/contracts/projects';
-import { scanPackage } from '@agentdoor/security-scan';
+} from '@capaport/contracts/projects';
+import { scanPackage } from '@capaport/security-scan';
 import { Inject, Injectable } from '@nestjs/common';
 import { AppError } from '../../platform/errors/app-error.js';
 import type { AuthorizationAction } from '../access/authorization.js';

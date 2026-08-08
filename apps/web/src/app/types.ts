@@ -14,7 +14,7 @@ import type {
   SpaceSummary,
   TokenPair,
   UpdateCapabilityRequest,
-} from '@agentdoor/contracts';
+} from '@capaport/contracts';
 
 export type WebSession = Omit<TokenPair, 'expiresIn'> & { expiresIn?: number; organizationId?: string };
 

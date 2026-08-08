@@ -29,8 +29,8 @@ export type EditablePackageExport = { files: PackageFile[]; archive: Uint8Array;
 export function importEditablePackage(archive: Uint8Array): EditableCapabilityPackage {
   const files = extractArchive(archive);
   const byPath = new Map(files.map((file) => [file.path, file.content]));
-  const manifestBytes = byPath.get('agentdoor.yaml');
-  if (!manifestBytes) throw new Error('能力包缺少 agentdoor.yaml');
+  const manifestBytes = byPath.get('capaport.yaml');
+  if (!manifestBytes) throw new Error('能力包缺少 capaport.yaml');
   const manifest = parseManifest(new TextDecoder('utf-8', { fatal: true }).decode(manifestBytes));
   const decoder = new TextDecoder('utf-8', { fatal: true });
   const components = manifest.spec.components.map((component): EditablePackageComponent => {
@@ -163,7 +163,7 @@ export async function exportEditablePackage(editable: EditableCapabilityPackage)
   const errors = validateEditablePackage(editable);
   if (errors.length) throw new Error(`能力包校验失败：${errors.join('；')}`);
   const manifest: CapabilityManifest = {
-    schemaVersion: 'agentdoor.io/v1alpha1',
+    schemaVersion: 'capaport.io/v1alpha1',
     kind: 'CapabilityPackage',
     metadata: {
       slug: editable.slug,
@@ -183,9 +183,9 @@ export async function exportEditablePackage(editable: EditableCapabilityPackage)
   const files = normalizePackageFiles([
     {
       path: 'README.md',
-      content: encoder.encode(`# ${editable.name.trim()}\n\n${editable.description || 'Agentdoor 能力包'}\n`),
+      content: encoder.encode(`# ${editable.name.trim()}\n\n${editable.description || 'CapaPort 能力包'}\n`),
     },
-    { path: 'agentdoor.yaml', content: encoder.encode(stringify(manifest, { lineWidth: 0 })) },
+    { path: 'capaport.yaml', content: encoder.encode(stringify(manifest, { lineWidth: 0 })) },
     ...editable.components.map((component) => ({ path: component.path, content: encoder.encode(component.content) })),
   ]);
   return { files, archive: buildArchive(files), digest: await hashPackage(files) };

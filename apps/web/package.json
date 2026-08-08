@@ -1,5 +1,5 @@
 {
-  "name": "@agentdoor/web",
+  "name": "@capaport/web",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -11,8 +11,8 @@
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
-    "@agentdoor/contracts": "workspace:*",
-    "@agentdoor/sdk": "workspace:*",
+    "@capaport/contracts": "workspace:*",
+    "@capaport/sdk": "workspace:*",
     "@tanstack/react-query": "5.101.4",
     "lucide-react": "1.30.0",
     "react": "19.2.8",

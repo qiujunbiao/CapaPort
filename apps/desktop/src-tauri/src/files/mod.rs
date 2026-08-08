@@ -188,7 +188,7 @@ impl FileEngine {
             .canonicalize()
             .map_err(|_| RuntimeError::PathNotAllowed)?;
         let canonical_root = root.to_string_lossy().into_owned();
-        let runtime_root = root.join(".agentdoor");
+        let runtime_root = root.join(".capaport");
         let staging_root = runtime_root.join("staging").join(&plan.transaction_id);
         let backup_root = runtime_root.join("backups").join(&plan.transaction_id);
         let journal_path = runtime_root
@@ -339,7 +339,7 @@ impl FileEngine {
             &now(),
         )?;
         let lock = serde_json::json!({
-            "schemaVersion": "agentdoor.io/install-lock/v1", "adapterId": plan.adapter_id,
+            "schemaVersion": "capaport.io/install-lock/v1", "adapterId": plan.adapter_id,
             "capabilitySlug": plan.capability_slug, "packageDigest": plan.package_digest,
             "transactionId": plan.transaction_id, "files": preview.changes
         });
@@ -405,7 +405,7 @@ impl FileEngine {
             }
         }
         let lock_json = lock_json.ok_or(RuntimeError::NotFound)?;
-        let runtime_root = root.join(".agentdoor");
+        let runtime_root = root.join(".capaport");
         let backup_root = runtime_root.join("backups").join(&plan.transaction_id);
         let journal_path = runtime_root
             .join("recovery")

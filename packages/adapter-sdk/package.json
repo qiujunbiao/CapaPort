@@ -1,5 +1,5 @@
 {
-  "name": "@agentdoor/adapter-sdk",
+  "name": "@capaport/adapter-sdk",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -19,7 +19,7 @@
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
-    "@agentdoor/capability-kit": "workspace:*",
+    "@capaport/capability-kit": "workspace:*",
     "yaml": "2.9.0"
   },
   "devDependencies": {

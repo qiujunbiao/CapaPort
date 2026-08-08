@@ -436,7 +436,7 @@ mod tests {
     #[test]
     fn migrates_all_local_state_tables_and_reports_an_empty_queue() {
         let directory = tempdir().unwrap();
-        let database = Database::open(&directory.path().join("agentdoor.db")).unwrap();
+        let database = Database::open(&directory.path().join("capaport.db")).unwrap();
         assert_eq!(database.table_count(), 8);
         assert_eq!(
             database.queue_status().unwrap(),
@@ -451,7 +451,7 @@ mod tests {
     #[test]
     fn persists_cursors_and_runs_a_durable_retry_lifecycle() {
         let directory = tempdir().unwrap();
-        let database = Database::open(&directory.path().join("agentdoor.db")).unwrap();
+        let database = Database::open(&directory.path().join("capaport.db")).unwrap();
         database
             .save_sync_cursor("space:1", "cursor-2", "0002")
             .unwrap();
@@ -495,7 +495,7 @@ mod tests {
     #[test]
     fn recovers_claimed_writes_after_restart_and_allows_manual_dead_letter_retry() {
         let directory = tempdir().unwrap();
-        let path = directory.path().join("agentdoor.db");
+        let path = directory.path().join("capaport.db");
         {
             let database = Database::open(&path).unwrap();
             database

@@ -1,18 +1,18 @@
 [package]
-name = "agentdoor-desktop"
+name = "capaport-desktop"
 version = "0.1.0"
 edition = "2024"
 
 [lib]
-name = "agentdoor_runtime"
+name = "capaport_runtime"
 path = "src/lib.rs"
 
 [[bin]]
-name = "agentdoor-desktop"
+name = "capaport-desktop"
 path = "src/main.rs"
 
 [[bin]]
-name = "agentdoor-runtime-harness"
+name = "capaport-runtime-harness"
 path = "src/bin/runtime_harness.rs"
 
 [features]

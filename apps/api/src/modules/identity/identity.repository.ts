@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import type { IdentityKind } from '@agentdoor/contracts/auth';
+import type { IdentityKind } from '@capaport/contracts/auth';
 import { Inject, Injectable } from '@nestjs/common';
 import { and, desc, eq } from 'drizzle-orm';
 import { refreshTokens, sessions, userIdentities, users, verificationChallenges } from '../../db/schema/identity.js';

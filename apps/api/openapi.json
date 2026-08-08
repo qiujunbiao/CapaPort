@@ -22,7 +22,7 @@
   "info": {
     "contact": {},
     "description": "Cloud API for governed capability discovery, publishing, installation, and organization sharing.",
-    "title": "Agentdoor API",
+    "title": "CapaPort API",
     "version": "1.0.0"
   },
   "openapi": "3.0.0",

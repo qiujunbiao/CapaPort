@@ -1,4 +1,4 @@
-import type { OrganizationRole, TenantContext } from '@agentdoor/contracts/organizations';
+import type { OrganizationRole, TenantContext } from '@capaport/contracts/organizations';
 import { Inject, Injectable } from '@nestjs/common';
 import { AppError } from '../errors/app-error.js';
 

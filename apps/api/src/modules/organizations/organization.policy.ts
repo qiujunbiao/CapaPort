@@ -1,4 +1,4 @@
-import type { OrganizationRole } from '@agentdoor/contracts/organizations';
+import type { OrganizationRole } from '@capaport/contracts/organizations';
 import { AppError } from '../../platform/errors/app-error.js';
 
 export function canChangeMemberRole(

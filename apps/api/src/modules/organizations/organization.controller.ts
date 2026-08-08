@@ -1,4 +1,4 @@
-import { zodFieldErrors } from '@agentdoor/contracts/errors';
+import { zodFieldErrors } from '@capaport/contracts/errors';
 import {
   acceptInvitationRequestSchema,
   changeOrganizationRoleRequestSchema,
@@ -8,7 +8,7 @@ import {
   transferOwnershipRequestSchema,
   updateOrganizationRequestSchema,
   organizationSecurityPolicySchema,
-} from '@agentdoor/contracts/organizations';
+} from '@capaport/contracts/organizations';
 import {
   Body,
   Controller,
@@ -130,7 +130,7 @@ export class OrganizationController {
     const data = await this.organizations.export(tenant(request));
     return new StreamableFile(Buffer.from(JSON.stringify(data)), {
       type: 'application/json; charset=utf-8',
-      disposition: `attachment; filename="agentdoor-organization-${tenant(request).organizationId}.json"`,
+      disposition: `attachment; filename="capaport-organization-${tenant(request).organizationId}.json"`,
     });
   }
 

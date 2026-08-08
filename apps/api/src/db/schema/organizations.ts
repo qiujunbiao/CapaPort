@@ -1,5 +1,5 @@
 import { sql } from 'drizzle-orm';
-import type { OrganizationSecurityPolicy } from '@agentdoor/contracts/organizations';
+import type { OrganizationSecurityPolicy } from '@capaport/contracts/organizations';
 import { index, jsonb, pgTable, text, timestamp, uniqueIndex, uuid } from 'drizzle-orm/pg-core';
 import { users } from './identity.js';
 

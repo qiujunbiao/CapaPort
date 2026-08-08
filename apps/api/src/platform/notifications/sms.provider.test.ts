@@ -5,7 +5,7 @@ describe('HTTP SMS provider', () => {
   const config = {
     endpoint: 'https://sms.example.com/v1/messages',
     token: 'top-secret-provider-token',
-    sender: 'Agentdoor',
+    sender: 'CapaPort',
     timeoutMs: 2_000,
   };
 
@@ -27,7 +27,7 @@ describe('HTTP SMS provider', () => {
           'idempotency-key': 'challenge-a',
         }),
         body: JSON.stringify({
-          sender: 'Agentdoor',
+          sender: 'CapaPort',
           to: '+8613800138000',
           template: 'identity_verification',
           variables: { code: '123456', expiresInMinutes: '10' },

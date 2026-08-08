@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
-import type { CanonicalPackage } from '@agentdoor/adapter-sdk';
-import { buildArchive, extractArchive, hashPackage, parseManifest } from '@agentdoor/capability-kit';
+import type { CanonicalPackage } from '@capaport/adapter-sdk';
+import { buildArchive, extractArchive, hashPackage, parseManifest } from '@capaport/capability-kit';
 
 export function archivePackage(pkg: CanonicalPackage) {
   return buildArchive(pkg.files);
@@ -11,8 +11,8 @@ export function archiveSha256(bytes: Uint8Array) {
 }
 export async function canonicalPackage(archive: Uint8Array): Promise<CanonicalPackage> {
   const files = extractArchive(archive);
-  const manifestFile = files.find((file) => file.path === 'agentdoor.yaml');
-  if (!manifestFile) throw new Error('能力包缺少 agentdoor.yaml');
+  const manifestFile = files.find((file) => file.path === 'capaport.yaml');
+  if (!manifestFile) throw new Error('能力包缺少 capaport.yaml');
   const manifest = parseManifest(new TextDecoder().decode(manifestFile.content));
   return { manifest, files, digest: await hashPackage(files) };
 }

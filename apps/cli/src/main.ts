@@ -14,9 +14,9 @@ import { CliOutput, type OutputWriter } from './output.js';
 import { parseArgv, UsageError } from './parser.js';
 import { type Prompter, terminalPrompter } from './prompt.js';
 
-const help = `Agentdoor CLI 0.1.0
+const help = `CapaPort CLI 0.1.0
 
-用法：agentdoor <command> [options]
+用法：capaport <command> [options]
 
   auth login|logout|status     登录与系统凭据
   org list|use                查看或切换组织
@@ -41,7 +41,7 @@ export async function runCli(
   const baseUrl =
     typeof parsed.flags.api === 'string'
       ? parsed.flags.api.replace(/\/$/, '')
-      : (process.env.AGENTDOOR_API_URL ?? 'http://127.0.0.1:3210/api/v1');
+      : (process.env.CAPAPORT_API_URL ?? 'http://127.0.0.1:3210/api/v1');
   const api = new ApiClient(baseUrl, credentials);
   try {
     if (!parsed.command || parsed.flags.help || parsed.command === 'help') {

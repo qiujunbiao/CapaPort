@@ -1,4 +1,4 @@
-import type { PackageFile } from '@agentdoor/capability-kit';
+import type { PackageFile } from '@capaport/capability-kit';
 import { describe, expect, it } from 'vitest';
 import { defaultScanPolicy, scanPackage } from './index.js';
 
@@ -34,7 +34,7 @@ describe('security scanner', () => {
 
   it('does not classify a manifest slug with a timestamp suffix as a secret', async () => {
     const report = await scanPackage([
-      file('agentdoor.yaml', 'metadata:\n  slug: publication-e2e-1786124899401-95310'),
+      file('capaport.yaml', 'metadata:\n  slug: publication-e2e-1786124899401-95310'),
     ]);
     expect(report.findings.filter((item) => item.ruleId === 'SEC_HIGH_ENTROPY')).toHaveLength(0);
   });
@@ -69,7 +69,7 @@ describe('security scanner', () => {
   it.each([
     ['SEC_PERSONAL_DATA', 'context/contact.md', 'owner: developer@example.com'],
     ['SEC_INTERNAL_ADDRESS', 'context/network.md', 'service: api.corp.internal'],
-    ['SEC_NETWORK_HOST', 'agentdoor.yaml', 'endpoint: https://unapproved.example/api'],
+    ['SEC_NETWORK_HOST', 'capaport.yaml', 'endpoint: https://unapproved.example/api'],
     ['SEC_SOURCE_TREE', 'src/payment.ts', 'export const payment = true'],
     ['SEC_OVERSIZED_FILE', 'context/large.md', 'x'.repeat(101)],
   ])('applies organization policy category %s', async (ruleId, path, content) => {

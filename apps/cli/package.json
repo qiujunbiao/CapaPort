@@ -1,27 +1,27 @@
 {
-  "name": "@agentdoor/cli",
+  "name": "@capaport/cli",
   "version": "0.1.0",
   "private": true,
   "type": "module",
   "bin": {
-    "agentdoor": "dist/agentdoor.mjs"
+    "capaport": "dist/capaport.mjs"
   },
   "scripts": {
     "build": "tsc -p tsconfig.json --noEmit && tsx scripts/build.ts",
     "test": "vitest run",
-    "test:e2e": "pnpm --filter @agentdoor/adapter-sdk build && vitest run --config vitest.e2e.config.ts",
+    "test:e2e": "pnpm --filter @capaport/adapter-sdk build && vitest run --config vitest.e2e.config.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
-    "@agentdoor/adapter-claude-code": "workspace:*",
-    "@agentdoor/adapter-codex": "workspace:*",
-    "@agentdoor/adapter-cursor": "workspace:*",
-    "@agentdoor/adapter-gemini-cli": "workspace:*",
-    "@agentdoor/adapter-sdk": "workspace:*",
-    "@agentdoor/capability-kit": "workspace:*",
-    "@agentdoor/contracts": "workspace:*",
-    "@agentdoor/sdk": "workspace:*",
-    "@agentdoor/security-scan": "workspace:*"
+    "@capaport/adapter-claude-code": "workspace:*",
+    "@capaport/adapter-codex": "workspace:*",
+    "@capaport/adapter-cursor": "workspace:*",
+    "@capaport/adapter-gemini-cli": "workspace:*",
+    "@capaport/adapter-sdk": "workspace:*",
+    "@capaport/capability-kit": "workspace:*",
+    "@capaport/contracts": "workspace:*",
+    "@capaport/sdk": "workspace:*",
+    "@capaport/security-scan": "workspace:*"
   },
   "devDependencies": {
     "@types/node": "26.1.2",

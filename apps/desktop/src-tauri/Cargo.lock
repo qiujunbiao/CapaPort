@@ -20,31 +20,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "agentdoor-desktop"
-version = "0.1.0"
-dependencies = [
- "base64 0.22.1",
- "directories",
- "hex",
- "keyring",
- "parking_lot",
- "regex",
- "rusqlite",
- "serde",
- "serde_json",
- "sha2",
- "tauri",
- "tauri-build",
- "tauri-plugin-process",
- "tauri-plugin-updater",
- "tempfile",
- "thiserror 2.0.19",
- "uuid",
- "walkdir",
- "zip",
-]
-
-[[package]]
 name = "aho-corasick"
 version = "1.1.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -440,6 +415,31 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "bb1307f12aa967b5a58416e87b3653360e0fd614a016b6e970db08fecbb1b80d"
 dependencies = [
  "serde_core",
+]
+
+[[package]]
+name = "capaport-desktop"
+version = "0.1.0"
+dependencies = [
+ "base64 0.22.1",
+ "directories",
+ "hex",
+ "keyring",
+ "parking_lot",
+ "regex",
+ "rusqlite",
+ "serde",
+ "serde_json",
+ "sha2",
+ "tauri",
+ "tauri-build",
+ "tauri-plugin-process",
+ "tauri-plugin-updater",
+ "tempfile",
+ "thiserror 2.0.19",
+ "uuid",
+ "walkdir",
+ "zip",
 ]
 
 [[package]]

@@ -47,7 +47,7 @@ describe('archive and manifest attack gate', () => {
   it('rejects unknown and privilege-confusing manifest fields', () => {
     expect(() =>
       parseManifest(`
-schemaVersion: agentdoor.io/v1alpha1
+schemaVersion: capaport.io/v1alpha1
 kind: CapabilityPackage
 privileged: true
 metadata: { slug: safe, name: Safe, description: '', tags: [] }

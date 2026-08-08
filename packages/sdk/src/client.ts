@@ -1,4 +1,4 @@
-import type { ErrorEnvelope, TokenPair } from '@agentdoor/contracts';
+import type { ErrorEnvelope, TokenPair } from '@capaport/contracts';
 
 export type SdkSession = {
   accessToken: string;
@@ -7,7 +7,7 @@ export type SdkSession = {
   organizationId?: string;
 };
 
-export type AgentdoorClientOptions = {
+export type CapaPortClientOptions = {
   baseUrl: string;
   fetch?: typeof fetch;
   session?: () => SdkSession | undefined | Promise<SdkSession | undefined>;
@@ -15,7 +15,7 @@ export type AgentdoorClientOptions = {
   idempotencyKey?: () => string;
 };
 
-export type AgentdoorRequestOptions = {
+export type CapaPortRequestOptions = {
   method?: string;
   body?: unknown;
   headers?: HeadersInit;
@@ -25,7 +25,7 @@ export type AgentdoorRequestOptions = {
   idempotencyKey?: string;
 };
 
-export class AgentdoorSdkError extends Error {
+export class CapaPortSdkError extends Error {
   constructor(
     readonly code: string,
     message: string,
@@ -34,26 +34,26 @@ export class AgentdoorSdkError extends Error {
     readonly requestId?: string,
   ) {
     super(message);
-    this.name = 'AgentdoorSdkError';
+    this.name = 'CapaPortSdkError';
   }
 }
 
-export class AgentdoorClient {
+export class CapaPortClient {
   private readonly baseUrl: string;
   private readonly fetcher: typeof fetch;
   private readonly createIdempotencyKey: () => string;
 
-  constructor(private readonly options: AgentdoorClientOptions) {
+  constructor(private readonly options: CapaPortClientOptions) {
     this.baseUrl = options.baseUrl.replace(/\/$/, '');
     this.fetcher = options.fetch ?? fetch;
     this.createIdempotencyKey = options.idempotencyKey ?? (() => crypto.randomUUID());
   }
 
-  async request<T>(path: string, options: AgentdoorRequestOptions = {}): Promise<T> {
+  async request<T>(path: string, options: CapaPortRequestOptions = {}): Promise<T> {
     return this.dispatch<T>(path, options, true);
   }
 
-  private async dispatch<T>(path: string, options: AgentdoorRequestOptions, retry: boolean): Promise<T> {
+  private async dispatch<T>(path: string, options: CapaPortRequestOptions, retry: boolean): Promise<T> {
     const authenticated = options.authenticated !== false;
     const session = options.session ?? (authenticated ? await this.options.session?.() : undefined);
     const method = (options.method ?? 'GET').toUpperCase();
@@ -76,7 +76,7 @@ export class AgentdoorClient {
         ...(body === undefined ? {} : { body }),
       });
     } catch {
-      throw new AgentdoorSdkError('NETWORK_ERROR', 'Unable to connect to Agentdoor.', 0);
+      throw new CapaPortSdkError('NETWORK_ERROR', 'Unable to connect to CapaPort.', 0);
     }
 
     if (
@@ -130,11 +130,11 @@ export class AgentdoorClient {
     return JSON.stringify(body);
   }
 
-  private async responseError(response: Response): Promise<AgentdoorSdkError> {
+  private async responseError(response: Response): Promise<CapaPortSdkError> {
     const payload = (await response.json().catch(() => undefined)) as ErrorEnvelope | undefined;
-    return new AgentdoorSdkError(
+    return new CapaPortSdkError(
       payload?.code ?? `HTTP_${response.status}`,
-      payload?.message ?? `Agentdoor request failed (${response.status}).`,
+      payload?.message ?? `CapaPort request failed (${response.status}).`,
       response.status,
       payload?.fieldErrors,
       payload?.requestId,

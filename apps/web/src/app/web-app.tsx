@@ -1,4 +1,4 @@
-import type { OrganizationRole } from '@agentdoor/contracts';
+import type { OrganizationRole } from '@capaport/contracts';
 import { QueryClient, QueryClientProvider, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   Activity,
@@ -79,7 +79,7 @@ function OrganizationSetup({ client, onReady }: { client: WebClient; onReady: (o
         <span>
           <DoorOpen />
         </span>
-        <strong>AGENTDOOR</strong>
+        <strong>CAPAPORT</strong>
       </div>
       <section className="setup-card">
         <p className="eyebrow">ORGANIZATION ONBOARDING</p>
@@ -349,7 +349,7 @@ function Console({ client, sessionStore }: { client: WebClient; sessionStore: We
             <DoorOpen />
           </span>
           <div>
-            <strong>AGENTDOOR</strong>
+            <strong>CAPAPORT</strong>
             <small>CONTROL PLANE</small>
           </div>
           <button type="button" aria-label="关闭导航" onClick={() => setMobileNav(false)}>
@@ -454,7 +454,7 @@ function Console({ client, sessionStore }: { client: WebClient; sessionStore: We
         </header>
         <main className="admin-main">{pageContent}</main>
         <footer className="admin-footer">
-          <span>Agentdoor Control Plane · v0.1.0</span>
+          <span>CapaPort Control Plane · v0.1.0</span>
           <span>区域：本地部署</span>
           <span>
             <i /> API 可用

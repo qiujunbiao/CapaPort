@@ -87,7 +87,7 @@ describe('desktop security gate', () => {
   });
 
   it('makes the security gate fail closed for an intentionally vulnerable fixture', async () => {
-    const directory = await mkdtemp(join(tmpdir(), 'agentdoor-security-probe-'));
+    const directory = await mkdtemp(join(tmpdir(), 'capaport-security-probe-'));
     const report = join(directory, 'report.json');
     const result = spawnSync(
       'pnpm',

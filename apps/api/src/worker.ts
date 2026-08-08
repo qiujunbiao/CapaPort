@@ -24,7 +24,7 @@ async function poll(): Promise<void> {
           : error instanceof Error
             ? error.message
             : 'unknown-error';
-      platformMetrics.increment('agentdoor_worker_errors_total', { operation: 'poll' });
+      platformMetrics.increment('capaport_worker_errors_total', { operation: 'poll' });
       platformLogger.error('worker.poll.failed', { code: code.replace(/[^A-Za-z0-9_-]/g, '').slice(0, 80) });
     }
     pollCount += 1;

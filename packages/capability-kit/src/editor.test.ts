@@ -26,13 +26,13 @@ describe('editable capability packages', () => {
     const exported = await exportEditablePackage(editable);
     expect(exported.digest).toMatch(/^[a-f0-9]{64}$/);
     expect(exported.files.map((file) => file.path)).toEqual([
-      'agentdoor.yaml',
+      'capaport.yaml',
       'context/release-helper.md',
       'prompts/release-helper.md',
       'README.md',
       'skills/release-helper/SKILL.md',
     ]);
-    expect(new TextDecoder().decode(exported.files[0]?.content)).toContain('schemaVersion: agentdoor.io/v1alpha1');
+    expect(new TextDecoder().decode(exported.files[0]?.content)).toContain('schemaVersion: capaport.io/v1alpha1');
 
     const restored = importEditablePackage(exported.archive);
     expect(restored).toMatchObject({

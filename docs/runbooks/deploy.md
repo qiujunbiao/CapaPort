@@ -1,7 +1,7 @@
 # Production deployment
 
-Agentdoor uses three immutable images built from one source revision: `agentdoor-api`, `agentdoor-worker`, and
-`agentdoor-migrate`. Database migrations must remain backward compatible with the previous application version.
+CapaPort uses three immutable images built from one source revision: `capaport-api`, `capaport-worker`, and
+`capaport-migrate`. Database migrations must remain backward compatible with the previous application version.
 
 ## Prerequisites
 
@@ -15,21 +15,21 @@ Agentdoor uses three immutable images built from one source revision: `agentdoor
 From a clean, reviewed Git revision:
 
 ```sh
-export AGENTDOOR_REGISTRY=registry.example.com/agentdoor
-export AGENTDOOR_VERSION=0.1.0
-export AGENTDOOR_REVISION="$(git rev-parse HEAD)"
-pnpm images:build --registry "$AGENTDOOR_REGISTRY" --version "$AGENTDOOR_VERSION" --revision "$AGENTDOOR_REVISION"
+export CAPAPORT_REGISTRY=registry.example.com/capaport
+export CAPAPORT_VERSION=0.1.0
+export CAPAPORT_REVISION="$(git rev-parse HEAD)"
+pnpm images:build --registry "$CAPAPORT_REGISTRY" --version "$CAPAPORT_VERSION" --revision "$CAPAPORT_REVISION"
 ```
 
 The command publishes `linux/amd64` and `linux/arm64` manifests, build provenance, and SBOM attestations; it then
 fails on fixed high or critical vulnerabilities. The immutable deployment tag is
-`$AGENTDOOR_VERSION-${AGENTDOOR_REVISION%${AGENTDOOR_REVISION#????????????}}` and is recorded in
+`$CAPAPORT_VERSION-${CAPAPORT_REVISION%${CAPAPORT_REVISION#????????????}}` and is recorded in
 `reports/images.json`.
 
 ## Configure secrets
 
 Copy `infra/compose/.env.production.example` outside the repository, fill every endpoint, and set
-`AGENTDOOR_IMAGE_TAG` to the immutable build tag. Create mode-0600 files in `AGENTDOOR_SECRETS_DIR`:
+`CAPAPORT_IMAGE_TAG` to the immutable build tag. Create mode-0600 files in `CAPAPORT_SECRETS_DIR`:
 
 ```text
 database_url
@@ -47,8 +47,8 @@ values. Keep the previous image tag and a verified backup before release.
 ## Release
 
 ```sh
-export AGENTDOOR_PRODUCTION_ENV=/etc/agentdoor/agentdoor.env
-export AGENTDOOR_IMAGE_TAG=0.1.0-0123456789ab
+export CAPAPORT_PRODUCTION_ENV=/etc/capaport/capaport.env
+export CAPAPORT_IMAGE_TAG=0.1.0-0123456789ab
 infra/deploy/release.sh
 ```
 
@@ -57,7 +57,7 @@ migration job, replaces API and worker, waits for readiness, and checks the read
 
 ```sh
 curl --fail http://127.0.0.1:3210/api/v1/health/ready
-curl --fail -H "Authorization: Bearer $(cat /etc/agentdoor/secrets/metrics_token)" \
+curl --fail -H "Authorization: Bearer $(cat /etc/capaport/secrets/metrics_token)" \
   http://127.0.0.1:3210/api/v1/metrics
 ```
 

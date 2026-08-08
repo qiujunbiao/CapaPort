@@ -1,5 +1,5 @@
-import { zodFieldErrors } from '@agentdoor/contracts/errors';
-import { createProjectBindingRequestSchema, registerProjectContextRequestSchema } from '@agentdoor/contracts/projects';
+import { zodFieldErrors } from '@capaport/contracts/errors';
+import { createProjectBindingRequestSchema, registerProjectContextRequestSchema } from '@capaport/contracts/projects';
 import {
   Body,
   Controller,

@@ -1,4 +1,4 @@
-import type { CapabilitySummary } from '@agentdoor/contracts';
+import type { CapabilitySummary } from '@capaport/contracts';
 import type { ApiClient } from '../client.js';
 import type { CliOutput } from '../output.js';
 import { type ParsedCommand, stringFlag } from '../parser.js';

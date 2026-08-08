@@ -1,5 +1,5 @@
-import { zodFieldErrors } from '@agentdoor/contracts/errors';
-import { metricsQuerySchema, productEventSchema } from '@agentdoor/contracts/operations';
+import { zodFieldErrors } from '@capaport/contracts/errors';
+import { metricsQuerySchema, productEventSchema } from '@capaport/contracts/operations';
 import { Body, Controller, Get, HttpCode, HttpStatus, Inject, Post, Query, Req, UseGuards } from '@nestjs/common';
 import { AppError } from '../../platform/errors/app-error.js';
 import { TenantGuard, type TenantRequest } from '../../platform/tenancy/tenant.guard.js';

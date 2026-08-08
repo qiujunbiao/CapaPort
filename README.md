@@ -1,6 +1,6 @@
-# Agentdoor
+# CapaPort
 
-Agentdoor 是面向研发团队的组织级 AI 能力管理平台。它把 Skill、Prompt 和项目上下文统一为“能力包”，覆盖从本地发现、敏感信息扫描、沉淀审核，到跨 Agent 安装与安全更新的完整闭环。
+CapaPort 是面向研发团队的组织级 AI 能力管理平台。它把 Skill、Prompt 和项目上下文统一为“能力包”，覆盖从本地发现、敏感信息扫描、沉淀审核，到跨 Agent 安装与安全更新的完整闭环。
 
 产品由 macOS/Windows 桌面客户端、Linux CLI、Web 管理后台和 Docker 化云端服务组成。首批适配 Codex、Claude Code、Cursor 与 Gemini CLI；支持个人、组织、团队、项目四类空间，一个项目空间可绑定多个本地目录，但不会上传业务源码。
 
@@ -59,10 +59,10 @@ pnpm dev
 常用入口：
 
 ```bash
-pnpm --filter @agentdoor/web dev
-pnpm --filter @agentdoor/desktop dev
-pnpm --filter @agentdoor/cli build
-node apps/cli/dist/agentdoor.mjs --help
+pnpm --filter @capaport/web dev
+pnpm --filter @capaport/desktop dev
+pnpm --filter @capaport/cli build
+node apps/cli/dist/capaport.mjs --help
 ```
 
 桌面原生开发运行：

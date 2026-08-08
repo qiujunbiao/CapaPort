@@ -3,7 +3,7 @@ import type {
   PublicationCandidateDiff,
   PublicationSummary,
   SpaceSummary,
-} from '@agentdoor/contracts';
+} from '@capaport/contracts';
 import { CheckCircle2, FileDiff, ShieldAlert, XCircle } from 'lucide-react';
 import { useState } from 'react';
 import type { WebClient } from '../../app/types';

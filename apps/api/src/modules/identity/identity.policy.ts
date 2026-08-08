@@ -1,4 +1,4 @@
-import type { IdentityKind } from '@agentdoor/contracts/auth';
+import type { IdentityKind } from '@capaport/contracts/auth';
 import { AppError } from '../../platform/errors/app-error.js';
 
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;

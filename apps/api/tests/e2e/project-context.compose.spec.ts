@@ -1,10 +1,10 @@
 import { createHash } from 'node:crypto';
-import { buildArchive, extractArchive } from '@agentdoor/capability-kit';
+import { buildArchive, extractArchive } from '@capaport/capability-kit';
 import { describe, expect, it } from 'vitest';
 
-const apiUrl = process.env.AGENTDOOR_API_URL ?? 'http://127.0.0.1:3210/api/v1';
-const mailpitUrl = process.env.AGENTDOOR_MAILPIT_URL ?? 'http://127.0.0.1:8025';
-const password = 'Agentdoor!2026-Project';
+const apiUrl = process.env.CAPAPORT_API_URL ?? 'http://127.0.0.1:3210/api/v1';
+const mailpitUrl = process.env.CAPAPORT_MAILPIT_URL ?? 'http://127.0.0.1:8025';
+const password = 'CapaPort!2026-Project';
 
 async function json<T>(response: Response): Promise<T> {
   const payload = (await response.json()) as T & { message?: string };
@@ -24,7 +24,7 @@ async function verificationCode(email: string) {
   throw new Error('Verification email was not delivered.');
 }
 
-describe.skipIf(process.env.AGENTDOOR_COMPOSE_E2E !== '1')('project context against Compose', () => {
+describe.skipIf(process.env.CAPAPORT_COMPOSE_E2E !== '1')('project context against Compose', () => {
   it('uploads only selected context and never sends the device absolute path', async () => {
     const stamp = Date.now();
     const email = `project-e2e-${stamp}@example.com`;
@@ -105,7 +105,7 @@ describe.skipIf(process.env.AGENTDOOR_COMPOSE_E2E !== '1')('project context agai
         path: 'context.json',
         content: new TextEncoder().encode(
           JSON.stringify({
-            schemaVersion: 'agentdoor.io/project-context/v1',
+            schemaVersion: 'capaport.io/project-context/v1',
             localBindingId,
             selectionDigest,
             fileCount: 1,

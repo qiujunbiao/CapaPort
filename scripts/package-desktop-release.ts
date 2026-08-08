@@ -46,8 +46,8 @@ export async function packageDesktopRelease(input: {
     metadataPath,
     `${JSON.stringify(
       {
-        schemaVersion: 'agentdoor.io/desktop-release/v1',
-        product: 'Agentdoor',
+        schemaVersion: 'capaport.io/desktop-release/v1',
+        product: 'CapaPort',
         version: input.version,
         platform: input.platform,
         arch: input.arch,

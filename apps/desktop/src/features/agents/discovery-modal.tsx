@@ -1,5 +1,5 @@
-import type { AgentId, OrganizationSecurityPolicy, SpaceSummary } from '@agentdoor/contracts';
-import type { ScanReport } from '@agentdoor/security-scan';
+import type { AgentId, OrganizationSecurityPolicy, SpaceSummary } from '@capaport/contracts';
+import type { ScanReport } from '@capaport/security-scan';
 import { ArrowLeft, CheckCircle2, FileSearch, LoaderCircle, Radar, ShieldAlert, UploadCloud, X } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import type { CloudClient, LocalClient, Session } from '../../app/types';

@@ -39,7 +39,7 @@ case "$role" in
     exec node dist/migrate.js
     ;;
   *)
-    echo "Unknown Agentdoor container role: $role" >&2
+    echo "Unknown CapaPort container role: $role" >&2
     exit 64
     ;;
 esac

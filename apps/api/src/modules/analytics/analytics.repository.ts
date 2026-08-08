@@ -1,4 +1,4 @@
-import type { ProductEvent } from '@agentdoor/contracts/operations';
+import type { ProductEvent } from '@capaport/contracts/operations';
 import { Inject, Injectable } from '@nestjs/common';
 import { productEvents } from '../../db/schema/operations.js';
 import type { DatabaseService } from '../../platform/database/database.service.js';

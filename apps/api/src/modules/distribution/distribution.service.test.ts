@@ -1,4 +1,4 @@
-import type { CapabilityManifest } from '@agentdoor/capability-kit';
+import type { CapabilityManifest } from '@capaport/capability-kit';
 import { describe, expect, it, vi } from 'vitest';
 import type { AppError } from '../../platform/errors/app-error.js';
 import {

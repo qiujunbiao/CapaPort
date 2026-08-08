@@ -1,5 +1,5 @@
 import { resolve } from 'node:path';
-import { defineAdapterComplianceSuite } from '@agentdoor/adapter-sdk/compliance';
+import { defineAdapterComplianceSuite } from '@capaport/adapter-sdk/compliance';
 import { createCursorAdapter } from './index.js';
 
 defineAdapterComplianceSuite({

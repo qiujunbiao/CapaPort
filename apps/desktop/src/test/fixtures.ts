@@ -1,4 +1,4 @@
-import { buildArchive } from '@agentdoor/capability-kit';
+import { buildArchive } from '@capaport/capability-kit';
 import type { CloudClient, LocalClient } from '../app/types';
 
 function returnedDraftArchive(): Uint8Array {
@@ -6,8 +6,8 @@ function returnedDraftArchive(): Uint8Array {
   return buildArchive([
     { path: 'README.md', content: encode('# 组织 A 能力') },
     {
-      path: 'agentdoor.yaml',
-      content: encode(`schemaVersion: agentdoor.io/v1alpha1
+      path: 'capaport.yaml',
+      content: encode(`schemaVersion: capaport.io/v1alpha1
 kind: CapabilityPackage
 metadata:
   slug: release-helper

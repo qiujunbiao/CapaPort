@@ -1,4 +1,4 @@
-import type { AgentId, CapabilitySummary, SpaceSummary, UpdateCheck } from '@agentdoor/contracts';
+import type { AgentId, CapabilitySummary, SpaceSummary, UpdateCheck } from '@capaport/contracts';
 import { Box, Download, Search } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import type { InstallationSummary } from '../../app/types';
@@ -106,7 +106,7 @@ export function LibraryPage({
                   </div>
                   <p>{capability.description || '暂无描述'}</p>
                   <small>
-                    agentdoor/{capability.slug} · {capability.tags.join(' / ') || '未分类'}
+                    capaport/{capability.slug} · {capability.tags.join(' / ') || '未分类'}
                   </small>
                 </div>
                 <div className="compatibility">

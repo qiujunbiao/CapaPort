@@ -1,6 +1,6 @@
-import type { OrganizationSecurityPolicy, TenantContext } from '@agentdoor/contracts/organizations';
+import type { OrganizationSecurityPolicy, TenantContext } from '@capaport/contracts/organizations';
 import { Inject, Injectable } from '@nestjs/common';
-import { defaultScanPolicy, type ScanPolicy } from '@agentdoor/security-scan';
+import { defaultScanPolicy, type ScanPolicy } from '@capaport/security-scan';
 import { AppError } from '../../platform/errors/app-error.js';
 
 export const defaultOrganizationSecurityPolicy: OrganizationSecurityPolicy = {

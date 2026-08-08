@@ -5,7 +5,7 @@ import type { TenantRequest } from '../../platform/tenancy/tenant.guard.js';
 import type { AuthorizationAction } from './authorization.js';
 import { type AuthorizedSpaceContext, SpaceService } from './space.service.js';
 
-const SPACE_ACTION = 'agentdoor:space-action';
+const SPACE_ACTION = 'capaport:space-action';
 
 export const RequireSpaceAction = (action: AuthorizationAction) => SetMetadata(SPACE_ACTION, action);
 

@@ -1,9 +1,9 @@
 import { createHash, randomUUID } from 'node:crypto';
 import { buildArchive } from '../../../packages/capability-kit/dist/index.js';
 
-const api = process.env.AGENTDOOR_API_URL ?? 'http://localhost:3210/api/v1';
+const api = process.env.CAPAPORT_API_URL ?? 'http://localhost:3210/api/v1';
 const mailpit = process.env.MAILPIT_URL ?? 'http://localhost:8025';
-const stamp = process.env.AGENTDOOR_E2E_STAMP ?? `${Date.now()}`;
+const stamp = process.env.CAPAPORT_E2E_STAMP ?? `${Date.now()}`;
 const password = `V7!qZ2#${stamp}Lm9@Xr4`;
 const ownerEmail = `owner.publish.${stamp}@example.com`;
 const reviewerEmail = `reviewer.publish.${stamp}@example.com`;
@@ -51,7 +51,7 @@ async function waitForApi() {
     }
     await new Promise((resolve) => setTimeout(resolve, 250));
   }
-  throw new Error('Agentdoor API did not become ready.');
+  throw new Error('CapaPort API did not become ready.');
 }
 
 async function register(target, displayName) {
@@ -59,7 +59,7 @@ async function register(target, displayName) {
     method: 'POST',
     body: JSON.stringify({ kind: 'email', target, password, displayName }),
   });
-  const message = await latestMail(target, 'Agentdoor security code:');
+  const message = await latestMail(target, 'CapaPort security code:');
   const code = message.Subject.match(/(\d{6})/)?.[1];
   if (!code) throw new Error(`Verification code missing for ${target}`);
   await request('/auth/verify', {
@@ -76,7 +76,7 @@ async function register(target, displayName) {
 
 function packageArchive(slug, readme, includePrompt = false) {
   const encoder = new TextEncoder();
-  const manifest = `schemaVersion: agentdoor.io/v1alpha1
+  const manifest = `schemaVersion: capaport.io/v1alpha1
 kind: CapabilityPackage
 metadata:
   slug: ${slug}
@@ -97,7 +97,7 @@ ${includePrompt ? '    - type: prompt\n      path: prompts/release.md\n' : ''}  
   dependencies: []
 `;
   const files = [
-    { path: 'agentdoor.yaml', content: encoder.encode(manifest) },
+    { path: 'capaport.yaml', content: encoder.encode(manifest) },
     { path: 'README.md', content: encoder.encode(readme) },
     { path: 'skills/release/SKILL.md', content: encoder.encode('Run release checks safely.') },
   ];

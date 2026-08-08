@@ -1,11 +1,11 @@
-import { zodFieldErrors } from '@agentdoor/contracts/errors';
+import { zodFieldErrors } from '@capaport/contracts/errors';
 import {
   addSpaceMemberRequestSchema,
   changeSpaceMemberRoleRequestSchema,
   createSpaceRequestSchema,
   updateSpaceRequestSchema,
   updateSpaceReviewPolicyRequestSchema,
-} from '@agentdoor/contracts/spaces';
+} from '@capaport/contracts/spaces';
 import {
   Body,
   Controller,

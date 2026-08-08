@@ -4,7 +4,7 @@ import type {
   CapabilityVersionDiff,
   CapabilityVersionSummary,
   SpaceSummary,
-} from '@agentdoor/contracts';
+} from '@capaport/contracts';
 import { Box, Search, ShieldCheck, X } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import type { WebClient } from '../../app/types';
@@ -265,7 +265,7 @@ export function MarketplacePage({
                 <dl className="detail-list">
                   <div>
                     <dt>标识</dt>
-                    <dd>agentdoor/{selected.slug}</dd>
+                    <dd>capaport/{selected.slug}</dd>
                   </div>
                   <div>
                     <dt>兼容 Agent</dt>

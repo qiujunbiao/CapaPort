@@ -30,10 +30,10 @@ function capture(command: string, args: string[]): string {
 }
 
 function options(): Options {
-  const registry = valueAfter('--registry') ?? process.env.AGENTDOOR_REGISTRY ?? '';
+  const registry = valueAfter('--registry') ?? process.env.CAPAPORT_REGISTRY ?? '';
   const version = valueAfter('--version') ?? process.env.npm_package_version ?? '';
   const revision = valueAfter('--revision') ?? capture('git', ['rev-parse', 'HEAD']);
-  const source = valueAfter('--source') ?? 'https://github.com/agentdoor/agentdoor';
+  const source = valueAfter('--source') ?? 'https://github.com/capaport/capaport';
   const platforms = valueAfter('--platform') ?? 'linux/amd64,linux/arm64';
   const load = process.argv.includes('--load');
   if (!registry || registry.includes('://') || registry.endsWith('/')) throw new Error('Provide a valid --registry.');
@@ -70,7 +70,7 @@ const tag = `${configuration.version}-${configuration.revision.slice(0, 12)}`;
 const images: Record<string, string> = {};
 
 for (const target of ['api', 'worker', 'migrate'] as const) {
-  const image = `${configuration.registry}/agentdoor-${target}:${tag}`;
+  const image = `${configuration.registry}/capaport-${target}:${tag}`;
   run('docker', [
     'buildx',
     'build',

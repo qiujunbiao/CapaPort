@@ -1,5 +1,5 @@
 import { spawnSync } from 'node:child_process';
-import type { TokenPair } from '@agentdoor/contracts';
+import type { TokenPair } from '@capaport/contracts';
 
 export type StoredSession = TokenPair & { organizationId?: string };
 export interface CredentialStore {
@@ -36,7 +36,7 @@ function run(command: string, args: string[], options: { input?: string; env?: N
 type CommandResult = ReturnType<typeof run>;
 
 export class SystemCredentialStore implements CredentialStore {
-  private readonly service = 'io.agentdoor.cli';
+  private readonly service = 'io.capaport.cli';
   backend() {
     return process.platform === 'darwin'
       ? 'macOS Keychain'
@@ -53,7 +53,7 @@ export class SystemCredentialStore implements CredentialStore {
         '-NoProfile',
         '-NonInteractive',
         '-Command',
-        "$v=New-Object Windows.Security.Credentials.PasswordVault;$c=$v.Retrieve('io.agentdoor.cli','default');$c.RetrievePassword();$c.Password",
+        "$v=New-Object Windows.Security.Credentials.PasswordVault;$c=$v.Retrieve('io.capaport.cli','default');$c.RetrievePassword();$c.Password",
       ]);
     else result = run('secret-tool', ['lookup', 'service', this.service, 'account', 'default']);
     if (result.status !== 0 || !result.stdout.trim()) return undefined;
@@ -75,12 +75,12 @@ export class SystemCredentialStore implements CredentialStore {
           '-NoProfile',
           '-NonInteractive',
           '-Command',
-          "$v=New-Object Windows.Security.Credentials.PasswordVault;$c=New-Object Windows.Security.Credentials.PasswordCredential('io.agentdoor.cli','default',$env:AGENTDOOR_CREDENTIAL);$v.Add($c)",
+          "$v=New-Object Windows.Security.Credentials.PasswordVault;$c=New-Object Windows.Security.Credentials.PasswordCredential('io.capaport.cli','default',$env:CAPAPORT_CREDENTIAL);$v.Add($c)",
         ],
-        { env: { ...process.env, AGENTDOOR_CREDENTIAL: payload } },
+        { env: { ...process.env, CAPAPORT_CREDENTIAL: payload } },
       );
     else
-      result = run('secret-tool', ['store', '--label=Agentdoor CLI', 'service', this.service, 'account', 'default'], {
+      result = run('secret-tool', ['store', '--label=CapaPort CLI', 'service', this.service, 'account', 'default'], {
         input: payload,
       });
     if (result.status !== 0) throw new Error(`无法写入${this.backend()}，请确认系统凭据服务可用`);
@@ -93,7 +93,7 @@ export class SystemCredentialStore implements CredentialStore {
         '-NoProfile',
         '-NonInteractive',
         '-Command',
-        "$v=New-Object Windows.Security.Credentials.PasswordVault;try{$c=$v.Retrieve('io.agentdoor.cli','default');$v.Remove($c)}catch{}",
+        "$v=New-Object Windows.Security.Credentials.PasswordVault;try{$c=$v.Retrieve('io.capaport.cli','default');$v.Remove($c)}catch{}",
       ]);
     else run('secret-tool', ['clear', 'service', this.service, 'account', 'default']);
   }

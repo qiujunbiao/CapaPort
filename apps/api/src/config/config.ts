@@ -147,6 +147,6 @@ export function parseConfig(environment: Record<string, string | undefined>): Ap
           }
         : {}),
     },
-    metricsToken: parsed.data.METRICS_TOKEN ?? 'agentdoor-development-metrics-token',
+    metricsToken: parsed.data.METRICS_TOKEN ?? 'capaport-development-metrics-token',
   };
 }

@@ -1,5 +1,5 @@
-import type { EditableCapabilityPackage, EditableComponentType } from '@agentdoor/capability-kit';
-import { addPackageComponent, removePackageComponent, updatePackageComponent } from '@agentdoor/capability-kit';
+import type { EditableCapabilityPackage, EditableComponentType } from '@capaport/capability-kit';
+import { addPackageComponent, removePackageComponent, updatePackageComponent } from '@capaport/capability-kit';
 import { Plus, Trash2 } from 'lucide-react';
 import { Button } from '../../components/ui';
 

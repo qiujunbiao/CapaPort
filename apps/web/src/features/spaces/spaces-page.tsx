@@ -1,4 +1,4 @@
-import type { SpaceReviewPolicy, SpaceRole, SpaceSummary } from '@agentdoor/contracts';
+import type { SpaceReviewPolicy, SpaceRole, SpaceSummary } from '@capaport/contracts';
 import { Archive, FolderKanban, Plus, UsersRound } from 'lucide-react';
 import { useState } from 'react';
 import type { OrganizationMember, SpaceMember, WebClient } from '../../app/types';

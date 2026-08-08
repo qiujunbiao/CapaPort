@@ -1,4 +1,4 @@
-import type { OrganizationSecurityPolicy, PublicationSummary } from '@agentdoor/contracts';
+import type { OrganizationSecurityPolicy, PublicationSummary } from '@capaport/contracts';
 import { AlertTriangle, KeyRound, Laptop, ShieldCheck } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import type { SessionSummary, WebClient } from '../../app/types';

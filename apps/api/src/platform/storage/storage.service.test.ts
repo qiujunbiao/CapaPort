@@ -7,15 +7,15 @@ function config(encryption?: AppConfig['s3']['encryption']): AppConfig {
     nodeEnv: 'test',
     port: 3100,
     corsOrigins: ['http://localhost:1430'],
-    databaseUrl: 'postgres://localhost/agentdoor',
+    databaseUrl: 'postgres://localhost/capaport',
     redisUrl: 'redis://localhost:6379',
     s3: {
       endpoint: 'http://localhost:9000',
       publicEndpoint: 'http://localhost:9000',
       region: 'us-east-1',
-      bucket: 'agentdoor',
-      accessKey: 'agentdoor',
-      secretKey: 'agentdoor-secret',
+      bucket: 'capaport',
+      accessKey: 'capaport',
+      secretKey: 'capaport-secret',
       ...(encryption ? { encryption } : {}),
     },
     auth: {
@@ -44,11 +44,11 @@ describe('storage encryption request', () => {
   });
 
   it('includes the required KMS key in the command and client headers', () => {
-    expect(encryptionRequest(config({ algorithm: 'aws:kms', kmsKeyId: 'alias/agentdoor' }))).toEqual({
-      command: { ServerSideEncryption: 'aws:kms', SSEKMSKeyId: 'alias/agentdoor' },
+    expect(encryptionRequest(config({ algorithm: 'aws:kms', kmsKeyId: 'alias/capaport' }))).toEqual({
+      command: { ServerSideEncryption: 'aws:kms', SSEKMSKeyId: 'alias/capaport' },
       headers: {
         'x-amz-server-side-encryption': 'aws:kms',
-        'x-amz-server-side-encryption-aws-kms-key-id': 'alias/agentdoor',
+        'x-amz-server-side-encryption-aws-kms-key-id': 'alias/capaport',
       },
     });
   });

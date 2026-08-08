@@ -1,8 +1,8 @@
-# Agentdoor Complete Product Implementation Plan
+# CapaPort Complete Product Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Close every gap between the approved Agentdoor architecture and the runnable product so the real desktop, cloud, Web, CLI, security, recovery, and delivery workflows satisfy the final acceptance scenario.
+**Goal:** Close every gap between the approved CapaPort architecture and the runnable product so the real desktop, cloud, Web, CLI, security, recovery, and delivery workflows satisfy the final acceptance scenario.
 
 **Architecture:** Keep the approved modular monolith plus local adapter runtime. Centralize repeated security, idempotency, delivery, and contract behavior behind focused services; preserve tenant checks in repositories and perform all local mutations through the Rust transaction engine.
 
@@ -37,7 +37,7 @@
 - Produces: `buildLocalInstallPlan({ archive, adapterId, rootPath, packageDigest, installedFiles })` and `selectInstallVersion(versions, availableVersionId?)`.
 
 - [x] **Step 1: Write failing TypeScript and Rust tests** proving semantic version ordering chooses `10.0.0` over `2.0.0`, unchanged installed files use the prior `afterDigest`, and a clean update previews as `update`, not `conflict`.
-- [x] **Step 2: Run** `pnpm --filter @agentdoor/desktop test -- install-plan.test.ts` and `cargo test --manifest-path apps/desktop/src-tauri/Cargo.toml files::tests` **and confirm the assertions fail for the old zero digest/string sort behavior.**
+- [x] **Step 2: Run** `pnpm --filter @capaport/desktop test -- install-plan.test.ts` and `cargo test --manifest-path apps/desktop/src-tauri/Cargo.toml files::tests` **and confirm the assertions fail for the old zero digest/string sort behavior.**
 - [x] **Step 3: Implement** lock lookup and semantic ordering. The plan writes must set `expectedDigest: installedByPath.get(relativePath)?.afterDigest`; new files omit the expected digest.
 - [x] **Step 4: Run the same focused tests and confirm they pass.**
 - [x] **Step 5: Commit** the desktop update correction with its regression tests.
@@ -78,9 +78,9 @@
 - Produces: line-oriented `ConflictDiff`, per-file `keep|overwrite`, `importConflictAsDraft()`, and `restoreTransaction()` actions.
 
 - [x] **Step 1: Write failing tests** for rendered line diffs, importing the local variant as a draft before overwrite, and restoring a completed transaction from the result screen.
-- [x] **Step 2: Run** `pnpm --filter @agentdoor/desktop test -- conflict-resolution.test.ts` **and verify the new API is absent.**
+- [x] **Step 2: Run** `pnpm --filter @capaport/desktop test -- conflict-resolution.test.ts` **and verify the new API is absent.**
 - [x] **Step 3: Implement** the four conflict choices, accessible diff view, local package export to a personal-space draft, and recovery status with backup path.
-- [x] **Step 4: Run component tests and** `pnpm --filter @agentdoor/desktop test:e2e -- --grep "conflict"` **until the real user workflow passes.**
+- [x] **Step 4: Run component tests and** `pnpm --filter @capaport/desktop test:e2e -- --grep "conflict"` **until the real user workflow passes.**
 - [x] **Step 5: Commit** conflict and recovery UX.
 
 ### Task 4: Add complete capability authoring and revision workflow
@@ -212,7 +212,7 @@
 - Test: `tests/acceptance/openapi-contract.spec.ts`
 
 **Interfaces:**
-- Produces: `/api/v1/openapi.json`, checked-in generated request/response types, and `AgentdoorClient` consumed by all three clients.
+- Produces: `/api/v1/openapi.json`, checked-in generated request/response types, and `CapaPortClient` consumed by all three clients.
 
 - [x] **Step 1: Write failing contract tests** asserting OpenAPI includes every controller operation and generated output is unchanged after regeneration.
 - [x] **Step 2: Run the contract test and confirm the endpoint/package is absent.**
@@ -270,7 +270,7 @@
 - Modify: `apps/desktop/src/features/settings/settings-page.tsx`
 - Modify: `.github/workflows/release.yml`
 - Modify: `scripts/acceptance-stack.ts`
-- Modify: `tests/acceptance/agentdoor-mvp.spec.ts`
+- Modify: `tests/acceptance/capaport-mvp.spec.ts`
 - Create: `tests/acceptance/desktop-runtime.spec.ts`
 - Modify: `docs/acceptance-report.md`
 - Modify: `docs/admin-guide/release-signing.md`

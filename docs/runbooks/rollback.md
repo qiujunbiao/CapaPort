@@ -8,8 +8,8 @@ compatible with the prior application during the release window.
 3. Run:
 
 ```sh
-export AGENTDOOR_PRODUCTION_ENV=/etc/agentdoor/agentdoor.env
-export AGENTDOOR_ROLLBACK_TAG=0.0.9-fedcba987654
+export CAPAPORT_PRODUCTION_ENV=/etc/capaport/capaport.env
+export CAPAPORT_ROLLBACK_TAG=0.0.9-fedcba987654
 infra/deploy/rollback.sh
 ```
 

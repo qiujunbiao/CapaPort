@@ -2,8 +2,8 @@ import { createHash } from 'node:crypto';
 import { access, mkdir, readFile } from 'node:fs/promises';
 import { homedir } from 'node:os';
 import { resolve } from 'node:path';
-import type { FilePlan, InstallLock } from '@agentdoor/adapter-sdk';
-import type { AgentId, CapabilitySummary, CapabilityVersionSummary, InstallPlan } from '@agentdoor/contracts';
+import type { FilePlan, InstallLock } from '@capaport/adapter-sdk';
+import type { AgentId, CapabilitySummary, CapabilityVersionSummary, InstallPlan } from '@capaport/contracts';
 import { AtomicFileTransaction, adapters } from '../adapters.js';
 import type { ApiClient } from '../client.js';
 import type { CliOutput } from '../output.js';
@@ -52,7 +52,7 @@ async function conflicts(plan: FilePlan): Promise<string[]> {
 
 export async function installCommand(parsed: ParsedCommand, api: ApiClient, output: CliOutput, prompt: Prompter) {
   const slug = stringFlag(parsed, 'slug') ?? parsed.subcommand;
-  if (!slug) throw new UsageError('用法：agentdoor install <slug> --agent codex');
+  if (!slug) throw new UsageError('用法：capaport install <slug> --agent codex');
   const agentId = (stringFlag(parsed, 'agent') ?? 'codex') as AgentId;
   const scope = stringFlag(parsed, 'scope') ?? 'workspace';
   if (!['user', 'workspace'].includes(scope)) throw new UsageError('--scope 只能是 user 或 workspace');
@@ -72,7 +72,7 @@ export async function installCommand(parsed: ParsedCommand, api: ApiClient, outp
     (await api.request<{ id: string; supportedAgents: AgentId[] }>('/devices', {
       method: 'POST',
       body: {
-        name: 'Agentdoor CLI',
+        name: 'CapaPort CLI',
         platform: process.platform === 'darwin' ? 'macos' : process.platform === 'win32' ? 'windows' : 'linux',
         appVersion: '0.1.0',
         supportedAgents: [agentId],

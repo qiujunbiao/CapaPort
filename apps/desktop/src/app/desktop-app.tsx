@@ -1,4 +1,4 @@
-import type { AgentId, CapabilitySummary, OrganizationSecurityPolicy, SpaceSummary, UpdateCheck } from '@agentdoor/contracts';
+import type { AgentId, CapabilitySummary, OrganizationSecurityPolicy, SpaceSummary, UpdateCheck } from '@capaport/contracts';
 import { QueryClient, QueryClientProvider, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   Bell,
@@ -40,7 +40,7 @@ const nav: Array<{ id: Page; label: string; icon: typeof Home }> = [
 ];
 
 function cacheKey(organizationId: string, kind: string) {
-  return `agentdoor:cache:${organizationId}:${kind}`;
+  return `capaport:cache:${organizationId}:${kind}`;
 }
 function readCache<T>(organizationId: string, kind: string): T | undefined {
   try {

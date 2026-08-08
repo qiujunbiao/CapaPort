@@ -1,4 +1,4 @@
-import { type AdapterEnvironment, createFilesystemAdapter, defaultAdapterEnvironment } from '@agentdoor/adapter-sdk';
+import { type AdapterEnvironment, createFilesystemAdapter, defaultAdapterEnvironment } from '@capaport/adapter-sdk';
 
 export function createCodexAdapter(environment: AdapterEnvironment = defaultAdapterEnvironment()) {
   return createFilesystemAdapter({

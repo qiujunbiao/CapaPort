@@ -20,7 +20,7 @@ function save(report: unknown): void {
 
 if (arguments_.includes('--probe-vulnerability')) {
   save({
-    schemaVersion: 'agentdoor.io/security-gate/v1',
+    schemaVersion: 'capaport.io/security-gate/v1',
     generatedAt: new Date().toISOString(),
     status: 'failed',
     summary: { critical: 1, high: 0, medium: 0, low: 0, tests: 1, passed: 0, failed: 1 },
@@ -49,9 +49,9 @@ if (arguments_.includes('--probe-vulnerability')) {
   };
 
   const prerequisites = [
-    run('pnpm', ['--filter', '@agentdoor/contracts', 'build']),
-    run('pnpm', ['--filter', '@agentdoor/capability-kit', 'build']),
-    run('pnpm', ['--filter', '@agentdoor/adapter-sdk', 'build']),
+    run('pnpm', ['--filter', '@capaport/contracts', 'build']),
+    run('pnpm', ['--filter', '@capaport/capability-kit', 'build']),
+    run('pnpm', ['--filter', '@capaport/adapter-sdk', 'build']),
   ];
   if (prerequisites.every((command) => command.status === 'passed')) {
     const cargoAvailable = spawnSync('cargo', ['--version'], { cwd: root, stdio: 'ignore' }).status === 0;
@@ -64,7 +64,7 @@ if (arguments_.includes('--probe-vulnerability')) {
             '-v',
             `${root}/apps/desktop/src-tauri:/app`,
             '-v',
-            'agentdoor-cargo-registry:/usr/local/cargo/registry',
+            'capaport-cargo-registry:/usr/local/cargo/registry',
             '-w',
             '/app',
             'rust:1.89-slim-bookworm',
@@ -113,7 +113,7 @@ if (arguments_.includes('--probe-vulnerability')) {
   const commandFailures = commands.filter((command) => command.status === 'failed');
   const high = failedTests.length + commandFailures.length;
   const report = {
-    schemaVersion: 'agentdoor.io/security-gate/v1',
+    schemaVersion: 'capaport.io/security-gate/v1',
     generatedAt: new Date().toISOString(),
     status: high === 0 && vitest?.status === 'passed' ? 'passed' : 'failed',
     summary: {

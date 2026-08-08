@@ -19,8 +19,8 @@ command -v mc >/dev/null 2>&1 || { echo 'MinIO mc is required' >&2; exit 69; }
 [ ! -e "$final_dir" ] || { echo 'Backup destination already exists' >&2; exit 73; }
 
 pg_dump --dbname="$DATABASE_URL" --format=custom --no-owner --no-acl --file="$partial_dir/database.dump"
-mc alias set agentdoor-backup "$S3_ENDPOINT" "$S3_ACCESS_KEY" "$S3_SECRET_KEY" >/dev/null
-mc mirror --overwrite "agentdoor-backup/$S3_BUCKET" "$partial_dir/objects"
+mc alias set capaport-backup "$S3_ENDPOINT" "$S3_ACCESS_KEY" "$S3_SECRET_KEY" >/dev/null
+mc mirror --overwrite "capaport-backup/$S3_BUCKET" "$partial_dir/objects"
 
 (cd "$partial_dir" && find . -type f -print | LC_ALL=C sort | xargs shasum -a 256 > SHA256SUMS)
 cat > "$partial_dir/metadata.json" <<EOF

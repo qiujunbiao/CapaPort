@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto';
-import { buildArchive } from '@agentdoor/capability-kit';
+import { buildArchive } from '@capaport/capability-kit';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { type ProjectBindingRecord, ProjectService } from './project.service.js';
 

@@ -21,7 +21,7 @@ export function createMemoryWebSessionStore(initial?: WebSession): WebSessionSto
 }
 
 export function createBrowserSessionStore(): WebSessionStore {
-  const key = 'agentdoor:web-session';
+  const key = 'capaport:web-session';
   let initial: WebSession | undefined;
   try {
     const raw = sessionStorage.getItem(key);

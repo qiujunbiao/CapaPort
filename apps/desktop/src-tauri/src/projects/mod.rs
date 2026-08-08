@@ -219,7 +219,7 @@ impl ProjectEngine {
         let selection_digest = hex::encode(selection_hash.finalize());
         let scanned_at = now_iso8601();
         let manifest = serde_json::to_vec(&serde_json::json!({
-            "schemaVersion": "agentdoor.io/project-context/v1",
+            "schemaVersion": "capaport.io/project-context/v1",
             "localBindingId": input.local_binding_id,
             "selectionDigest": selection_digest,
             "fileCount": selected.len(),
@@ -255,8 +255,8 @@ impl ProjectEngine {
         let root = Path::new(&input.root_path).canonicalize().map_err(|_| RuntimeError::PathNotAllowed)?;
         if !self.policy.roots().contains(&root) { return Err(RuntimeError::PathNotAllowed); }
         let prefix = match agent.as_str() {
-            "codex" | "claude-code" | "cursor" => "rules/agentdoor",
-            "gemini-cli" => "context/agentdoor",
+            "codex" | "claude-code" | "cursor" => "rules/capaport",
+            "gemini-cli" => "context/capaport",
             _ => return Err(RuntimeError::InvalidInput),
         };
         let mut writes = Vec::new();
@@ -349,7 +349,7 @@ fn normalized_relative(root: &Path, path: &Path) -> RuntimeResult<String> {
     Ok(relative.components().map(|part| part.as_os_str().to_string_lossy()).collect::<Vec<_>>().join("/"))
 }
 fn ignored_component(value: &str) -> bool {
-    matches!(value, ".git" | ".agentdoor" | "node_modules" | "vendor" | "target" | "dist" | "build" | ".next" | "coverage" | "__pycache__")
+    matches!(value, ".git" | ".capaport" | "node_modules" | "vendor" | "target" | "dist" | "build" | ".next" | "coverage" | "__pycache__")
 }
 fn file_rejection(path: &Path, size: u64) -> Option<String> {
     if size == 0 { return Some("empty".into()); }
@@ -469,7 +469,7 @@ mod tests {
     #[test]
     fn projects_to_all_adapters_and_recovers_a_removed_directory() {
         let (directory, database, policy, binding) = fixture();
-        for (agent, expected) in [("codex", "rules/agentdoor"), ("claude-code", "rules/agentdoor"), ("cursor", "rules/agentdoor"), ("gemini-cli", "context/agentdoor")] {
+        for (agent, expected) in [("codex", "rules/capaport"), ("claude-code", "rules/capaport"), ("cursor", "rules/capaport"), ("gemini-cli", "context/capaport")] {
             let target = directory.path().join(agent);
             std::fs::create_dir(&target).unwrap();
             policy.add_root(target.clone()).unwrap();

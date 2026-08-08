@@ -1,5 +1,5 @@
 {
-  "name": "@agentdoor/adapter-cursor",
+  "name": "@capaport/adapter-cursor",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -15,7 +15,7 @@
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
-    "@agentdoor/adapter-sdk": "workspace:*"
+    "@capaport/adapter-sdk": "workspace:*"
   },
   "devDependencies": {
     "@types/node": "26.1.2",

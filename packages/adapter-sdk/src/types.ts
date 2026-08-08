@@ -1,4 +1,4 @@
-import type { CapabilityManifest, PackageFile } from '@agentdoor/capability-kit';
+import type { CapabilityManifest, PackageFile } from '@capaport/capability-kit';
 
 export type AdapterPlatform = 'darwin' | 'win32' | 'linux';
 export type InstallScope = 'user' | 'workspace';
@@ -49,7 +49,7 @@ export type PlannedFile = {
 
 export type InstallLockFile = { relativePath: string; destination: string; digest: string };
 export type InstallLock = {
-  schemaVersion: 'agentdoor.io/install-lock/v1';
+  schemaVersion: 'capaport.io/install-lock/v1';
   adapterId: string;
   capabilitySlug: string;
   packageDigest: string;

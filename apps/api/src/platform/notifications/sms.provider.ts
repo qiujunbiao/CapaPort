@@ -92,9 +92,9 @@ export class DevelopmentSmsProvider implements SmsProvider {
     const digits = message.to.replace(/\D/g, '');
     await this.transport.sendMail({
       from: this.notification.smtpFrom,
-      to: `sms.${digits}@agentdoor.local`,
-      messageId: `<sms.${message.idempotencyKey}@agentdoor.local>`,
-      subject: `Agentdoor SMS: ${message.template}`,
+      to: `sms.${digits}@capaport.local`,
+      messageId: `<sms.${message.idempotencyKey}@capaport.local>`,
+      subject: `CapaPort SMS: ${message.template}`,
       text: JSON.stringify(message.variables),
     });
   }

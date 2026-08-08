@@ -1,4 +1,4 @@
-import type { OrganizationSummary, PublicUser } from '@agentdoor/contracts';
+import type { OrganizationSummary, PublicUser } from '@capaport/contracts';
 import { Bell, Bug, Cloud, Download, KeyRound, LogOut, RefreshCw, ShieldCheck, UserRound } from 'lucide-react';
 import { useState } from 'react';
 import { createTauriUpdater, type DesktopUpdaterState } from '../../app/updater';
@@ -40,7 +40,7 @@ export function SettingsPage({
     const url = URL.createObjectURL(new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' }));
     const anchor = document.createElement('a');
     anchor.href = url;
-    anchor.download = `agentdoor-diagnostics-${new Date().toISOString().slice(0, 10)}.json`;
+    anchor.download = `capaport-diagnostics-${new Date().toISOString().slice(0, 10)}.json`;
     anchor.click();
     URL.revokeObjectURL(url);
     setDiagnosticStatus('已导出；文件不包含令牌、用户标识或本地路径。');

@@ -24,7 +24,7 @@ describe('container release contract', () => {
     expect(compose).toContain('read_only: true');
     expect(compose).toContain('user: 10001:10001');
     expect(compose).toContain('no-new-privileges:true');
-    expect(compose).not.toMatch(/agentdoor-(?:jwt|refresh|verification)-development/);
+    expect(compose).not.toMatch(/capaport-(?:jwt|refresh|verification)-development/);
     expect(migration).toContain('pg_advisory_lock');
     expect(migration).toContain('pg_advisory_unlock');
   });
@@ -39,7 +39,7 @@ describe('container release contract', () => {
 
   it('builds Web workspace dependencies inside a clean container', async () => {
     const dockerfile = await source('infra/docker/web.Dockerfile');
-    expect(dockerfile).toContain('pnpm turbo run build --filter=@agentdoor/web');
-    expect(dockerfile).not.toContain('pnpm --filter @agentdoor/web build');
+    expect(dockerfile).toContain('pnpm turbo run build --filter=@capaport/web');
+    expect(dockerfile).not.toContain('pnpm --filter @capaport/web build');
   });
 });

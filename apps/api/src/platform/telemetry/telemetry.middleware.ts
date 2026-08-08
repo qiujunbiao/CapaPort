@@ -21,12 +21,12 @@ export class TelemetryMiddleware implements NestMiddleware {
       const method = request.method ?? 'UNKNOWN';
       const route = normalizedRoute(request.url);
       const status = String(response.statusCode);
-      platformMetrics.increment('agentdoor_http_requests_total', {
+      platformMetrics.increment('capaport_http_requests_total', {
         method,
         route,
         status,
       });
-      platformMetrics.increment('agentdoor_http_request_duration_ms_total', { method, route }, durationMs);
+      platformMetrics.increment('capaport_http_request_duration_ms_total', { method, route }, durationMs);
       platformLogger.info('http.request.completed', {
         requestId: request.requestId,
         method,

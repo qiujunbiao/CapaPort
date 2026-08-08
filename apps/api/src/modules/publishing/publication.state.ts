@@ -1,4 +1,4 @@
-import type { PublicationStatus, VersionStatus } from '@agentdoor/contracts/publications';
+import type { PublicationStatus, VersionStatus } from '@capaport/contracts/publications';
 import { AppError } from '../../platform/errors/app-error.js';
 
 export type PublicationAction = 'approve' | 'request_changes' | 'reject' | 'withdraw';

@@ -10,7 +10,7 @@ CREATE INDEX IF NOT EXISTS "audit_logs_retention_idx" ON "audit_logs" ("expires_
 CREATE OR REPLACE FUNCTION prevent_audit_log_mutation() RETURNS trigger AS $$
 BEGIN
   IF TG_OP = 'DELETE'
-    AND current_setting('agentdoor.audit_retention', true) = 'on'
+    AND current_setting('capaport.audit_retention', true) = 'on'
     AND OLD.expires_at < now() THEN
     RETURN OLD;
   END IF;

@@ -1,7 +1,7 @@
 import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { hashPackage } from '@agentdoor/capability-kit';
+import { hashPackage } from '@capaport/capability-kit';
 import { afterEach, describe, expect, it } from 'vitest';
 import type { AdapterEnvironment, AgentAdapter, ComponentType, FileTransaction } from './types.js';
 
@@ -41,7 +41,7 @@ export function defineAdapterComplianceSuite(options: AdapterComplianceOptions):
     });
 
     async function fixture() {
-      const base = await mkdtemp(join(tmpdir(), 'agentdoor-adapter-'));
+      const base = await mkdtemp(join(tmpdir(), 'capaport-adapter-'));
       temporaryDirectories.push(base);
       const homeDir = join(base, 'home');
       const projectRoot = join(base, 'project');
@@ -100,7 +100,7 @@ export function defineAdapterComplianceSuite(options: AdapterComplianceOptions):
       const plan = await current.adapter.planInstall(imported, { installation: user });
       expect(await current.adapter.validatePlan(plan)).toEqual({ valid: true });
       expect(plan.lock).toMatchObject({
-        schemaVersion: 'agentdoor.io/install-lock/v1',
+        schemaVersion: 'capaport.io/install-lock/v1',
         adapterId: options.adapterId,
         capabilitySlug: 'release',
         packageDigest: imported.digest,

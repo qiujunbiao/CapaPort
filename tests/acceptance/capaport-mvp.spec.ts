@@ -16,10 +16,10 @@ import {
 } from '../../packages/capability-kit/src/index.js';
 import { scanPackage } from '../../packages/security-scan/src/index.js';
 
-const apiUrl = process.env.AGENTDOOR_API_URL ?? 'http://127.0.0.1:3210/api/v1';
-const mailpitUrl = process.env.AGENTDOOR_MAILPIT_URL ?? 'http://127.0.0.1:8025';
-const stamp = process.env.AGENTDOOR_ACCEPTANCE_STAMP ?? `${Date.now()}`;
-const password = `Agentdoor!${stamp}Aa9#`;
+const apiUrl = process.env.CAPAPORT_API_URL ?? 'http://127.0.0.1:3210/api/v1';
+const mailpitUrl = process.env.CAPAPORT_MAILPIT_URL ?? 'http://127.0.0.1:8025';
+const stamp = process.env.CAPAPORT_ACCEPTANCE_STAMP ?? `${Date.now()}`;
+const password = `CapaPort!${stamp}Aa9#`;
 const encoder = new TextEncoder();
 const decoder = new TextDecoder();
 
@@ -93,7 +93,7 @@ async function register(name: string): Promise<Actor> {
     method: 'POST',
     body: JSON.stringify({ kind: 'email', target: email, password, displayName: name }),
   });
-  const mail = await mailboxMessage(email, 'Agentdoor security code:');
+  const mail = await mailboxMessage(email, 'CapaPort security code:');
   const code = /\b(\d{6})\b/.exec(mail.Subject)?.[1];
   if (!code) throw new Error('Verification code is missing.');
   await request('/auth/verify', {
@@ -125,14 +125,14 @@ async function invite(owner: Actor, organizationId: string, target: Actor): Prom
 }
 
 function manifestFile(pkg: CanonicalPackage): PackageFile {
-  return { path: 'agentdoor.yaml', content: encoder.encode(JSON.stringify(pkg.manifest, null, 2)) };
+  return { path: 'capaport.yaml', content: encoder.encode(JSON.stringify(pkg.manifest, null, 2)) };
 }
 
 async function completePackage(imported: CanonicalPackage, version: 1 | 2 | 3): Promise<CanonicalPackage> {
   const slug = imported.manifest.metadata.slug;
   const skillPath = `skills/${slug}/SKILL.md`;
   const files = imported.files
-    .filter((file) => file.path !== 'agentdoor.yaml')
+    .filter((file) => file.path !== 'capaport.yaml')
     .map((file) =>
       file.path === skillPath
         ? {
@@ -248,8 +248,8 @@ async function downloadPackage(
   const downloaded = await fetch(plan.body.download.url);
   expect(downloaded.ok).toBe(true);
   const files = extractArchive(new Uint8Array(await downloaded.arrayBuffer()));
-  const manifestFile = files.find((file) => file.path === 'agentdoor.yaml');
-  if (!manifestFile) throw new Error('Downloaded package is missing agentdoor.yaml.');
+  const manifestFile = files.find((file) => file.path === 'capaport.yaml');
+  if (!manifestFile) throw new Error('Downloaded package is missing capaport.yaml.');
   const manifest = parseManifest(decoder.decode(manifestFile.content));
   const pkg = { manifest, files, digest: await hashPackage(files) };
   expect(pkg.digest).toBe(plan.body.digest);
@@ -267,11 +267,11 @@ function localConflicts(plan: FilePlan, installed: FilePlan): Promise<string[]> 
   ).then((entries) => entries.filter((entry): entry is string => Boolean(entry)));
 }
 
-describe('Agentdoor MVP final acceptance', () => {
+describe('CapaPort MVP final acceptance', () => {
   let root = '';
 
   beforeAll(async () => {
-    root = await mkdtemp(join(tmpdir(), 'agentdoor-acceptance-'));
+    root = await mkdtemp(join(tmpdir(), 'capaport-acceptance-'));
   });
 
   afterAll(async () => {

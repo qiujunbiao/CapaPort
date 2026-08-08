@@ -1,26 +1,26 @@
-name: agentdoor
+name: capaport
 
 x-backend-environment: &backend-environment
   NODE_ENV: development
   PORT: 3100
-  DATABASE_URL: postgres://agentdoor:agentdoor-development@postgres:5432/agentdoor
+  DATABASE_URL: postgres://capaport:capaport-development@postgres:5432/capaport
   REDIS_URL: redis://redis:6379
   S3_ENDPOINT: http://minio:9000
   S3_PUBLIC_ENDPOINT: ${S3_PUBLIC_ENDPOINT:-http://127.0.0.1:9000}
   S3_REGION: us-east-1
-  S3_BUCKET: agentdoor
-  S3_ACCESS_KEY: agentdoor
-  S3_SECRET_KEY: agentdoor-minio-development
-  JWT_SECRET: agentdoor-jwt-development-secret-change-me-now
-  REFRESH_TOKEN_PEPPER: agentdoor-refresh-development-pepper-change-me
-  VERIFICATION_PEPPER: agentdoor-verification-development-pepper-change-me
-  METRICS_TOKEN: agentdoor-development-metrics-token
+  S3_BUCKET: capaport
+  S3_ACCESS_KEY: capaport
+  S3_SECRET_KEY: capaport-minio-development
+  JWT_SECRET: capaport-jwt-development-secret-change-me-now
+  REFRESH_TOKEN_PEPPER: capaport-refresh-development-pepper-change-me
+  VERIFICATION_PEPPER: capaport-verification-development-pepper-change-me
+  METRICS_TOKEN: capaport-development-metrics-token
   ACCESS_TOKEN_TTL_SECONDS: 900
   REFRESH_TOKEN_TTL_DAYS: 30
   VERIFICATION_TTL_MINUTES: 10
   SMTP_HOST: mailpit
   SMTP_PORT: 1025
-  SMTP_FROM: Agentdoor <no-reply@agentdoor.local>
+  SMTP_FROM: CapaPort <no-reply@capaport.local>
 
 x-backend: &backend
   build:
@@ -48,11 +48,11 @@ services:
   postgres:
     image: postgres:17-alpine
     environment:
-      POSTGRES_DB: agentdoor
-      POSTGRES_USER: agentdoor
-      POSTGRES_PASSWORD: agentdoor-development
+      POSTGRES_DB: capaport
+      POSTGRES_USER: capaport
+      POSTGRES_PASSWORD: capaport-development
     healthcheck:
-      test: [CMD-SHELL, pg_isready -U agentdoor -d agentdoor]
+      test: [CMD-SHELL, pg_isready -U capaport -d capaport]
       interval: 3s
       timeout: 3s
       retries: 20
@@ -74,8 +74,8 @@ services:
     image: minio/minio:latest
     command: [server, /data, --console-address, ':9001']
     environment:
-      MINIO_ROOT_USER: agentdoor
-      MINIO_ROOT_PASSWORD: agentdoor-minio-development
+      MINIO_ROOT_USER: capaport
+      MINIO_ROOT_PASSWORD: capaport-minio-development
     ports:
       - ${MINIO_API_PORT:-9000}:9000
     healthcheck:
@@ -95,8 +95,8 @@ services:
       - /bin/sh
       - -c
       - >-
-        mc alias set local http://minio:9000 agentdoor agentdoor-minio-development &&
-        mc mb --ignore-existing local/agentdoor
+        mc alias set local http://minio:9000 capaport capaport-minio-development &&
+        mc mb --ignore-existing local/capaport
     restart: no
 
   mailpit:

@@ -1,5 +1,5 @@
 import { createHmac, randomInt, randomUUID } from 'node:crypto';
-import type { IdentityKind } from '@agentdoor/contracts/auth';
+import type { IdentityKind } from '@capaport/contracts/auth';
 import { Inject, Injectable } from '@nestjs/common';
 import type { AppConfig } from '../../config/config.js';
 import { APP_CONFIG } from '../../config/config.js';

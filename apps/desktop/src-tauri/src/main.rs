@@ -1,19 +1,19 @@
 #[cfg(feature = "tauri-app")]
-use agentdoor_runtime::commands::{
+use capaport_runtime::commands::{
     ExportPackageInput, InventoryInput, PathInput, QueueClaimInput, QueueItemInput,
     QueueRescheduleInput, QueueRetryFailedInput, QueueWriteInput, Runtime,
 };
 #[cfg(feature = "tauri-app")]
-use agentdoor_runtime::projects::{
+use capaport_runtime::projects::{
     BindProjectInput, ContextPackageInput, ProjectBindingInput, ProjectProjectionInput,
     ProjectSpaceInput,
 };
 #[cfg(feature = "tauri-app")]
-use agentdoor_runtime::credentials::OsCredentialStore;
+use capaport_runtime::credentials::OsCredentialStore;
 #[cfg(feature = "tauri-app")]
-use agentdoor_runtime::error::CommandError;
+use capaport_runtime::error::CommandError;
 #[cfg(feature = "tauri-app")]
-use agentdoor_runtime::files::InstallPlan;
+use capaport_runtime::files::InstallPlan;
 
 #[cfg(feature = "tauri-app")]
 struct AppState {
@@ -24,7 +24,7 @@ struct AppState {
 #[tauri::command]
 fn detect_agents(
     state: tauri::State<'_, AppState>,
-) -> Result<Vec<agentdoor_runtime::commands::AgentDescriptor>, CommandError> {
+) -> Result<Vec<capaport_runtime::commands::AgentDescriptor>, CommandError> {
     state.runtime.detect_agents().map_err(Into::into)
 }
 #[cfg(feature = "tauri-app")]
@@ -32,7 +32,7 @@ fn detect_agents(
 fn inventory_agent(
     input: InventoryInput,
     state: tauri::State<'_, AppState>,
-) -> Result<Vec<agentdoor_runtime::commands::LocalCapabilitySummary>, CommandError> {
+) -> Result<Vec<capaport_runtime::commands::LocalCapabilitySummary>, CommandError> {
     state.runtime.inventory_agent(&input).map_err(Into::into)
 }
 #[cfg(feature = "tauri-app")]
@@ -40,15 +40,15 @@ fn inventory_agent(
 fn scan_local_package(
     input: PathInput,
     state: tauri::State<'_, AppState>,
-) -> Result<agentdoor_runtime::commands::LocalScanReport, CommandError> {
+) -> Result<capaport_runtime::commands::LocalScanReport, CommandError> {
     state.runtime.scan_local_package(&input).map_err(Into::into)
 }
 #[cfg(feature = "tauri-app")]
 #[tauri::command]
 fn read_managed_file(
-    input: agentdoor_runtime::commands::ManagedFileInput,
+    input: capaport_runtime::commands::ManagedFileInput,
     state: tauri::State<'_, AppState>,
-) -> Result<agentdoor_runtime::commands::ManagedFileContent, CommandError> {
+) -> Result<capaport_runtime::commands::ManagedFileContent, CommandError> {
     state.runtime.read_managed_file(&input).map_err(Into::into)
 }
 #[cfg(feature = "tauri-app")]
@@ -56,7 +56,7 @@ fn read_managed_file(
 fn export_local_package(
     input: ExportPackageInput,
     state: tauri::State<'_, AppState>,
-) -> Result<agentdoor_runtime::commands::LocalPackageExport, CommandError> {
+) -> Result<capaport_runtime::commands::LocalPackageExport, CommandError> {
     state
         .runtime
         .export_local_package(&input)
@@ -67,7 +67,7 @@ fn export_local_package(
 fn preview_install(
     plan: InstallPlan,
     state: tauri::State<'_, AppState>,
-) -> Result<agentdoor_runtime::files::InstallPreview, CommandError> {
+) -> Result<capaport_runtime::files::InstallPreview, CommandError> {
     state.runtime.preview_install(&plan).map_err(Into::into)
 }
 #[cfg(feature = "tauri-app")]
@@ -75,7 +75,7 @@ fn preview_install(
 fn apply_install(
     plan: InstallPlan,
     state: tauri::State<'_, AppState>,
-) -> Result<agentdoor_runtime::files::ApplyResult, CommandError> {
+) -> Result<capaport_runtime::files::ApplyResult, CommandError> {
     state.runtime.apply_install(&plan).map_err(Into::into)
 }
 #[cfg(feature = "tauri-app")]
@@ -83,7 +83,7 @@ fn apply_install(
 fn rollback_install(
     transaction_id: String,
     state: tauri::State<'_, AppState>,
-) -> Result<agentdoor_runtime::files::ApplyResult, CommandError> {
+) -> Result<capaport_runtime::files::ApplyResult, CommandError> {
     state
         .runtime
         .rollback_install(&transaction_id)
@@ -92,17 +92,17 @@ fn rollback_install(
 #[cfg(feature = "tauri-app")]
 #[tauri::command]
 fn load_install_lock(
-    input: agentdoor_runtime::commands::UninstallInput,
+    input: capaport_runtime::commands::UninstallInput,
     state: tauri::State<'_, AppState>,
-) -> Result<Option<agentdoor_runtime::commands::InstallLock>, CommandError> {
+) -> Result<Option<capaport_runtime::commands::InstallLock>, CommandError> {
     state.runtime.load_install_lock(&input).map_err(Into::into)
 }
 #[cfg(feature = "tauri-app")]
 #[tauri::command]
 fn uninstall(
-    input: agentdoor_runtime::commands::UninstallInput,
+    input: capaport_runtime::commands::UninstallInput,
     state: tauri::State<'_, AppState>,
-) -> Result<agentdoor_runtime::files::ApplyResult, CommandError> {
+) -> Result<capaport_runtime::files::ApplyResult, CommandError> {
     state.runtime.uninstall(&input).map_err(Into::into)
 }
 #[cfg(feature = "tauri-app")]
@@ -110,7 +110,7 @@ fn uninstall(
 fn bind_project_directory(
     input: BindProjectInput,
     state: tauri::State<'_, AppState>,
-) -> Result<agentdoor_runtime::projects::LocalProjectBinding, CommandError> {
+) -> Result<capaport_runtime::projects::LocalProjectBinding, CommandError> {
     state
         .runtime
         .bind_project_directory(&input)
@@ -121,7 +121,7 @@ fn bind_project_directory(
 fn list_project_bindings(
     input: ProjectSpaceInput,
     state: tauri::State<'_, AppState>,
-) -> Result<Vec<agentdoor_runtime::projects::LocalProjectBinding>, CommandError> {
+) -> Result<Vec<capaport_runtime::projects::LocalProjectBinding>, CommandError> {
     state.runtime.list_project_bindings(&input).map_err(Into::into)
 }
 #[cfg(feature = "tauri-app")]
@@ -137,7 +137,7 @@ fn remove_project_binding(
 fn inventory_project_context(
     input: ProjectBindingInput,
     state: tauri::State<'_, AppState>,
-) -> Result<agentdoor_runtime::projects::ProjectInventory, CommandError> {
+) -> Result<capaport_runtime::projects::ProjectInventory, CommandError> {
     state.runtime.inventory_project_context(&input).map_err(Into::into)
 }
 #[cfg(feature = "tauri-app")]
@@ -145,7 +145,7 @@ fn inventory_project_context(
 fn export_project_context(
     input: ContextPackageInput,
     state: tauri::State<'_, AppState>,
-) -> Result<agentdoor_runtime::projects::ContextPackageExport, CommandError> {
+) -> Result<capaport_runtime::projects::ContextPackageExport, CommandError> {
     state.runtime.export_project_context(&input).map_err(Into::into)
 }
 #[cfg(feature = "tauri-app")]
@@ -153,14 +153,14 @@ fn export_project_context(
 fn project_context_plan(
     input: ProjectProjectionInput,
     state: tauri::State<'_, AppState>,
-) -> Result<agentdoor_runtime::files::InstallPlan, CommandError> {
+) -> Result<capaport_runtime::files::InstallPlan, CommandError> {
     state.runtime.project_context_plan(&input).map_err(Into::into)
 }
 #[cfg(feature = "tauri-app")]
 #[tauri::command]
 fn sync_queue_status(
     state: tauri::State<'_, AppState>,
-) -> Result<agentdoor_runtime::database::SyncQueueStatus, CommandError> {
+) -> Result<capaport_runtime::database::SyncQueueStatus, CommandError> {
     state.runtime.sync_queue_status().map_err(Into::into)
 }
 #[cfg(feature = "tauri-app")]
@@ -176,7 +176,7 @@ fn enqueue_write(
 fn claim_ready_writes(
     input: QueueClaimInput,
     state: tauri::State<'_, AppState>,
-) -> Result<Vec<agentdoor_runtime::database::RetryOperation>, CommandError> {
+) -> Result<Vec<capaport_runtime::database::RetryOperation>, CommandError> {
     state.runtime.claim_ready_writes(&input).map_err(Into::into)
 }
 #[cfg(feature = "tauri-app")]
@@ -206,7 +206,7 @@ fn retry_failed_writes(
 #[cfg(feature = "tauri-app")]
 #[tauri::command]
 fn store_session(
-    session: agentdoor_runtime::commands::SecureSession,
+    session: capaport_runtime::commands::SecureSession,
     state: tauri::State<'_, AppState>,
 ) -> Result<(), CommandError> {
     state.runtime.store_session(&session).map_err(Into::into)
@@ -215,7 +215,7 @@ fn store_session(
 #[tauri::command]
 fn load_session(
     state: tauri::State<'_, AppState>,
-) -> Result<Option<agentdoor_runtime::commands::SecureSession>, CommandError> {
+) -> Result<Option<capaport_runtime::commands::SecureSession>, CommandError> {
     state.runtime.load_session().map_err(Into::into)
 }
 #[cfg(feature = "tauri-app")]
@@ -229,13 +229,13 @@ fn main() {
     use directories::{BaseDirs, ProjectDirs};
     use std::sync::Arc;
     let base = BaseDirs::new().expect("platform home directory is required");
-    let project = ProjectDirs::from("com", "agentdoor", "Agentdoor")
+    let project = ProjectDirs::from("com", "capaport", "CapaPort")
         .expect("platform data directory is required");
     let runtime = Runtime::new(
-        &project.data_local_dir().join("agentdoor.db"),
+        &project.data_local_dir().join("capaport.db"),
         base.home_dir().into(),
         None,
-        Arc::new(OsCredentialStore::new("com.agentdoor.desktop")),
+        Arc::new(OsCredentialStore::new("com.capaport.desktop")),
     )
     .expect("local runtime initialization failed");
     tauri::Builder::default()
@@ -270,7 +270,7 @@ fn main() {
             clear_session
         ])
         .run(tauri::generate_context!())
-        .expect("Agentdoor desktop runtime failed");
+        .expect("CapaPort desktop runtime failed");
 }
 
 #[cfg(not(feature = "tauri-app"))]

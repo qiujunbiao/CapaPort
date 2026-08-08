@@ -1,4 +1,4 @@
-import type { TokenPair } from '@agentdoor/contracts';
+import type { TokenPair } from '@capaport/contracts';
 import type { ApiClient } from '../client.js';
 import type { CredentialStore } from '../credentials.js';
 import type { CliOutput } from '../output.js';
@@ -30,13 +30,13 @@ export async function authCommand(
     );
     return;
   }
-  if (parsed.subcommand !== 'login') throw new UsageError('用法：agentdoor auth login|logout|status');
+  if (parsed.subcommand !== 'login') throw new UsageError('用法：capaport auth login|logout|status');
   const target = stringFlag(parsed, 'target') ?? (await prompt.ask('邮箱或手机号'));
-  const password = stringFlag(parsed, 'password') ?? process.env.AGENTDOOR_PASSWORD ?? (await prompt.ask('密码'));
+  const password = stringFlag(parsed, 'password') ?? process.env.CAPAPORT_PASSWORD ?? (await prompt.ask('密码'));
   const kind = target.includes('@') ? 'email' : 'phone';
   const tokens = await api.request<TokenPair>('/auth/login', {
     method: 'POST',
-    body: { kind, target, password, deviceName: 'Agentdoor CLI' },
+    body: { kind, target, password, deviceName: 'CapaPort CLI' },
     authenticated: false,
   });
   await credentials.save(tokens);

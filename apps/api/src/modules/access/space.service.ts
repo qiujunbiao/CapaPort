@@ -1,12 +1,12 @@
 import { randomUUID } from 'node:crypto';
-import type { OrganizationRole, TenantContext } from '@agentdoor/contracts/organizations';
+import type { OrganizationRole, TenantContext } from '@capaport/contracts/organizations';
 import type {
   CreateSpaceRequest,
   SpaceReviewPolicy,
   SpaceRole,
   SpaceSummary,
   UpdateSpaceRequest,
-} from '@agentdoor/contracts/spaces';
+} from '@capaport/contracts/spaces';
 import { Inject, Injectable } from '@nestjs/common';
 import { AppError } from '../../platform/errors/app-error.js';
 import { type AuthorizationAction, type AuthorizationSubject, authorize } from './authorization.js';

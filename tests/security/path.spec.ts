@@ -25,7 +25,7 @@ describe('cross-platform path and symlink gate', () => {
   });
 
   it.runIf(process.platform !== 'win32')('rejects a symlink during local inventory', async () => {
-    const root = await mkdtemp(join(tmpdir(), 'agentdoor-path-'));
+    const root = await mkdtemp(join(tmpdir(), 'capaport-path-'));
     const agentRoot = join(root, '.agents');
     const skillRoot = join(agentRoot, 'skills', 'safe');
     const outside = join(root, 'outside');

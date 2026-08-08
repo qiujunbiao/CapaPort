@@ -1,15 +1,15 @@
-import { AgentdoorClient, AgentdoorSdkError } from '@agentdoor/sdk';
+import { CapaPortClient, CapaPortSdkError } from '@capaport/sdk';
 import type { CredentialStore } from './credentials.js';
 import { AuthError, NetworkError } from './parser.js';
 
 export class ApiClient {
-  private readonly sdk: AgentdoorClient;
+  private readonly sdk: CapaPortClient;
 
   constructor(
     baseUrl: string,
     private readonly credentials: CredentialStore,
   ) {
-    this.sdk = new AgentdoorClient({
+    this.sdk = new CapaPortClient({
       baseUrl,
       session: () => this.credentials.load(),
       saveSession: (session) => this.credentials.save({ ...session, expiresIn: session.expiresIn ?? 900 }),
@@ -17,7 +17,7 @@ export class ApiClient {
   }
   async session(required = true) {
     const value = await this.credentials.load();
-    if (!value && required) throw new AuthError('尚未登录，请运行 agentdoor auth login');
+    if (!value && required) throw new AuthError('尚未登录，请运行 capaport auth login');
     return value;
   }
   async request<T>(
@@ -37,11 +37,11 @@ export class ApiClient {
         ...(init.headers ? { headers: init.headers } : {}),
       });
     } catch (error) {
-      if (error instanceof AgentdoorSdkError && error.code === 'NETWORK_ERROR') {
-        throw new NetworkError('无法连接 Agentdoor 服务');
+      if (error instanceof CapaPortSdkError && error.code === 'NETWORK_ERROR') {
+        throw new NetworkError('无法连接 CapaPort 服务');
       }
-      if (error instanceof AgentdoorSdkError && error.statusCode === 401) throw new AuthError(error.message);
-      if (error instanceof AgentdoorSdkError) throw new Error(error.message);
+      if (error instanceof CapaPortSdkError && error.statusCode === 401) throw new AuthError(error.message);
+      if (error instanceof CapaPortSdkError) throw new Error(error.message);
       throw error;
     }
   }

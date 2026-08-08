@@ -1,4 +1,4 @@
-import type { UpdateCheck } from '@agentdoor/contracts';
+import type { UpdateCheck } from '@capaport/contracts';
 import type { ApiClient } from '../client.js';
 import type { CliOutput } from '../output.js';
 

@@ -1,4 +1,4 @@
-import type { AuthenticatedUser } from '@agentdoor/contracts/auth';
+import type { AuthenticatedUser } from '@capaport/contracts/auth';
 import { type CanActivate, type ExecutionContext, Inject, Injectable } from '@nestjs/common';
 import { AppError } from '../../platform/errors/app-error.js';
 import { SessionService } from './session.service.js';

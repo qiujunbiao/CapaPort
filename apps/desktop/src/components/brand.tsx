@@ -1,6 +1,6 @@
 export function DoorMark({ compact = false }: { compact?: boolean }) {
   return (
-    <div className={`door-brand ${compact ? 'door-brand--compact' : ''}`} role="img" aria-label="Agentdoor">
+    <div className={`door-brand ${compact ? 'door-brand--compact' : ''}`} role="img" aria-label="CapaPort">
       <span className="door-mark" aria-hidden>
         <i />
         <b />
@@ -9,7 +9,7 @@ export function DoorMark({ compact = false }: { compact?: boolean }) {
       </span>
       {compact ? null : (
         <span>
-          AGENTDOOR<small>CAPABILITY REGISTRY</small>
+          CAPAPORT<small>CAPABILITY REGISTRY</small>
         </span>
       )}
     </div>

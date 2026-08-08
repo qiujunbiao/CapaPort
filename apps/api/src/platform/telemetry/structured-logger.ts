@@ -67,7 +67,7 @@ export class StructuredLogger {
 }
 
 export const platformLogger = new StructuredLogger(undefined, {
-  service: process.env.AGENTDOOR_SERVICE ?? 'api',
+  service: process.env.CAPAPORT_SERVICE ?? 'api',
   environment: process.env.NODE_ENV ?? 'development',
-  version: process.env.AGENTDOOR_VERSION ?? 'development',
+  version: process.env.CAPAPORT_VERSION ?? 'development',
 });

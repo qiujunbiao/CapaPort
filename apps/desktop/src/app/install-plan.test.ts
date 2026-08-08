@@ -1,6 +1,6 @@
 // @vitest-environment node
 
-import type { CapabilityVersionSummary } from '@agentdoor/contracts';
+import type { CapabilityVersionSummary } from '@capaport/contracts';
 import { zipSync } from 'fflate';
 import { describe, expect, it } from 'vitest';
 import { buildLocalInstallPlan, calculatePackageDigest, selectInstallVersion } from './install-plan';
@@ -8,7 +8,7 @@ import { buildLocalInstallPlan, calculatePackageDigest, selectInstallVersion } f
 describe('desktop install plan verification', () => {
   it('verifies the canonical package digest before preparing local writes', async () => {
     const entries = {
-      'agentdoor.yaml': new TextEncoder().encode(
+      'capaport.yaml': new TextEncoder().encode(
         'metadata:\n  slug: secure-review\nspec:\n  components:\n    - type: skill\n      path: skills/secure-review\n',
       ),
       'skills/secure-review/SKILL.md': new TextEncoder().encode('# Secure review'),
@@ -35,7 +35,7 @@ describe('desktop install plan verification', () => {
 
   it('uses the persisted install-lock digest for clean updates and leaves new files without an expectation', async () => {
     const entries = {
-      'agentdoor.yaml': new TextEncoder().encode(
+      'capaport.yaml': new TextEncoder().encode(
         'metadata:\n  slug: secure-review\nspec:\n  components:\n    - type: skill\n      path: skills/secure-review\n',
       ),
       'skills/secure-review/SKILL.md': new TextEncoder().encode('# Secure review v2'),

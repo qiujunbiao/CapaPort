@@ -6,7 +6,7 @@ import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 
 const repositoryRoot = resolve(import.meta.dirname, '..');
-const project = `agentdoor-smoke-${process.pid}-${Date.now()}`.toLowerCase();
+const project = `capaport-smoke-${process.pid}-${Date.now()}`.toLowerCase();
 const composeFile = resolve(repositoryRoot, 'infra/compose/compose.yaml');
 const keep = process.argv.includes('--keep');
 
@@ -81,10 +81,10 @@ const stackEnvironment = {
   WEB_PORT: String(webPort),
   WEB_API_URL: apiBase,
 };
-const scratch = await mkdtemp(join(tmpdir(), 'agentdoor-smoke-'));
+const scratch = await mkdtemp(join(tmpdir(), 'capaport-smoke-'));
 
 try {
-  execute('pnpm', ['--filter', '@agentdoor/capability-kit', 'build']);
+  execute('pnpm', ['--filter', '@capaport/capability-kit', 'build']);
   compose(['up', '-d', '--build', '--wait']);
   await waitForReady(apiBase);
 
@@ -103,9 +103,9 @@ try {
   if (user !== '10001:10001' || readOnly !== 'true') throw new Error(`Container hardening failed: ${user}/${readOnly}`);
   const imageMetadata = execute('docker', ['image', 'inspect', image], { capture: true }).toString();
   for (const forbidden of [
-    'agentdoor-jwt-development',
-    'agentdoor-refresh-development',
-    'agentdoor-verification-development',
+    'capaport-jwt-development',
+    'capaport-refresh-development',
+    'capaport-verification-development',
   ]) {
     if (imageMetadata.includes(forbidden))
       throw new Error(`Image metadata contains embedded credential marker ${forbidden}.`);
@@ -114,9 +114,9 @@ try {
   const stamp = `${Date.now()}-${process.pid}`;
   const scenarioEnvironment = {
     ...stackEnvironment,
-    AGENTDOOR_API_URL: apiBase,
+    CAPAPORT_API_URL: apiBase,
     MAILPIT_URL: `http://127.0.0.1:${mailpitPort}`,
-    AGENTDOOR_E2E_STAMP: stamp,
+    CAPAPORT_E2E_STAMP: stamp,
   };
   const publication = spawnSync('node', ['apps/api/scripts/publication-real-e2e.mjs'], {
     cwd: repositoryRoot,
@@ -138,9 +138,9 @@ try {
       'postgres',
       'psql',
       '-U',
-      'agentdoor',
+      'capaport',
       '-d',
-      'agentdoor',
+      'capaport',
       '-Atc',
       "SELECT (SELECT count(*) FROM audit_logs)||','||(SELECT count(*) FROM capabilities)||','||(SELECT count(*) FROM installations)",
     ],
@@ -153,16 +153,16 @@ try {
     throw new Error(`Required records missing: ${countsBefore}`);
 
   const metrics = await fetch(`${apiBase}/metrics`, {
-    headers: { authorization: 'Bearer agentdoor-development-metrics-token' },
+    headers: { authorization: 'Bearer capaport-development-metrics-token' },
   });
-  if (!metrics.ok || !(await metrics.text()).includes('agentdoor_http_requests_total')) {
+  if (!metrics.ok || !(await metrics.text()).includes('capaport_http_requests_total')) {
     throw new Error('Authenticated metrics endpoint failed.');
   }
 
   await Promise.all([composeAsync(['run', '--rm', 'migrate']), composeAsync(['run', '--rm', 'migrate'])]);
 
   const databaseDump = compose(
-    ['exec', '-T', 'postgres', 'pg_dump', '-U', 'agentdoor', '-d', 'agentdoor', '-Fc', '--no-owner', '--no-acl'],
+    ['exec', '-T', 'postgres', 'pg_dump', '-U', 'capaport', '-d', 'capaport', '-Fc', '--no-owner', '--no-acl'],
     { capture: true },
   );
   await writeFile(join(scratch, 'database.dump'), databaseDump, { mode: 0o600 });
@@ -173,9 +173,9 @@ try {
       mode: 0o600,
     },
   );
-  compose(['exec', '-T', 'postgres', 'createdb', '-U', 'agentdoor', 'agentdoor_restore']);
+  compose(['exec', '-T', 'postgres', 'createdb', '-U', 'capaport', 'capaport_restore']);
   compose(
-    ['exec', '-T', 'postgres', 'pg_restore', '-U', 'agentdoor', '-d', 'agentdoor_restore', '--no-owner', '--no-acl'],
+    ['exec', '-T', 'postgres', 'pg_restore', '-U', 'capaport', '-d', 'capaport_restore', '--no-owner', '--no-acl'],
     { input: databaseDump },
   );
   const restoredCapabilities = Number(
@@ -186,9 +186,9 @@ try {
         'postgres',
         'psql',
         '-U',
-        'agentdoor',
+        'capaport',
         '-d',
-        'agentdoor_restore',
+        'capaport_restore',
         '-Atc',
         'SELECT count(*) FROM capabilities',
       ],
@@ -205,7 +205,7 @@ try {
     'minio',
     'sh',
     '-c',
-    'mc alias set local http://127.0.0.1:9000 agentdoor agentdoor-minio-development >/dev/null && mc mb --ignore-existing local/agentdoor-restore >/dev/null && mc mirror --overwrite local/agentdoor local/agentdoor-restore >/dev/null',
+    'mc alias set local http://127.0.0.1:9000 capaport capaport-minio-development >/dev/null && mc mb --ignore-existing local/capaport-restore >/dev/null && mc mirror --overwrite local/capaport local/capaport-restore >/dev/null',
   ]);
   const objectCounts = compose(
     [
@@ -214,7 +214,7 @@ try {
       'minio',
       'sh',
       '-c',
-      'printf \'%s,%s\' "$(mc ls --recursive local/agentdoor | wc -l)" "$(mc ls --recursive local/agentdoor-restore | wc -l)"',
+      'printf \'%s,%s\' "$(mc ls --recursive local/capaport | wc -l)" "$(mc ls --recursive local/capaport-restore | wc -l)"',
     ],
     { capture: true },
   )
@@ -234,9 +234,9 @@ try {
       'postgres',
       'psql',
       '-U',
-      'agentdoor',
+      'capaport',
       '-d',
-      'agentdoor',
+      'capaport',
       '-Atc',
       "SELECT (SELECT count(*) FROM audit_logs)||','||(SELECT count(*) FROM capabilities)||','||(SELECT count(*) FROM installations)",
     ],

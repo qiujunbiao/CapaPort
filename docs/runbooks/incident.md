@@ -11,7 +11,7 @@
 
 ## Alert triage
 
-- `AgentdoorApiUnavailable` or 5xx alert: check `/health/ready`, dependency reachability, migration job, and current tag.
+- `CapaPortApiUnavailable` or 5xx alert: check `/health/ready`, dependency reachability, migration job, and current tag.
 - authorization or refresh replay alert: identify request IDs and sessions; revoke the replay chain and affected user
   sessions; examine tenant-scoped audit records.
 - scan/upload alert: quarantine the artifact, disable presigned upload, and verify server-side digest and scan results.
@@ -20,8 +20,8 @@
 Fetch logs without request bodies or credentials:
 
 ```sh
-docker compose --env-file /etc/agentdoor/agentdoor.env -f infra/compose/compose.production.yaml \
-  logs --since 30m --no-color api worker migrate > /secure/incident/agentdoor.log
+docker compose --env-file /etc/capaport/capaport.env -f infra/compose/compose.production.yaml \
+  logs --since 30m --no-color api worker migrate > /secure/incident/capaport.log
 ```
 
 ## Recovery and closure

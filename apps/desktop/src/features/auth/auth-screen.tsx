@@ -34,7 +34,7 @@ export function AuthScreen({ cloud, sessionStore }: { cloud: CloudClient; sessio
         setCode('');
         setMode('login');
       } else if (mode === 'login') {
-        const tokens = await cloud.login({ kind, target, password, deviceName: 'Agentdoor Desktop' });
+        const tokens = await cloud.login({ kind, target, password, deviceName: 'CapaPort Desktop' });
         sessionStore.set(tokens);
       } else if (mode === 'register') {
         if (!cloud.register) throw new Error('当前服务未启用注册');
@@ -84,7 +84,7 @@ export function AuthScreen({ cloud, sessionStore }: { cloud: CloudClient; sessio
           </p>
           <h1>
             {mode === 'login'
-              ? '进入 Agentdoor'
+              ? '进入 CapaPort'
               : mode === 'register'
                 ? '创建你的账号'
                 : mode === 'verify'

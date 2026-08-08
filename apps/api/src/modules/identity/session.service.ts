@@ -1,5 +1,5 @@
 import { createHmac, randomBytes, randomUUID } from 'node:crypto';
-import type { AuthenticatedUser, TokenPair } from '@agentdoor/contracts/auth';
+import type { AuthenticatedUser, TokenPair } from '@capaport/contracts/auth';
 import { Inject, Injectable } from '@nestjs/common';
 import { jwtVerify, SignJWT } from 'jose';
 import type { AppConfig } from '../../config/config.js';
@@ -92,7 +92,7 @@ export class SessionService {
 
   async authenticate(accessToken: string): Promise<AuthenticatedUser> {
     try {
-      const result = await jwtVerify(accessToken, this.jwtKey, { issuer: 'agentdoor', audience: 'agentdoor-client' });
+      const result = await jwtVerify(accessToken, this.jwtKey, { issuer: 'capaport', audience: 'capaport-client' });
       const userId = result.payload.sub;
       const sessionId = result.payload.sid;
       const recentlyAuthenticatedAt = result.payload.auth_time;
@@ -128,8 +128,8 @@ export class SessionService {
     })
       .setProtectedHeader({ alg: 'HS256', typ: 'JWT' })
       .setSubject(userId)
-      .setIssuer('agentdoor')
-      .setAudience('agentdoor-client')
+      .setIssuer('capaport')
+      .setAudience('capaport-client')
       .setIssuedAt()
       .setExpirationTime(`${this.config.accessTtlSeconds}s`)
       .sign(this.jwtKey);

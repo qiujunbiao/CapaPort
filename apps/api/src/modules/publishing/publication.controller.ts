@@ -1,11 +1,11 @@
-import { zodFieldErrors } from '@agentdoor/contracts/errors';
+import { zodFieldErrors } from '@capaport/contracts/errors';
 import {
   promotePublicationRequestSchema,
   publicationListQuerySchema,
   reviewPublicationRequestSchema,
   submitPublicationRequestSchema,
   versionDiffQuerySchema,
-} from '@agentdoor/contracts/publications';
+} from '@capaport/contracts/publications';
 import { Body, Controller, Get, Headers, Inject, Param, Post, Query, Req, UseGuards } from '@nestjs/common';
 import type { ZodType } from 'zod';
 import { AppError } from '../../platform/errors/app-error.js';

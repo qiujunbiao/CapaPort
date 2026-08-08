@@ -1,4 +1,4 @@
-import type { AuditEntry } from '@agentdoor/contracts';
+import type { AuditEntry } from '@capaport/contracts';
 import { ChevronRight, Search } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import type { WebClient } from '../../app/types';

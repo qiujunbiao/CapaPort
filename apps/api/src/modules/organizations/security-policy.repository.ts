@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import type { OrganizationSecurityPolicy } from '@agentdoor/contracts/organizations';
+import type { OrganizationSecurityPolicy } from '@capaport/contracts/organizations';
 import { Inject, Injectable } from '@nestjs/common';
 import { eq } from 'drizzle-orm';
 import { auditLogs, organizationSecurityPolicies } from '../../db/schema/organizations.js';

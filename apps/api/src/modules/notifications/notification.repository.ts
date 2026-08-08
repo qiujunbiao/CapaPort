@@ -1,4 +1,4 @@
-import type { NotificationQuery } from '@agentdoor/contracts/operations';
+import type { NotificationQuery } from '@capaport/contracts/operations';
 import { Inject, Injectable } from '@nestjs/common';
 import type { DatabaseService } from '../../platform/database/database.service.js';
 import type { NotificationDataStore, NotificationRecord } from './notification.service.js';

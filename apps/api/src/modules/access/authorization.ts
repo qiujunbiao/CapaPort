@@ -1,5 +1,5 @@
-import type { OrganizationRole } from '@agentdoor/contracts/organizations';
-import type { SpaceRole, SpaceType } from '@agentdoor/contracts/spaces';
+import type { OrganizationRole } from '@capaport/contracts/organizations';
+import type { SpaceRole, SpaceType } from '@capaport/contracts/spaces';
 
 export type AuthorizationAction =
   | 'space:view'

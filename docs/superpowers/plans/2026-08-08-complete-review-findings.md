@@ -4,7 +4,7 @@
 
 **Goal:** Resolve every confirmed review finding and leave CapaPort with a passing release gate across cloud, Web, Desktop, CLI, adapters, containers, and documentation.
 
-**Architecture:** Preserve the modular-monolith cloud and local-adapter architecture. Fix authorization and state at their server-side trust boundaries, keep local file transactions durable, expose organization security policy through contracts/API/Web/Desktop, and complete the breaking Agentdoor-to-CapaPort namespace migration across source and delivery artifacts.
+**Architecture:** Preserve the modular-monolith cloud and local-adapter architecture. Fix authorization and state at their server-side trust boundaries, keep local file transactions durable, expose organization security policy through contracts/API/Web/Desktop, and complete the breaking CapaPort-to-CapaPort namespace migration across source and delivery artifacts.
 
 **Tech Stack:** TypeScript 7, React 19, NestJS, PostgreSQL/Drizzle, Tauri 2/Rust, Vitest, Playwright, pnpm/Turbo, Docker Compose, GitHub Actions.
 

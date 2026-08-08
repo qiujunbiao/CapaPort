@@ -1,5 +1,5 @@
 {
-  "name": "@agentdoor/sdk",
+  "name": "@capaport/sdk",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -15,7 +15,7 @@
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
-    "@agentdoor/contracts": "workspace:*"
+    "@capaport/contracts": "workspace:*"
   },
   "devDependencies": {
     "typescript": "7.0.2",

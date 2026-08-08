@@ -12,8 +12,8 @@ import type {
   TokenPair,
   UpdateCheck,
   ProductEvent,
-} from '@agentdoor/contracts';
-import type { ProjectBindingSummary, ProjectContextSummary } from '@agentdoor/contracts/projects';
+} from '@capaport/contracts';
+import type { ProjectBindingSummary, ProjectContextSummary } from '@capaport/contracts/projects';
 import type {
   AgentDescriptor,
   ApplyResult,

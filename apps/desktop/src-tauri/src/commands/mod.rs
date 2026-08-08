@@ -621,12 +621,12 @@ impl Runtime {
             return Err(RuntimeError::InvalidInput);
         }
         let manifest = format!(
-            "schemaVersion: agentdoor.io/v1alpha1\nkind: CapabilityPackage\nmetadata:\n  slug: {slug}\n  name: {slug}\n  description: \"\"\n  tags: []\nspec:\n  components:\n    - type: {component_type}\n      path: {canonical_root}\n  compatibility:\n    agents:\n      - {adapter_id}\n  permissions:\n    filesystem: read-project\n    network: none\n  entrypoints:\n    default: {entrypoint}\n  dependencies: []\n",
+            "schemaVersion: capaport.io/v1alpha1\nkind: CapabilityPackage\nmetadata:\n  slug: {slug}\n  name: {slug}\n  description: \"\"\n  tags: []\nspec:\n  components:\n    - type: {component_type}\n      path: {canonical_root}\n  compatibility:\n    agents:\n      - {adapter_id}\n  permissions:\n    filesystem: read-project\n    network: none\n  entrypoints:\n    default: {entrypoint}\n  dependencies: []\n",
             slug = input.slug,
             component_type = input.component_type,
             adapter_id = input.adapter_id,
         );
-        let mut package_files = vec![("agentdoor.yaml".to_string(), manifest.into_bytes())];
+        let mut package_files = vec![("capaport.yaml".to_string(), manifest.into_bytes())];
         package_files.extend(files);
         package_files.sort_by(|left, right| left.0.cmp(&right.0));
         let archive = build_zip(&package_files)?;
@@ -905,7 +905,7 @@ fn ignored(path: &Path) -> bool {
     path.components().any(|component| {
         matches!(
             component.as_os_str().to_str(),
-            Some(".git" | ".agentdoor" | "node_modules" | "target" | "dist")
+            Some(".git" | ".capaport" | "node_modules" | "target" | "dist")
         )
     })
 }
@@ -1236,7 +1236,7 @@ mod tests {
     #[test]
     fn scanner_never_includes_local_transaction_metadata() {
         let (root, runtime) = runtime();
-        let internal = root.path().join(".agents/.agentdoor/recovery");
+        let internal = root.path().join(".agents/.capaport/recovery");
         std::fs::create_dir_all(&internal).unwrap();
         std::fs::write(internal.join("tx.json"), r#"{"root":"/private/customer"}"#).unwrap();
         let report = runtime
@@ -1267,7 +1267,7 @@ mod tests {
             .decode(exported.archive_base64)
             .unwrap();
         let mut zip = zip::ZipArchive::new(std::io::Cursor::new(archive)).unwrap();
-        assert!(zip.by_name("agentdoor.yaml").is_ok());
+        assert!(zip.by_name("capaport.yaml").is_ok());
         assert!(zip.by_name("skills/release/SKILL.md").is_ok());
     }
 

@@ -3,8 +3,8 @@ import {
   createCapabilityRequestSchema,
   createDraftRevisionRequestSchema,
   updateCapabilityRequestSchema,
-} from '@agentdoor/contracts/capabilities';
-import { zodFieldErrors } from '@agentdoor/contracts/errors';
+} from '@capaport/contracts/capabilities';
+import { zodFieldErrors } from '@capaport/contracts/errors';
 import { Body, Controller, Get, Inject, Param, Patch, Post, Query, Req, UseGuards } from '@nestjs/common';
 import type { ZodType } from 'zod';
 import { AppError } from '../../platform/errors/app-error.js';

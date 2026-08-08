@@ -1,4 +1,4 @@
-import type { CapabilityVersionSummary } from '@agentdoor/contracts';
+import type { CapabilityVersionSummary } from '@capaport/contracts';
 import { unzipSync } from 'fflate';
 import { parse } from 'yaml';
 import type { InstallPlan } from '../generated/commands';
@@ -126,8 +126,8 @@ export async function buildLocalInstallPlan(input: {
 }): Promise<InstallPlan> {
   const entries = unzipSync(input.archive);
   if ((await calculatePackageDigest(entries)) !== input.packageDigest) throw new Error('能力包摘要验证失败');
-  const manifestBytes = entries['agentdoor.yaml'];
-  if (!manifestBytes) throw new Error('能力包缺少 agentdoor.yaml');
+  const manifestBytes = entries['capaport.yaml'];
+  if (!manifestBytes) throw new Error('能力包缺少 capaport.yaml');
   const manifest = parse(new TextDecoder().decode(manifestBytes)) as Manifest;
   if (!manifest?.metadata?.slug || !Array.isArray(manifest.spec?.components)) throw new Error('能力包清单无效');
   const directories = componentDirectories[input.adapterId];

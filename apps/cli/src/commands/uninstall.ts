@@ -1,8 +1,8 @@
 import { readFile } from 'node:fs/promises';
 import { homedir } from 'node:os';
 import { resolve } from 'node:path';
-import type { InstallLock } from '@agentdoor/adapter-sdk';
-import type { AgentId, CapabilitySummary } from '@agentdoor/contracts';
+import type { InstallLock } from '@capaport/adapter-sdk';
+import type { AgentId, CapabilitySummary } from '@capaport/contracts';
 import { AtomicFileTransaction, adapters } from '../adapters.js';
 import type { ApiClient } from '../client.js';
 import type { CliOutput } from '../output.js';
@@ -18,13 +18,13 @@ const roots: Record<AgentId, string> = {
 
 export async function uninstallCommand(parsed: ParsedCommand, api: ApiClient, output: CliOutput, prompt: Prompter) {
   const slug = stringFlag(parsed, 'slug') ?? parsed.subcommand;
-  if (!slug) throw new UsageError('用法：agentdoor uninstall <slug> --agent codex');
+  if (!slug) throw new UsageError('用法：capaport uninstall <slug> --agent codex');
   const agentId = (stringFlag(parsed, 'agent') ?? 'codex') as AgentId;
   const scope = stringFlag(parsed, 'scope') ?? 'workspace';
   if (!roots[agentId]) throw new UsageError(`不支持 Agent：${agentId}`);
   if (!['user', 'workspace'].includes(scope)) throw new UsageError('--scope 只能是 user 或 workspace');
   const rootPath = resolve(scope === 'user' ? homedir() : process.cwd(), roots[agentId]);
-  const lockPath = resolve(rootPath, '.agentdoor', 'locks', agentId, `${slug}.json`);
+  const lockPath = resolve(rootPath, '.capaport', 'locks', agentId, `${slug}.json`);
   const lock = await readFile(lockPath, 'utf8').then(
     (value) => JSON.parse(value) as InstallLock,
     () => undefined,

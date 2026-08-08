@@ -1,4 +1,4 @@
-import type { PublicationSummary } from '@agentdoor/contracts';
+import type { PublicationSummary } from '@capaport/contracts';
 import { Clock3, FileWarning, Send, ShieldCheck } from 'lucide-react';
 import { EmptyState, PageHeader, Panel, Status } from '../../components/ui';
 

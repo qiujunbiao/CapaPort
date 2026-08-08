@@ -13,7 +13,7 @@ TAURI_SIGNING_PRIVATE_KEY_PASSWORD
 
 仓库中的开发公钥必须在生产首发前替换。桌面设置页通过 Tauri updater 检查清单、校验签名、显示下载进度、安装并在用户确认后重启；签名校验或下载失败时不会进入“已安装”状态。更新服务返回与目标平台、架构和当前版本匹配的已签名清单；不得启用不安全传输。
 
-发布流水线调用 `scripts/create-updater-manifest.ts` 生成 `latest.json`，同时发布签名包和 `.sig`。生产发布服务必须把该清单及对应文件原样同步到 `https://releases.agentdoor.com/desktop/...`，并在切换 `latest` 前验证清单中的版本、平台 URL 和签名文件均存在。私钥只参与 CI 签名，更新服务只持有公开文件。
+发布流水线调用 `scripts/create-updater-manifest.ts` 生成 `latest.json`，同时发布签名包和 `.sig`。生产发布服务必须把该清单及对应文件原样同步到 `https://releases.capaport.com/desktop/...`，并在切换 `latest` 前验证清单中的版本、平台 URL 和签名文件均存在。私钥只参与 CI 签名，更新服务只持有公开文件。
 
 ## macOS
 

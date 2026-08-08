@@ -1,14 +1,14 @@
-# Agentdoor 产品与技术架构设计
+# CapaPort 产品与技术架构设计
 
 日期：2026-08-07
 
 状态：待最终评审
 
-关联文档：[PRD-Agentdoor.md](../../../PRD-Agentdoor.md)
+关联文档：[PRD-CapaPort.md](../../../PRD-CapaPort.md)
 
 ## 1. 决策摘要
 
-Agentdoor 采用“桌面客户端 + 云端服务 + Web 管理后台 + CLI”的产品形态。云端首版采用模块化单体，不提前拆微服务；桌面端使用平台中立能力包和本地 Agent 适配器连接 Codex、Claude Code、Cursor、Gemini CLI。
+CapaPort 采用“桌面客户端 + 云端服务 + Web 管理后台 + CLI”的产品形态。云端首版采用模块化单体，不提前拆微服务；桌面端使用平台中立能力包和本地 Agent 适配器连接 Codex、Claude Code、Cursor、Gemini CLI。
 
 已确定的核心决策：
 
@@ -40,7 +40,7 @@ flowchart TB
   subgraph Clients["客户端与管理面"]
     Desktop["macOS / Windows Desktop\nReact + Tauri"]
     Web["Web Console\n组织治理与能力市场"]
-    CLI["Agentdoor CLI\nLinux 与自动化"]
+    CLI["CapaPort CLI\nLinux 与自动化"]
   end
 
   subgraph Local["员工设备"]
@@ -108,7 +108,7 @@ flowchart TB
 ## 4. 代码仓库结构
 
 ```text
-agentdoor/
+capaport/
 ├── apps/
 │   ├── desktop/                 # React UI + Tauri 壳
 │   │   ├── src/                 # 页面、查询、状态、桌面 API 客户端
@@ -257,7 +257,7 @@ MVP 不提供单个能力包 ACL、外部访客和跨组织共享。组织 Owner
 
 ```text
 capability-package/
-├── agentdoor.yaml              # 必须：平台中立清单
+├── capaport.yaml              # 必须：平台中立清单
 ├── README.md                   # 必须：用途、安装后行为和示例
 ├── skills/                     # 可选：Skill 内容
 ├── prompts/                    # 可选：Prompt 内容与变量声明
@@ -270,7 +270,7 @@ capability-package/
 ### 6.2 Manifest 主要字段
 
 ```yaml
-schemaVersion: agentdoor.io/v1alpha1
+schemaVersion: capaport.io/v1alpha1
 kind: CapabilityPackage
 metadata:
   slug: secure-release-helper
@@ -711,9 +711,9 @@ sequenceDiagram
 
 MVP 后端采用 Docker-first 交付。源码只构建一次，使用多阶段 Dockerfile 生成标准 OCI 镜像，并通过不同启动命令运行三个容器角色：
 
-- `agentdoor-api`：无状态 HTTP API，可水平扩展。
-- `agentdoor-worker`：异步扫描、通知、索引、统计与清理任务，可按队列独立扩容。
-- `agentdoor-migrate`：一次性数据库迁移任务；部署时先执行，成功后再更新 API 和 Worker。
+- `capaport-api`：无状态 HTTP API，可水平扩展。
+- `capaport-worker`：异步扫描、通知、索引、统计与清理任务，可按队列独立扩容。
+- `capaport-migrate`：一次性数据库迁移任务；部署时先执行，成功后再更新 API 和 Worker。
 
 三个角色使用同一提交和依赖锁文件构建，镜像标签包含语义版本与 Git 提交摘要。生产环境禁止使用浮动的 `latest` 标签。
 
@@ -765,7 +765,7 @@ Compose 使用健康检查和依赖条件保证启动顺序；数据库迁移由
 
 1. CI 构建并测试镜像，生成 SBOM 和扫描报告。
 2. 推送不可变版本镜像到容器仓库。
-3. 备份并执行 `agentdoor-migrate`。
+3. 备份并执行 `capaport-migrate`。
 4. 先更新少量 API 和 Worker 实例，观察健康检查与核心指标。
 5. 完成滚动发布；失败时回退应用镜像。
 
@@ -831,4 +831,4 @@ Web 管理后台、安全中心、基础分析、运维告警、macOS/Windows �
 9. 管理员能在审计日志看到邀请、提交、审核、发布、下载、安装和更新事件。
 10. 使用另一个组织账号尝试访问上述资源时全部被拒绝，且不会通过搜索或错误信息泄露资源存在。
 
-上述流程全部通过，才视为 Agentdoor MVP 主闭环完成。
+上述流程全部通过，才视为 CapaPort MVP 主闭环完成。

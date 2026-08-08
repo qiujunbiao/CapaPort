@@ -8,7 +8,7 @@ const manifest = 'apps/desktop/src-tauri/Cargo.toml';
 function runHarness(): string {
   const cargoAvailable = spawnSync('cargo', ['--version'], { cwd: repositoryRoot, stdio: 'ignore' }).status === 0;
   const result = cargoAvailable
-    ? spawnSync('cargo', ['run', '--quiet', '--manifest-path', manifest, '--bin', 'agentdoor-runtime-harness'], {
+    ? spawnSync('cargo', ['run', '--quiet', '--manifest-path', manifest, '--bin', 'capaport-runtime-harness'], {
         cwd: repositoryRoot,
         encoding: 'utf8',
         timeout: 180_000,
@@ -21,7 +21,7 @@ function runHarness(): string {
           '-v',
           `${repositoryRoot}/apps/desktop/src-tauri:/app`,
           '-v',
-          'agentdoor-cargo-registry:/usr/local/cargo/registry',
+          'capaport-cargo-registry:/usr/local/cargo/registry',
           '-w',
           '/app',
           'rust:1.89-slim-bookworm',
@@ -29,7 +29,7 @@ function runHarness(): string {
           'run',
           '--quiet',
           '--bin',
-          'agentdoor-runtime-harness',
+          'capaport-runtime-harness',
         ],
         { cwd: repositoryRoot, encoding: 'utf8', timeout: 180_000 },
       );

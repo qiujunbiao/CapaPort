@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
-import type { AgentId } from '@agentdoor/contracts/capabilities';
-import type { UpdateDeviceRequest } from '@agentdoor/contracts/distribution';
+import type { AgentId } from '@capaport/contracts/capabilities';
+import type { UpdateDeviceRequest } from '@capaport/contracts/distribution';
 import { Inject, Injectable } from '@nestjs/common';
 import { and, desc, eq } from 'drizzle-orm';
 import type { PoolClient } from 'pg';

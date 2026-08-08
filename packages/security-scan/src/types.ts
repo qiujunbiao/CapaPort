@@ -1,4 +1,4 @@
-import type { PackageFile } from '@agentdoor/capability-kit';
+import type { PackageFile } from '@capaport/capability-kit';
 
 export type ScanSeverity = 'low' | 'medium' | 'high' | 'critical';
 

@@ -28,8 +28,8 @@ describe('release delivery contract', () => {
     expect(workflow).toContain('x86_64-pc-windows-msvc');
     expect(workflow).toContain('APPLE_SIGNING_IDENTITY');
     expect(workflow).toContain('WINDOWS_CERTIFICATE_THUMBPRINT');
-    expect(workflow).toContain('agentdoor-web');
-    expect(workflow).toContain('agentdoor-cli');
+    expect(workflow).toContain('capaport-web');
+    expect(workflow).toContain('capaport-cli');
     expect(workflow).toContain('pnpm images:build');
     expect(workflow).toContain('anchore/sbom-action');
     expect(workflow).toContain('attest-build-provenance');
@@ -42,7 +42,7 @@ describe('release delivery contract', () => {
     const workflow = await source('.github/workflows/release.yml');
     const tauri = await source('apps/desktop/src-tauri/tauri.conf.json');
     expect(workflow).toContain('CAPAPORT_API_URL');
-    expect(workflow).not.toContain('https://agentdoor.example');
+    expect(workflow).not.toContain('https://capaport.example');
     expect(tauri).toContain("connect-src 'self' https:");
     expect(tauri).toContain('github.com/qiujunbiao/CapaPort/releases/latest/download/latest.json');
   });
@@ -56,7 +56,7 @@ describe('release delivery contract', () => {
     expect(harness).toContain('export_local_package');
     expect(harness).toContain('rollback_install');
     expect(harness).toContain('uninstall');
-    expect(test).toContain('agentdoor-runtime-harness');
+    expect(test).toContain('capaport-runtime-harness');
   });
 
   it('contains runnable user, administrator, security, operations, and acceptance documentation', async () => {

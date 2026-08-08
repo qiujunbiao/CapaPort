@@ -13,18 +13,18 @@ const check = process.argv.includes('--check');
 
 Object.assign(process.env, {
   NODE_ENV: 'test',
-  DATABASE_URL: 'postgres://agentdoor:agentdoor@127.0.0.1:5432/agentdoor',
+  DATABASE_URL: 'postgres://capaport:capaport@127.0.0.1:5432/capaport',
   REDIS_URL: 'redis://127.0.0.1:6379',
   S3_ENDPOINT: 'http://127.0.0.1:9000',
   S3_REGION: 'us-east-1',
-  S3_BUCKET: 'agentdoor-artifacts',
-  S3_ACCESS_KEY: 'agentdoor',
-  S3_SECRET_KEY: 'agentdoor-development-secret',
-  JWT_SECRET: 'agentdoor-development-jwt-secret-32-characters',
-  REFRESH_TOKEN_PEPPER: 'agentdoor-development-refresh-pepper-32-characters',
-  VERIFICATION_PEPPER: 'agentdoor-development-verification-pepper-32-characters',
+  S3_BUCKET: 'capaport-artifacts',
+  S3_ACCESS_KEY: 'capaport',
+  S3_SECRET_KEY: 'capaport-development-secret',
+  JWT_SECRET: 'capaport-development-jwt-secret-32-characters',
+  REFRESH_TOKEN_PEPPER: 'capaport-development-refresh-pepper-32-characters',
+  VERIFICATION_PEPPER: 'capaport-development-verification-pepper-32-characters',
   SMTP_HOST: '127.0.0.1',
-  SMTP_FROM: 'Agentdoor <no-reply@agentdoor.local>',
+  SMTP_FROM: 'CapaPort <no-reply@capaport.local>',
 });
 
 function sorted(value: unknown): unknown {

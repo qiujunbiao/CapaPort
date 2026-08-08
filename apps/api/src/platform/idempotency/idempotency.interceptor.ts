@@ -1,5 +1,5 @@
 import { createHash, randomUUID } from 'node:crypto';
-import type { AuthenticatedUser } from '@agentdoor/contracts/auth';
+import type { AuthenticatedUser } from '@capaport/contracts/auth';
 import {
   type CallHandler,
   type ExecutionContext,

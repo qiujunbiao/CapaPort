@@ -1,4 +1,4 @@
-import { normalizePackageFiles } from '@agentdoor/capability-kit';
+import { normalizePackageFiles } from '@capaport/capability-kit';
 import { scanContent } from './content-rules.js';
 import { type PendingFinding, scanPath } from './path-rules.js';
 import { defaultScanPolicy, type ScanInput, type ScanPolicy, type ScanReport } from './types.js';

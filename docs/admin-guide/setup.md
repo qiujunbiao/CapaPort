@@ -2,7 +2,7 @@
 
 ## 组件与外部依赖
 
-生产需要 PostgreSQL 17、Redis 7、S3 兼容对象存储、SMTP 服务和 TLS 反向代理。部署三个同版本镜像：`agentdoor-api`、`agentdoor-worker`、`agentdoor-migrate`。镜像标签必须是不可变版本或 Git SHA，禁止使用 `latest`。
+生产需要 PostgreSQL 17、Redis 7、S3 兼容对象存储、SMTP 服务和 TLS 反向代理。部署三个同版本镜像：`capaport-api`、`capaport-worker`、`capaport-migrate`。镜像标签必须是不可变版本或 Git SHA，禁止使用 `latest`。
 
 ## 秘密文件
 
@@ -23,19 +23,19 @@ metrics_token
 ## 启动
 
 ```bash
-export AGENTDOOR_REGISTRY=ghcr.io/your-org
-export AGENTDOOR_IMAGE_TAG=0.1.0-<git-sha>
-export AGENTDOOR_SECRETS_DIR=/secure/agentdoor
+export CAPAPORT_REGISTRY=ghcr.io/your-org
+export CAPAPORT_IMAGE_TAG=0.1.0-<git-sha>
+export CAPAPORT_SECRETS_DIR=/secure/capaport
 export REDIS_URL=rediss://...
 export S3_ENDPOINT=https://s3.internal.example
 export S3_PUBLIC_ENDPOINT=https://downloads.example
-export S3_BUCKET=agentdoor
+export S3_BUCKET=capaport
 export S3_REGION=us-east-1
 export S3_SERVER_SIDE_ENCRYPTION=AES256
-# 使用 AWS KMS 时改为 aws:kms，并设置 S3_KMS_KEY_ID=alias/agentdoor
+# 使用 AWS KMS 时改为 aws:kms，并设置 S3_KMS_KEY_ID=alias/capaport
 export SMTP_HOST=smtp.example
 export SMTP_PORT=587
-export SMTP_FROM='Agentdoor <no-reply@example.com>'
+export SMTP_FROM='CapaPort <no-reply@example.com>'
 docker compose -f infra/compose/compose.production.yaml pull
 docker compose -f infra/compose/compose.production.yaml up migrate
 docker compose -f infra/compose/compose.production.yaml up -d api worker
@@ -46,9 +46,9 @@ docker compose -f infra/compose/compose.production.yaml up -d api worker
 ## 启动验证
 
 ```bash
-curl -fsS https://agentdoor.example/api/v1/health/live
-curl -fsS https://agentdoor.example/api/v1/health/ready
-curl -fsS -H "Authorization: Bearer $METRICS_TOKEN" https://agentdoor.example/api/v1/metrics
+curl -fsS https://capaport.example/api/v1/health/live
+curl -fsS https://capaport.example/api/v1/health/ready
+curl -fsS -H "Authorization: Bearer $METRICS_TOKEN" https://capaport.example/api/v1/metrics
 ```
 
 进一步步骤见[部署运行手册](../runbooks/deploy.md)和[回滚手册](../runbooks/rollback.md)。

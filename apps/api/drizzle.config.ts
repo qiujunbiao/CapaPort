@@ -5,6 +5,6 @@ export default defineConfig({
   schema: './src/db/schema/index.ts',
   out: './migrations',
   dbCredentials: {
-    url: process.env.DATABASE_URL ?? 'postgres://agentdoor:agentdoor@localhost:5432/agentdoor',
+    url: process.env.DATABASE_URL ?? 'postgres://capaport:capaport@localhost:5432/capaport',
   },
 });

@@ -1,10 +1,10 @@
 import { mkdir, readFile, rename, rm, writeFile } from 'node:fs/promises';
 import { dirname } from 'node:path';
-import { createClaudeCodeAdapter } from '@agentdoor/adapter-claude-code';
-import { createCodexAdapter } from '@agentdoor/adapter-codex';
-import { createCursorAdapter } from '@agentdoor/adapter-cursor';
-import { createGeminiCliAdapter } from '@agentdoor/adapter-gemini-cli';
-import type { AgentAdapter, FileTransaction } from '@agentdoor/adapter-sdk';
+import { createClaudeCodeAdapter } from '@capaport/adapter-claude-code';
+import { createCodexAdapter } from '@capaport/adapter-codex';
+import { createCursorAdapter } from '@capaport/adapter-cursor';
+import { createGeminiCliAdapter } from '@capaport/adapter-gemini-cli';
+import type { AgentAdapter, FileTransaction } from '@capaport/adapter-sdk';
 
 export function adapters(): Record<string, AgentAdapter> {
   return {
@@ -27,7 +27,7 @@ export class AtomicFileTransaction implements FileTransaction {
         ),
       );
     await mkdir(dirname(path), { recursive: true });
-    const temporary = `${path}.agentdoor-${process.pid}.tmp`;
+    const temporary = `${path}.capaport-${process.pid}.tmp`;
     await writeFile(temporary, content, { mode: 0o600 });
     await rename(temporary, path);
   }

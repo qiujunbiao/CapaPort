@@ -6,12 +6,12 @@ timestamped directory containing a PostgreSQL custom archive, mirrored objects, 
 Install PostgreSQL client tools and MinIO `mc`, then provide credentials without command-line interpolation:
 
 ```sh
-export DATABASE_URL='postgres://backup-user:REDACTED@db.example.com:5432/agentdoor?sslmode=require'
+export DATABASE_URL='postgres://backup-user:REDACTED@db.example.com:5432/capaport?sslmode=require'
 export S3_ENDPOINT='https://s3.internal.example.com'
-export S3_BUCKET='agentdoor-production'
+export S3_BUCKET='capaport-production'
 export S3_ACCESS_KEY='REDACTED'
 export S3_SECRET_KEY='REDACTED'
-export BACKUP_ROOT='/srv/agentdoor-backups'
+export BACKUP_ROOT='/srv/capaport-backups'
 umask 077
 infra/deploy/backup.sh
 ```

@@ -10,7 +10,7 @@ import {
 } from './index.js';
 
 const manifestYaml = `
-schemaVersion: agentdoor.io/v1alpha1
+schemaVersion: capaport.io/v1alpha1
 kind: CapabilityPackage
 metadata:
   slug: secure-release-helper
