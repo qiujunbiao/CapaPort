@@ -103,6 +103,15 @@ export function webFixture(
     revokeInvitation: async () => undefined,
     changeMemberRole: async () => undefined,
     removeMember: async () => undefined,
+    securityPolicy: async () => ({
+      blockedSeverities: ['high', 'critical'],
+      confirmationSeverities: ['medium'],
+      blockedTerms: [],
+      allowedExecutablePaths: [],
+      allowedNetworkHosts: [],
+      executablePolicy: 'confirm',
+    }),
+    updateSecurityPolicy: async (_organizationId, policy) => policy,
     spaces: async () => [
       {
         id: 'space-org',
@@ -209,7 +218,18 @@ export function webFixture(
       if (!publication) throw new Error('Publication fixture is missing.');
       return { ...publication, reviews: [] };
     },
-    scanReport: async () => ({ status: 'passed', findings: [] }),
+    scanReport: async () => ({
+      status: 'blocked',
+      findings: [
+        {
+          ruleId: 'SEC_ORG_TERM',
+          severity: 'high',
+          path: 'skills/release/SKILL.md',
+          message: 'Content matches an organization-restricted term.',
+          blocking: true,
+        },
+      ],
+    }),
     publicationDiff: async () => ({
       fromVersionId: 'version-old',
       candidateDigest: 'a'.repeat(64),

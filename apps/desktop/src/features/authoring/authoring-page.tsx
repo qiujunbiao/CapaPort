@@ -7,7 +7,7 @@ import {
   updatePackageMetadata,
   validateEditablePackage,
 } from '@agentdoor/capability-kit';
-import type { CapabilitySummary, PublicationSummary, SpaceSummary } from '@agentdoor/contracts';
+import type { CapabilitySummary, OrganizationSecurityPolicy, PublicationSummary, SpaceSummary } from '@agentdoor/contracts';
 import type { ScanReport } from '@agentdoor/security-scan';
 import { FileClock, Save, Send } from 'lucide-react';
 import { useMemo, useState } from 'react';
@@ -41,6 +41,7 @@ export function AuthoringPage({
   capabilities,
   publications,
   online,
+  securityPolicy,
   onSubmitted,
 }: {
   cloud: CloudClient;
@@ -50,6 +51,7 @@ export function AuthoringPage({
   capabilities: CapabilitySummary[];
   publications: PublicationSummary[];
   online: boolean;
+  securityPolicy?: OrganizationSecurityPolicy;
   onSubmitted: () => void;
 }) {
   const [editable, setEditable] = useState<EditableCapabilityPackage>(() =>
@@ -122,7 +124,7 @@ export function AuthoringPage({
   async function persistRevision(): Promise<SavedDraft> {
     if (!sourceSpaceId) throw new Error('请选择草稿空间');
     const exported = await exportEditablePackage(editable);
-    const report = await scanArchiveBeforeUpload(exported.archive);
+    const report = await scanArchiveBeforeUpload(exported.archive, securityPolicy);
     setClientScan(report);
     if (report.blocked) throw new Error('本地安全扫描发现阻断风险，能力包未上传');
     if (report.requiresConfirmation && (!riskAccepted || riskReason.trim().length < 3)) {

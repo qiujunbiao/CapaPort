@@ -38,3 +38,15 @@ export type OrganizationSummary = {
   deletionScheduledAt?: string;
 };
 export type TenantContext = { organizationId: string; membershipId: string; organizationRole: OrganizationRole };
+
+export const scanSeveritySchema = z.enum(['low', 'medium', 'high', 'critical']);
+export const executablePolicySchema = z.enum(['deny', 'confirm', 'allow-listed']);
+export const organizationSecurityPolicySchema = z.object({
+  blockedSeverities: z.array(scanSeveritySchema).min(1).max(4),
+  confirmationSeverities: z.array(scanSeveritySchema).max(4),
+  blockedTerms: z.array(z.string().trim().min(1).max(200)).max(200),
+  allowedExecutablePaths: z.array(z.string().trim().min(1).max(500)).max(200),
+  allowedNetworkHosts: z.array(z.string().trim().min(1).max(253)).max(200),
+  executablePolicy: executablePolicySchema,
+});
+export type OrganizationSecurityPolicy = z.infer<typeof organizationSecurityPolicySchema>;

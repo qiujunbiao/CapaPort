@@ -50,6 +50,7 @@ describe('CapabilityService', () => {
     list: vi.fn().mockResolvedValue([{ id: 'space-a' }]),
   };
   const artifacts = { readArtifact: vi.fn(), createDownload: vi.fn() };
+  const policies = { scanPolicyForOrganization: vi.fn() };
   const repository = {
     createCapability: vi.fn(),
     updateCapability: vi.fn(),
@@ -64,7 +65,10 @@ describe('CapabilityService', () => {
     findVersion: vi.fn(),
   };
 
-  beforeEach(() => vi.clearAllMocks());
+  beforeEach(() => {
+    vi.clearAllMocks();
+    policies.scanPolicyForOrganization.mockResolvedValue(undefined);
+  });
 
   it('validates, canonically hashes, and scans a confirmed package before making a draft ready', async () => {
     artifacts.readArtifact.mockResolvedValue({
@@ -72,7 +76,7 @@ describe('CapabilityService', () => {
       bytes: archive('Use the verified release checklist.'),
     });
     repository.createRevision.mockImplementation(async (input) => ({ id: 'revision-a', sequence: 1, ...input }));
-    const service = new CapabilityService(repository, artifacts, spaces);
+    const service = new CapabilityService(repository, artifacts, spaces, policies);
     const result = await service.createRevision(tenant, 'user-a', 'capability-a', 'draft-a', 'artifact-a');
     expect(result).toMatchObject({ scanStatus: 'passed', sequence: 1 });
     expect(result.contentDigest).toMatch(/^[a-f0-9]{64}$/);
@@ -92,7 +96,7 @@ describe('CapabilityService', () => {
       bytes: archive('OPENAI_API_KEY=sk-proj-abcdefghijklmnopqrstuvwxyz123456'),
     });
     repository.createRevision.mockImplementation(async (input) => ({ id: 'revision-a', sequence: 1, ...input }));
-    const service = new CapabilityService(repository, artifacts, spaces);
+    const service = new CapabilityService(repository, artifacts, spaces, policies);
     const result = await service.createRevision(tenant, 'user-a', 'capability-a', 'draft-a', 'artifact-a');
     expect(result.scanStatus).toBe('blocked');
     expect(result.scanReport).toMatchObject({ blocked: true });
@@ -104,7 +108,7 @@ describe('CapabilityService', () => {
       artifact: { id: 'artifact-a', organizationId: 'org-a', status: 'ready' },
       bytes: archive('Safe content.', false),
     });
-    const service = new CapabilityService(repository, artifacts, spaces);
+    const service = new CapabilityService(repository, artifacts, spaces, policies);
     await expect(
       service.createRevision(tenant, 'user-a', 'capability-a', 'draft-a', 'artifact-a'),
     ).rejects.toMatchObject({ code: 'CAPABILITY_PACKAGE_INVALID' });
@@ -112,7 +116,7 @@ describe('CapabilityService', () => {
   });
 
   it('limits search to the subject accessible space identifiers', async () => {
-    const service = new CapabilityService(repository, artifacts, spaces);
+    const service = new CapabilityService(repository, artifacts, spaces, policies);
     await service.search(tenant, 'user-a', { query: 'release', limit: 25 });
     expect(repository.searchCapabilities).toHaveBeenCalledWith(
       'org-a',
@@ -130,7 +134,7 @@ describe('CapabilityService', () => {
       artifactId: 'artifact-a',
     });
     artifacts.createDownload.mockResolvedValue({ url: 'https://download.test/revision', expiresIn: 120 });
-    const service = new CapabilityService(repository, artifacts, spaces);
+    const service = new CapabilityService(repository, artifacts, spaces, policies);
     await expect(service.downloadRevision(tenant, 'user-a', 'capability-a', 'draft-a', 'revision-a')).resolves.toEqual({
       revisionId: 'revision-a',
       url: 'https://download.test/revision',
@@ -138,5 +142,37 @@ describe('CapabilityService', () => {
     });
     expect(spaces.authorize).toHaveBeenCalledWith(tenant, 'user-a', 'space-a', 'content:view-private');
     expect(artifacts.createDownload).toHaveBeenCalledWith('org-a', 'artifact-a');
+  });
+
+  it('applies organization blocked terms during the authoritative server scan', async () => {
+    artifacts.readArtifact.mockResolvedValue({
+      artifact: { id: 'artifact-a', organizationId: 'org-a', status: 'ready' },
+      bytes: archive('This document contains the internal codename ORCHID.'),
+    });
+    policies.scanPolicyForOrganization.mockResolvedValue({
+      blockedSeverities: ['medium', 'high', 'critical'],
+      confirmationSeverities: [],
+      blockedTerms: ['ORCHID'],
+      allowedExecutablePaths: [],
+      allowedNetworkHosts: [],
+      executablePolicy: 'confirm',
+      highEntropyMinimumLength: 32,
+      highEntropyThreshold: 4.2,
+      maxFileBytes: 2_000_000,
+      maxPackageBytes: 50_000_000,
+      sourceTreePatterns: ['.git/', 'node_modules/', 'src/', 'app/'],
+    });
+    repository.createRevision.mockImplementation(async (input) => ({ id: 'revision-a', sequence: 1, ...input }));
+
+    const result = await new CapabilityService(repository, artifacts, spaces, policies).createRevision(
+      tenant,
+      'user-a',
+      'capability-a',
+      'draft-a',
+      'artifact-a',
+    );
+
+    expect(result.scanStatus).toBe('blocked');
+    expect(result.scanReport.findings).toEqual(expect.arrayContaining([expect.objectContaining({ ruleId: 'SEC_ORG_TERM' })]));
   });
 });

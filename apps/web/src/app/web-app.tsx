@@ -300,7 +300,8 @@ function Console({ client, sessionStore }: { client: WebClient; sessionStore: We
           }}
         />
       );
-    if (page === 'security') return <SecurityPage client={client} />;
+    if (page === 'security')
+      return <SecurityPage client={client} organizationId={organizationId} canManage={canGovern} />;
     if (page === 'audit') return <AuditPage client={client} />;
     if (page === 'analytics') return <AnalyticsPage metrics={metricsQuery.data} />;
     return (

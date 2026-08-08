@@ -86,6 +86,14 @@ export function cloudFixture(
         status: 'active',
       },
     ],
+    securityPolicy: async () => ({
+      blockedSeverities: ['high', 'critical'],
+      confirmationSeverities: ['medium'],
+      blockedTerms: [],
+      allowedExecutablePaths: [],
+      allowedNetworkHosts: [],
+      executablePolicy: 'confirm',
+    }),
     capabilities: async (_session, organizationId) => [
       {
         id: `cap-${organizationId}`,

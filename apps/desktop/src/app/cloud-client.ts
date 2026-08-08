@@ -5,6 +5,7 @@ import type {
   CapabilityVersionSummary,
   InstallPlan,
   OrganizationSummary,
+  OrganizationSecurityPolicy,
   ProjectBindingSummary,
   ProjectContextSummary,
   PublicationSummary,
@@ -197,6 +198,11 @@ export function createCloudClient(
     switchOrganization: (session, organizationId) =>
       request<TenantContext>(`/organizations/${organizationId}/switch`, { method: 'POST', session }),
     spaces: (session, organizationId) => request<SpaceSummary[]>('/spaces', { session, organizationId }),
+    securityPolicy: (session, organizationId) =>
+      request<OrganizationSecurityPolicy>(`/organizations/${organizationId}/security-policy`, {
+        session,
+        organizationId,
+      }),
     capabilities: (session, organizationId, query = '') =>
       request<CapabilitySummary[]>(`/capabilities?query=${encodeURIComponent(query)}&limit=100`, {
         session,

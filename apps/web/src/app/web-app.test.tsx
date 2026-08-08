@@ -190,6 +190,26 @@ describe('organization web console', () => {
     expect(document.body.textContent).not.toContain('/Users/private');
   });
 
+  it('lets an owner govern organization scan policy and inspect publication risk reports', async () => {
+    render(
+      <WebApp
+        client={webFixture({ role: 'owner' })}
+        sessionStore={createMemoryWebSessionStore({
+          accessToken: 'token',
+          refreshToken: 'refresh',
+          organizationId: 'org-a',
+        })}
+      />,
+    );
+    fireEvent.click(await screen.findByRole('button', { name: '安全中心' }));
+    expect(await screen.findByRole('heading', { name: '组织扫描策略' })).toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText('组织禁止词'), { target: { value: 'ORCHID\ncustomer-secret' } });
+    fireEvent.click(screen.getByRole('button', { name: '保存安全策略' }));
+    expect(await screen.findByRole('status')).toHaveTextContent('安全策略已保存');
+    expect(screen.getByRole('heading', { name: '发布风险报告' })).toBeInTheDocument();
+    expect(screen.getByText('SEC_ORG_TERM')).toBeInTheDocument();
+  });
+
   it('opens notifications and marks an item as read', async () => {
     render(
       <WebApp

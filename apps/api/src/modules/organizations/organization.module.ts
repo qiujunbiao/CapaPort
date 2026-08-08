@@ -7,6 +7,8 @@ import { MailpitOrganizationInvitationSender } from './invitation.sender.js';
 import { OrganizationController } from './organization.controller.js';
 import { OrganizationRepository } from './organization.repository.js';
 import { OrganizationService } from './organization.service.js';
+import { SecurityPolicyRepository } from './security-policy.repository.js';
+import { SecurityPolicyService } from './security-policy.service.js';
 
 @Module({
   imports: [PlatformModule, IdentityModule],
@@ -14,6 +16,8 @@ import { OrganizationService } from './organization.service.js';
   providers: [
     OrganizationRepository,
     OrganizationService,
+    SecurityPolicyRepository,
+    SecurityPolicyService,
     TenantContextService,
     TenantGuard,
     MailpitOrganizationInvitationSender,
@@ -21,7 +25,8 @@ import { OrganizationService } from './organization.service.js';
     { provide: 'TENANT_STORE', useExisting: OrganizationRepository },
     { provide: 'TENANT_CONTEXT_SERVICE', useExisting: TenantContextService },
     { provide: 'ORGANIZATION_INVITATION_SENDER', useExisting: MailpitOrganizationInvitationSender },
+    { provide: 'ORGANIZATION_SECURITY_POLICY_STORE', useExisting: SecurityPolicyRepository },
   ],
-  exports: [OrganizationService, TenantContextService, TenantGuard],
+  exports: [OrganizationService, SecurityPolicyService, TenantContextService, TenantGuard],
 })
 export class OrganizationModule {}

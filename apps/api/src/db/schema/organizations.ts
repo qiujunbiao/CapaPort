@@ -1,4 +1,5 @@
 import { sql } from 'drizzle-orm';
+import type { OrganizationSecurityPolicy } from '@agentdoor/contracts/organizations';
 import { index, jsonb, pgTable, text, timestamp, uniqueIndex, uuid } from 'drizzle-orm/pg-core';
 import { users } from './identity.js';
 
@@ -90,3 +91,24 @@ export const auditLogs = pgTable(
     index('audit_logs_retention_idx').on(table.expiresAt),
   ],
 );
+
+export const organizationSecurityPolicies = pgTable('organization_security_policies', {
+  organizationId: uuid('organization_id')
+    .primaryKey()
+    .references(() => organizations.id, { onDelete: 'cascade' }),
+  blockedSeverities: jsonb('blocked_severities')
+    .$type<OrganizationSecurityPolicy['blockedSeverities']>()
+    .notNull(),
+  confirmationSeverities: jsonb('confirmation_severities')
+    .$type<OrganizationSecurityPolicy['confirmationSeverities']>()
+    .notNull(),
+  blockedTerms: jsonb('blocked_terms').$type<string[]>().notNull(),
+  allowedExecutablePaths: jsonb('allowed_executable_paths').$type<string[]>().notNull(),
+  allowedNetworkHosts: jsonb('allowed_network_hosts').$type<string[]>().notNull(),
+  executablePolicy: text('executable_policy').$type<OrganizationSecurityPolicy['executablePolicy']>().notNull(),
+  updatedByMembershipId: uuid('updated_by_membership_id')
+    .notNull()
+    .references(() => organizationMemberships.id),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+});

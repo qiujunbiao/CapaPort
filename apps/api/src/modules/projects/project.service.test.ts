@@ -33,18 +33,19 @@ describe('ProjectService', () => {
     findContext: vi.fn(),
   };
   const artifacts = { readArtifact: vi.fn(), createDownload: vi.fn() };
+  const policies = { scanPolicyForOrganization: vi.fn().mockResolvedValue(undefined) };
 
   beforeEach(() => vi.clearAllMocks());
 
   it.each([
     ['createBinding', () =>
-      new ProjectService(store, spaces as never, artifacts as never).createBinding(tenant, 'user-a', 'project-a', {
+      new ProjectService(store, spaces as never, artifacts as never, policies as never).createBinding(tenant, 'user-a', 'project-a', {
         deviceId: 'device-a',
         localBindingId: '11111111-1111-4111-8111-111111111111',
         agents: ['codex'],
       })],
     ['removeBinding', () =>
-      new ProjectService(store, spaces as never, artifacts as never).removeBinding(
+      new ProjectService(store, spaces as never, artifacts as never, policies as never).removeBinding(
         tenant,
         'user-a',
         'project-a',
@@ -59,7 +60,7 @@ describe('ProjectService', () => {
   });
 
   it('requires content creation authority before registering project context', async () => {
-    const service = new ProjectService(store, spaces as never, artifacts as never);
+    const service = new ProjectService(store, spaces as never, artifacts as never, policies as never);
 
     await expect(
       service.registerContext(tenant, 'user-a', 'project-a', {
@@ -78,7 +79,7 @@ describe('ProjectService', () => {
 
   it('creates device-safe metadata without accepting or forwarding a local path', async () => {
     store.createBinding.mockImplementation(async (input) => input);
-    const service = new ProjectService(store, spaces as never, artifacts as never);
+    const service = new ProjectService(store, spaces as never, artifacts as never, policies as never);
     const result = await service.createBinding(tenant, 'user-a', 'project-a', {
       deviceId: 'device-a',
       localBindingId: '11111111-1111-4111-8111-111111111111',
@@ -91,7 +92,7 @@ describe('ProjectService', () => {
   });
 
   it('rejects a context projection to an agent not enabled by the binding', async () => {
-    const service = new ProjectService(store, spaces as never, artifacts as never);
+    const service = new ProjectService(store, spaces as never, artifacts as never, policies as never);
     await expect(
       service.registerContext(tenant, 'user-a', 'project-a', {
         bindingId: '11111111-1111-4111-8111-111111111111',
@@ -107,7 +108,7 @@ describe('ProjectService', () => {
   });
 
   it('allows removal after the local directory has disappeared', async () => {
-    const service = new ProjectService(store, spaces as never, artifacts as never);
+    const service = new ProjectService(store, spaces as never, artifacts as never, policies as never);
     await service.removeBinding(tenant, 'user-a', 'project-a', 'binding-a');
     expect(store.removeBinding).toHaveBeenCalledWith('org-a', 'project-a', 'user-a', 'binding-a');
   });
@@ -130,7 +131,7 @@ describe('ProjectService', () => {
         createdAt: new Date(0).toISOString(),
       },
     ]);
-    const service = new ProjectService(store, spaces as never, artifacts as never);
+    const service = new ProjectService(store, spaces as never, artifacts as never, policies as never);
 
     const contexts = await service.listContexts(tenant, 'another-project-member', 'project-a');
 
@@ -149,7 +150,7 @@ describe('ProjectService', () => {
     ]);
     const digest = createHash('sha256').update(archive).digest('hex');
     artifacts.readArtifact.mockResolvedValue({ artifact: { sha256: digest }, bytes: archive });
-    const service = new ProjectService(store, spaces as never, artifacts as never);
+    const service = new ProjectService(store, spaces as never, artifacts as never, policies as never);
     await expect(
       service.registerContext(tenant, 'user-a', 'project-a', {
         bindingId: '11111111-1111-4111-8111-111111111111',

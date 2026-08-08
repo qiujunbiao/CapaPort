@@ -21,6 +21,7 @@ import { Inject, Injectable } from '@nestjs/common';
 import { AppError } from '../../platform/errors/app-error.js';
 import { SpaceService } from '../access/space.service.js';
 import { ArtifactService } from './artifact.service.js';
+import { SecurityPolicyService } from '../organizations/security-policy.service.js';
 
 export type CapabilityRecord = CapabilitySummary & {
   hasPublishedVersion?: boolean;
@@ -124,6 +125,8 @@ export class CapabilityService {
     @Inject('CAPABILITY_DATA_STORE') private readonly repository: CapabilityDataStore,
     @Inject(ArtifactService) private readonly artifacts: Pick<ArtifactService, 'readArtifact' | 'createDownload'>,
     @Inject(SpaceService) private readonly spaces: Pick<SpaceService, 'authorize' | 'list'>,
+    @Inject(SecurityPolicyService)
+    private readonly securityPolicies: Pick<SecurityPolicyService, 'scanPolicyForOrganization'>,
   ) {}
 
   async create(tenant: TenantContext, userId: string, input: CreateCapabilityRequest) {
@@ -273,7 +276,8 @@ export class CapabilityService {
       );
     }
     this.validateManifestPaths(manifest, files);
-    const [contentDigest, scanReport] = await Promise.all([hashPackage(files), scanPackage(files)]);
+    const scanPolicy = await this.securityPolicies.scanPolicyForOrganization(tenant.organizationId);
+    const [contentDigest, scanReport] = await Promise.all([hashPackage(files), scanPackage(files, scanPolicy)]);
     const scanStatus = scanReport.blocked ? 'blocked' : 'passed';
     return this.repository.createRevision({
       id: randomUUID(),

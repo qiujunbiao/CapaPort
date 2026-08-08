@@ -4,6 +4,7 @@ import type {
   CapabilityVersionSummary,
   InstallPlan as CloudInstallPlan,
   OrganizationSummary,
+  OrganizationSecurityPolicy,
   PublicationSummary,
   PublicUser,
   SpaceSummary,
@@ -114,6 +115,7 @@ export interface CloudClient {
   acceptInvitation?(session: Session, token: string): Promise<{ status: string; organizationId?: string }>;
   switchOrganization(session: Session, organizationId: string): Promise<TenantContext>;
   spaces(session: Session, organizationId: string): Promise<SpaceSummary[]>;
+  securityPolicy(session: Session, organizationId: string): Promise<OrganizationSecurityPolicy>;
   capabilities(session: Session, organizationId: string, query?: string): Promise<CapabilitySummary[]>;
   publications(session: Session, organizationId: string): Promise<PublicationSummary[]>;
   installations(session: Session, organizationId: string): Promise<InstallationSummary[]>;

@@ -7,6 +7,7 @@ import {
   inviteMemberRequestSchema,
   transferOwnershipRequestSchema,
   updateOrganizationRequestSchema,
+  organizationSecurityPolicySchema,
 } from '@agentdoor/contracts/organizations';
 import {
   Body,
@@ -30,6 +31,7 @@ import { RecentAuthGuard } from '../../platform/security/recent-auth.guard.js';
 import { TenantGuard, type TenantRequest } from '../../platform/tenancy/tenant.guard.js';
 import { type AuthenticatedRequest, AuthGuard } from '../identity/auth.guard.js';
 import { OrganizationService } from './organization.service.js';
+import { SecurityPolicyService } from './security-policy.service.js';
 
 function parse<T>(schema: ZodType<T>, body: unknown): T {
   const result = schema.safeParse(body);
@@ -53,6 +55,7 @@ export class OrganizationController {
   constructor(
     @Inject(OrganizationService) private readonly organizations: OrganizationService,
     @Inject(RateLimitService) private readonly rateLimits: RateLimitService,
+    @Inject(SecurityPolicyService) private readonly securityPolicies: SecurityPolicyService,
   ) {}
 
   @Post()
@@ -135,6 +138,18 @@ export class OrganizationController {
   @UseGuards(AuthGuard, TenantGuard)
   members(@Req() request: TenantRequest) {
     return this.organizations.members(tenant(request));
+  }
+
+  @Get(':organizationId/security-policy')
+  @UseGuards(AuthGuard, TenantGuard)
+  securityPolicy(@Req() request: TenantRequest) {
+    return this.securityPolicies.get(tenant(request));
+  }
+
+  @Patch(':organizationId/security-policy')
+  @UseGuards(AuthGuard, TenantGuard, RecentAuthGuard)
+  updateSecurityPolicy(@Req() request: TenantRequest, @Body() body: unknown) {
+    return this.securityPolicies.update(tenant(request), parse(organizationSecurityPolicySchema, body));
   }
 
   @Patch(':organizationId/members/:membershipId/role')

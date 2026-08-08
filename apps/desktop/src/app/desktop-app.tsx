@@ -1,4 +1,4 @@
-import type { AgentId, CapabilitySummary, SpaceSummary, UpdateCheck } from '@agentdoor/contracts';
+import type { AgentId, CapabilitySummary, OrganizationSecurityPolicy, SpaceSummary, UpdateCheck } from '@agentdoor/contracts';
 import { QueryClient, QueryClientProvider, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   Bell,
@@ -148,6 +148,20 @@ function AppContent({
     enabled: Boolean(session && organizationId && online),
     retry: false,
   });
+  const securityPolicyQuery = useQuery({
+    queryKey: ['security-policy', organizationId],
+    queryFn: async () => {
+      if (!session || !organizationId) throw new Error('Select an organization');
+      const value = await cloud.securityPolicy(session, organizationId);
+      writeCache(organizationId, 'security-policy', value);
+      return value;
+    },
+    initialData: organizationId
+      ? readCache<OrganizationSecurityPolicy>(organizationId, 'security-policy')
+      : undefined,
+    enabled: Boolean(session && organizationId && online),
+    retry: false,
+  });
   const publicationsQuery = useQuery({
     queryKey: ['publications', organizationId],
     queryFn: () => {
@@ -286,6 +300,7 @@ function AppContent({
           capabilities={capabilitiesQuery.data ?? []}
           publications={publicationsQuery.data ?? []}
           online={online}
+          {...(securityPolicyQuery.data ? { securityPolicy: securityPolicyQuery.data } : {})}
           onSubmitted={() => {
             void publicationsQuery.refetch();
             void capabilitiesQuery.refetch();
@@ -499,6 +514,7 @@ function AppContent({
           session={session}
           organizationId={organizationId}
           spaces={spacesQuery.data ?? []}
+          {...(securityPolicyQuery.data ? { securityPolicy: securityPolicyQuery.data } : {})}
           onClose={() => setDiscovering(false)}
           onPublished={() => {
             setDiscovering(false);

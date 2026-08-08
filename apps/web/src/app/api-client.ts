@@ -77,6 +77,14 @@ export function createWebClient(baseUrl: string, sessionStore: WebSessionStore):
       }),
     removeMember: (organizationId, membershipId) =>
       request(`/organizations/${organizationId}/members/${membershipId}`, { method: 'DELETE', ...org(organizationId) }),
+    securityPolicy: (organizationId) =>
+      request(`/organizations/${organizationId}/security-policy`, org(organizationId)),
+    updateSecurityPolicy: (organizationId, policy) =>
+      request(`/organizations/${organizationId}/security-policy`, {
+        method: 'PATCH',
+        body: policy,
+        ...org(organizationId),
+      }),
     spaces: () => request('/spaces'),
     createSpace: (input) => request('/spaces', { method: 'POST', body: input }),
     updateSpacePolicy: (spaceId, reviewPolicy) =>

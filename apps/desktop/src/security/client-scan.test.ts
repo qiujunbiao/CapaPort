@@ -26,4 +26,18 @@ describe('desktop pre-upload security gate', () => {
     });
     expect(upload).toHaveBeenCalledTimes(1);
   });
+
+  it('merges organization policy into the local pre-upload scan', async () => {
+    const archive = buildArchive([{ path: 'README.md', content: encode('The internal codename is ORCHID.') }]);
+    const report = await scanArchiveBeforeUpload(archive, {
+      blockedSeverities: ['high', 'critical'],
+      confirmationSeverities: ['medium'],
+      blockedTerms: ['ORCHID'],
+      allowedExecutablePaths: [],
+      allowedNetworkHosts: [],
+      executablePolicy: 'confirm',
+    });
+    expect(report.blocked).toBe(true);
+    expect(report.findings).toEqual(expect.arrayContaining([expect.objectContaining({ ruleId: 'SEC_ORG_TERM' })]));
+  });
 });

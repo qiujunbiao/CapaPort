@@ -13,6 +13,7 @@ import { AppError } from '../../platform/errors/app-error.js';
 import type { AuthorizationAction } from '../access/authorization.js';
 import { SpaceService } from '../access/space.service.js';
 import { ArtifactService } from '../capabilities/artifact.service.js';
+import { SecurityPolicyService } from '../organizations/security-policy.service.js';
 
 export type ProjectBindingRecord = ProjectBindingSummary & { userId: string };
 
@@ -42,6 +43,8 @@ export class ProjectService {
     @Inject('PROJECT_DATA_STORE') private readonly store: ProjectDataStore,
     @Inject(SpaceService) private readonly spaces: SpaceService,
     @Inject(ArtifactService) private readonly artifacts: ArtifactService,
+    @Inject(SecurityPolicyService)
+    private readonly securityPolicies: Pick<SecurityPolicyService, 'scanPolicyForOrganization'>,
   ) {}
 
   private async project(
@@ -142,7 +145,8 @@ export class ProjectService {
     ) {
       throw new AppError('PROJECT_CONTEXT_METADATA_MISMATCH', 'Context selection metadata does not match.', 409);
     }
-    const serverScan = await scanPackage(contentFiles);
+    const scanPolicy = await this.securityPolicies.scanPolicyForOrganization(tenant.organizationId);
+    const serverScan = await scanPackage(contentFiles, scanPolicy);
     const secretPattern =
       /(?:-----BEGIN [A-Z ]*PRIVATE KEY-----|AKIA[0-9A-Z]{16}|(?:api[_-]?key|access[_-]?token|secret|password)\s*[:=]\s*[^\s]{8,})/i;
     const containsSecret = contentFiles.some((file) => secretPattern.test(new TextDecoder().decode(file.content)));

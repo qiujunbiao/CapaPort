@@ -1,4 +1,4 @@
-import type { AgentId, SpaceSummary } from '@agentdoor/contracts';
+import type { AgentId, OrganizationSecurityPolicy, SpaceSummary } from '@agentdoor/contracts';
 import type { ScanReport } from '@agentdoor/security-scan';
 import { ArrowLeft, CheckCircle2, FileSearch, LoaderCircle, Radar, ShieldAlert, UploadCloud, X } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
@@ -22,6 +22,7 @@ export function DiscoveryModal({
   spaces,
   onClose,
   onPublished,
+  securityPolicy,
 }: {
   cloud: CloudClient;
   local: LocalClient;
@@ -30,6 +31,7 @@ export function DiscoveryModal({
   spaces: SpaceSummary[];
   onClose: () => void;
   onPublished: () => void;
+  securityPolicy?: OrganizationSecurityPolicy;
 }) {
   const [agents, setAgents] = useState<AgentDescriptor[]>([]);
   const [inventory, setInventory] = useState<Selected[]>([]);
@@ -110,7 +112,7 @@ export function DiscoveryModal({
         componentType: selected.capability.componentType,
         slug: selected.capability.slug,
       });
-      const localPolicyReport = await scanArchiveBeforeUpload(archiveBytes(archive.archiveBase64));
+      const localPolicyReport = await scanArchiveBeforeUpload(archiveBytes(archive.archiveBase64), securityPolicy);
       setPreUploadScan(localPolicyReport);
       if (localPolicyReport.blocked) {
         setError('上传前安全扫描发现阻断风险，能力包未上传');
