@@ -311,7 +311,13 @@ export class DistributionRepository implements DistributionDataStore {
 
   async listInstallations(organizationId: string, userId: string): Promise<InstallationRecord[]> {
     const result = await this.database.pool.query<InstallationRow>(
-      'SELECT * FROM installations WHERE organization_id=$1 AND user_id=$2 ORDER BY updated_at DESC',
+      `SELECT * FROM (
+         SELECT DISTINCT ON (device_id,capability_id,agent) *
+           FROM installations
+          WHERE organization_id=$1 AND user_id=$2
+          ORDER BY device_id,capability_id,agent,updated_at DESC,created_at DESC,id DESC
+       ) current_installations
+       ORDER BY updated_at DESC,created_at DESC,id DESC`,
       [organizationId, userId],
     );
     return result.rows.map((row) => this.installation(row));

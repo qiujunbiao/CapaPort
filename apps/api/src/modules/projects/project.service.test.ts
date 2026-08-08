@@ -36,6 +36,46 @@ describe('ProjectService', () => {
 
   beforeEach(() => vi.clearAllMocks());
 
+  it.each([
+    ['createBinding', () =>
+      new ProjectService(store, spaces as never, artifacts as never).createBinding(tenant, 'user-a', 'project-a', {
+        deviceId: 'device-a',
+        localBindingId: '11111111-1111-4111-8111-111111111111',
+        agents: ['codex'],
+      })],
+    ['removeBinding', () =>
+      new ProjectService(store, spaces as never, artifacts as never).removeBinding(
+        tenant,
+        'user-a',
+        'project-a',
+        'binding-a',
+      )],
+  ])('requires content creation authority for %s', async (_operation, invoke) => {
+    store.createBinding.mockImplementation(async (input) => input);
+
+    await invoke();
+
+    expect(spaces.authorize).toHaveBeenCalledWith(tenant, 'user-a', 'project-a', 'content:create');
+  });
+
+  it('requires content creation authority before registering project context', async () => {
+    const service = new ProjectService(store, spaces as never, artifacts as never);
+
+    await expect(
+      service.registerContext(tenant, 'user-a', 'project-a', {
+        bindingId: '11111111-1111-4111-8111-111111111111',
+        artifactId: '22222222-2222-4222-8222-222222222222',
+        digest: 'a'.repeat(64),
+        selectionDigest: 'b'.repeat(64),
+        fileCount: 1,
+        totalBytes: 40,
+        agents: ['claude-code'],
+        scan: { status: 'passed', engineVersion: '1.0.0', scannedAt: new Date().toISOString() },
+      }),
+    ).rejects.toMatchObject({ code: 'PROJECT_AGENT_NOT_BOUND' });
+    expect(spaces.authorize).toHaveBeenCalledWith(tenant, 'user-a', 'project-a', 'content:create');
+  });
+
   it('creates device-safe metadata without accepting or forwarding a local path', async () => {
     store.createBinding.mockImplementation(async (input) => input);
     const service = new ProjectService(store, spaces as never, artifacts as never);

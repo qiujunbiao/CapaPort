@@ -634,8 +634,16 @@ impl Runtime {
         {
             return Err(RuntimeError::PathNotAllowed);
         }
-        self.database
-            .load_lock(&input.adapter_id, &input.capability_slug, &input.root_path)?
+        let canonical_root = root.to_string_lossy().into_owned();
+        let mut lock = self
+            .database
+            .load_lock(&input.adapter_id, &input.capability_slug, &canonical_root)?;
+        if lock.is_none() && canonical_root != input.root_path {
+            lock = self
+                .database
+                .load_lock(&input.adapter_id, &input.capability_slug, &input.root_path)?;
+        }
+        lock
             .map(|json| serde_json::from_str(&json).map_err(|_| RuntimeError::Database))
             .transpose()
     }
@@ -657,12 +665,19 @@ impl Runtime {
         let lock = self
             .load_install_lock(input)?
             .ok_or(RuntimeError::NotFound)?;
+        let canonical_root = root.to_string_lossy().into_owned();
+        self.database.normalize_lock_root(
+            &input.adapter_id,
+            &input.capability_slug,
+            &input.root_path,
+            &canonical_root,
+        )?;
         self.engine.uninstall(
             &UninstallPlan {
                 transaction_id: format!("uninstall-{}", Uuid::new_v4()),
                 adapter_id: input.adapter_id.clone(),
                 capability_slug: input.capability_slug.clone(),
-                root_path: root.to_string_lossy().into(),
+                root_path: canonical_root,
                 files: lock
                     .files
                     .into_iter()

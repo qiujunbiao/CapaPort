@@ -10,6 +10,7 @@ import type {
 import { scanPackage } from '@agentdoor/security-scan';
 import { Inject, Injectable } from '@nestjs/common';
 import { AppError } from '../../platform/errors/app-error.js';
+import type { AuthorizationAction } from '../access/authorization.js';
 import { SpaceService } from '../access/space.service.js';
 import { ArtifactService } from '../capabilities/artifact.service.js';
 
@@ -43,8 +44,13 @@ export class ProjectService {
     @Inject(ArtifactService) private readonly artifacts: ArtifactService,
   ) {}
 
-  private async project(tenant: TenantContext, userId: string, spaceId: string) {
-    const access = await this.spaces.authorize(tenant, userId, spaceId, 'space:view');
+  private async project(
+    tenant: TenantContext,
+    userId: string,
+    spaceId: string,
+    action: AuthorizationAction = 'space:view',
+  ) {
+    const access = await this.spaces.authorize(tenant, userId, spaceId, action);
     if (access.space.type !== 'project' || access.space.status !== 'active') this.notFound();
     return access.space;
   }
@@ -55,7 +61,7 @@ export class ProjectService {
     spaceId: string,
     input: CreateProjectBindingRequest,
   ): Promise<ProjectBindingSummary> {
-    await this.project(tenant, userId, spaceId);
+    await this.project(tenant, userId, spaceId, 'content:create');
     if (!(await this.store.findOwnedDevice(tenant.organizationId, userId, input.deviceId))) this.notFound();
     const now = new Date().toISOString();
     return this.store.createBinding({
@@ -77,7 +83,7 @@ export class ProjectService {
   }
 
   async removeBinding(tenant: TenantContext, userId: string, spaceId: string, bindingId: string): Promise<void> {
-    await this.project(tenant, userId, spaceId);
+    await this.project(tenant, userId, spaceId, 'content:create');
     const binding = await this.store.findBinding(tenant.organizationId, spaceId, userId, bindingId);
     if (!binding) this.notFound();
     await this.store.removeBinding(tenant.organizationId, spaceId, userId, bindingId);
@@ -89,7 +95,7 @@ export class ProjectService {
     spaceId: string,
     input: RegisterProjectContextRequest,
   ): Promise<ProjectContextSummary> {
-    await this.project(tenant, userId, spaceId);
+    await this.project(tenant, userId, spaceId, 'content:create');
     const binding = await this.store.findBinding(tenant.organizationId, spaceId, userId, input.bindingId);
     if (binding?.status !== 'active') this.notFound();
     if (input.agents.some((agent) => !binding.agents.includes(agent))) {

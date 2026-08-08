@@ -187,6 +187,7 @@ impl FileEngine {
         let root = Path::new(&plan.root_path)
             .canonicalize()
             .map_err(|_| RuntimeError::PathNotAllowed)?;
+        let canonical_root = root.to_string_lossy().into_owned();
         let runtime_root = root.join(".agentdoor");
         let staging_root = runtime_root.join("staging").join(&plan.transaction_id);
         let backup_root = runtime_root.join("backups").join(&plan.transaction_id);
@@ -199,7 +200,19 @@ impl FileEngine {
             fs::create_dir_all(parent).map_err(|_| RuntimeError::TransactionFailed)?;
         }
 
-        let previous_lock = database.load_lock(&plan.adapter_id, &plan.capability_slug, &plan.root_path)?;
+        let mut previous_lock =
+            database.load_lock(&plan.adapter_id, &plan.capability_slug, &canonical_root)?;
+        if previous_lock.is_none() && canonical_root != plan.root_path {
+            previous_lock = database.load_lock(&plan.adapter_id, &plan.capability_slug, &plan.root_path)?;
+            if previous_lock.is_some() {
+                database.normalize_lock_root(
+                    &plan.adapter_id,
+                    &plan.capability_slug,
+                    &plan.root_path,
+                    &canonical_root,
+                )?;
+            }
+        }
         let mut journal = RecoveryJournal {
             transaction_id: plan.transaction_id.clone(),
             root: root.clone(),
@@ -209,7 +222,7 @@ impl FileEngine {
                 id: format!("rollback-{}", plan.transaction_id),
                 adapter_id: plan.adapter_id.clone(),
                 capability_slug: plan.capability_slug.clone(),
-                root_path: plan.root_path.clone(),
+                root_path: canonical_root.clone(),
                 lock_json: previous_lock,
             }),
         };
@@ -334,7 +347,7 @@ impl FileEngine {
             &plan.transaction_id,
             &plan.adapter_id,
             &plan.capability_slug,
-            &plan.root_path,
+            &canonical_root,
             &lock.to_string(),
             &now(),
         )?;
@@ -378,9 +391,20 @@ impl FileEngine {
         let root = Path::new(&plan.root_path)
             .canonicalize()
             .map_err(|_| RuntimeError::PathNotAllowed)?;
-        let lock_json = database
-            .load_lock(&plan.adapter_id, &plan.capability_slug, &plan.root_path)?
-            .ok_or(RuntimeError::NotFound)?;
+        let canonical_root = root.to_string_lossy().into_owned();
+        let mut lock_json = database.load_lock(&plan.adapter_id, &plan.capability_slug, &canonical_root)?;
+        if lock_json.is_none() && canonical_root != plan.root_path {
+            lock_json = database.load_lock(&plan.adapter_id, &plan.capability_slug, &plan.root_path)?;
+            if lock_json.is_some() {
+                database.normalize_lock_root(
+                    &plan.adapter_id,
+                    &plan.capability_slug,
+                    &plan.root_path,
+                    &canonical_root,
+                )?;
+            }
+        }
+        let lock_json = lock_json.ok_or(RuntimeError::NotFound)?;
         let runtime_root = root.join(".agentdoor");
         let backup_root = runtime_root.join("backups").join(&plan.transaction_id);
         let journal_path = runtime_root
@@ -400,7 +424,7 @@ impl FileEngine {
                 id: plan.transaction_id.clone(),
                 adapter_id: plan.adapter_id.clone(),
                 capability_slug: plan.capability_slug.clone(),
-                root_path: plan.root_path.clone(),
+                root_path: canonical_root.clone(),
                 lock_json: Some(lock_json),
             }),
         };
@@ -463,7 +487,7 @@ impl FileEngine {
             }
         }
         if database
-            .remove_lock(&plan.adapter_id, &plan.capability_slug, &plan.root_path)
+            .remove_lock(&plan.adapter_id, &plan.capability_slug, &canonical_root)
             .is_err()
         {
             journal.state = "rollback_required".into();
@@ -785,7 +809,11 @@ mod tests {
         assert!(matches!(result, Err(RuntimeError::TransactionFailed)));
         assert_eq!(fs::read_to_string(first).unwrap(), "first");
         assert_eq!(fs::read_to_string(second).unwrap(), "second");
-        assert!(database.load_lock("codex", "release", &root.path().to_string_lossy()).unwrap().is_some());
+        let canonical_root = root.path().canonicalize().unwrap();
+        assert!(database
+            .load_lock("codex", "release", &canonical_root.to_string_lossy())
+            .unwrap()
+            .is_some());
         assert_eq!(database.journal_state("uninstall-release").unwrap().as_deref(), Some("rolled_back"));
     }
 

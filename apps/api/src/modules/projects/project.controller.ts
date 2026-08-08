@@ -38,6 +38,7 @@ export class ProjectController {
   constructor(@Inject(ProjectService) private readonly projects: ProjectService) {}
 
   @Post('bindings')
+  @RequireSpaceAction('content:create')
   createBinding(@Req() request: SpaceRequest, @Param('spaceId') spaceId: string, @Body() body: unknown) {
     const current = context(request);
     return this.projects.createBinding(
@@ -55,6 +56,7 @@ export class ProjectController {
   }
 
   @Delete('bindings/:bindingId')
+  @RequireSpaceAction('content:create')
   @HttpCode(HttpStatus.NO_CONTENT)
   removeBinding(
     @Req() request: SpaceRequest,
@@ -66,6 +68,7 @@ export class ProjectController {
   }
 
   @Post('contexts')
+  @RequireSpaceAction('content:create')
   registerContext(@Req() request: SpaceRequest, @Param('spaceId') spaceId: string, @Body() body: unknown) {
     const current = context(request);
     return this.projects.registerContext(

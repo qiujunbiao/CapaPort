@@ -207,6 +207,43 @@ impl Database {
         Ok(())
     }
 
+    pub fn normalize_lock_root(
+        &self,
+        adapter_id: &str,
+        capability_slug: &str,
+        source_root: &str,
+        canonical_root: &str,
+    ) -> RuntimeResult<()> {
+        if source_root == canonical_root {
+            return Ok(());
+        }
+        let mut connection = self.connection.lock();
+        let transaction = connection.transaction().map_err(|_| RuntimeError::Database)?;
+        let canonical_exists: bool = transaction
+            .query_row(
+                "SELECT EXISTS(SELECT 1 FROM install_locks WHERE adapter_id=?1 AND capability_slug=?2 AND root_path=?3)",
+                params![adapter_id, capability_slug, canonical_root],
+                |row| row.get(0),
+            )
+            .map_err(|_| RuntimeError::Database)?;
+        if canonical_exists {
+            transaction
+                .execute(
+                    "DELETE FROM install_locks WHERE adapter_id=?1 AND capability_slug=?2 AND root_path=?3",
+                    params![adapter_id, capability_slug, source_root],
+                )
+                .map_err(|_| RuntimeError::Database)?;
+        } else {
+            transaction
+                .execute(
+                    "UPDATE install_locks SET root_path=?4 WHERE adapter_id=?1 AND capability_slug=?2 AND root_path=?3",
+                    params![adapter_id, capability_slug, source_root, canonical_root],
+                )
+                .map_err(|_| RuntimeError::Database)?;
+        }
+        transaction.commit().map_err(|_| RuntimeError::Database)
+    }
+
     pub fn save_backup(
         &self,
         id: &str,
