@@ -1,4 +1,5 @@
 import {
+  compatibleAgentsForComponents,
   createEditablePackage,
   type EditableAgent,
   type EditableCapabilityPackage,
@@ -78,6 +79,10 @@ export function AuthoringPage({
   const [riskReason, setRiskReason] = useState('');
   const [clientScan, setClientScan] = useState<ScanReport>();
   const errors = useMemo(() => validateEditablePackage(editable), [editable]);
+  const compatibleAgents = useMemo(
+    () => compatibleAgentsForComponents(editable.components.map((component) => component.type)),
+    [editable.components],
+  );
   const returnedPublications = publications.filter(
     (publication) => publication.status === 'changes_requested' && publication.sourceRevisionId,
   );
@@ -350,7 +355,12 @@ export function AuthoringPage({
             <legend>兼容 Agent</legend>
             {(['codex', 'claude-code', 'cursor', 'gemini-cli'] as const).map((agent) => (
               <label key={agent}>
-                <input type="checkbox" checked={editable.agents.includes(agent)} onChange={() => toggleAgent(agent)} />
+                <input
+                  type="checkbox"
+                  checked={editable.agents.includes(agent)}
+                  disabled={!compatibleAgents.includes(agent)}
+                  onChange={() => toggleAgent(agent)}
+                />
                 {agent}
               </label>
             ))}

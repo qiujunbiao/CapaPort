@@ -72,6 +72,7 @@ describe('desktop security gate', () => {
         online: true,
         queue: { pending: 1, failed: 0 },
         generatedAt: new Date(0),
+        clientVersion: '0.1.0',
       }),
     );
     expect(serialized).not.toMatch(/token|refresh|user|organization|\/Users|[A-Z]:\\/i);

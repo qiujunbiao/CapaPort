@@ -286,7 +286,7 @@ spec:
     - type: context
       path: context/release-policy.md
   compatibility:
-    agents: [codex, claude-code, cursor, gemini-cli]
+    agents: [claude-code, cursor]
   permissions:
     filesystem: read-project
     network: none

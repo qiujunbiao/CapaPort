@@ -538,7 +538,7 @@ select {
     monospace;
   text-align: center;
 }
-.admin-sidebar footer div {
+.sidebar-governance {
   display: flex;
   flex-direction: column;
 }

@@ -28,6 +28,7 @@
     "e2e": "tsx scripts/e2e-stack.ts",
     "artifacts:cli": "pnpm --filter @capaport/cli build && tsx scripts/package-cli.ts",
     "release:verify": "pnpm brand:check && pnpm migrations:check && pnpm lint && pnpm typecheck && pnpm test && pnpm security:gate && pnpm build && pnpm sdk:check && pnpm stack:smoke && pnpm acceptance && pnpm e2e",
+    "release:preflight": "tsx scripts/check-release-readiness.ts",
     "container:test": "pnpm --filter @capaport/api test -- tests/container-release.spec.ts",
     "docker:up": "docker compose -f infra/compose/compose.yaml up -d --build --wait",
     "docker:down": "docker compose -f infra/compose/compose.yaml down"

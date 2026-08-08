@@ -4,6 +4,7 @@ import { relative, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 type Artifact = { path: string; size: number; sha256: string; kind: 'file' | 'symlink' };
+type DesktopArchitecture = 'universal' | 'aarch64' | 'x86_64';
 
 async function artifacts(root: string, directory = root): Promise<Artifact[]> {
   const output: Artifact[] = [];
@@ -30,7 +31,7 @@ async function artifacts(root: string, directory = root): Promise<Artifact[]> {
 export async function packageDesktopRelease(input: {
   root: string;
   platform: 'macos' | 'windows';
-  arch: 'universal' | 'x86_64';
+  arch: DesktopArchitecture;
   version: string;
   commit: string;
   generatedAt?: string;
@@ -69,11 +70,16 @@ function argument(name: string): string {
   return value;
 }
 
+function architecture(value: string): DesktopArchitecture {
+  if (value === 'universal' || value === 'aarch64' || value === 'x86_64') return value;
+  throw new Error(`Unsupported desktop architecture: ${value}.`);
+}
+
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   await packageDesktopRelease({
     root: argument('--root'),
     platform: argument('--platform') as 'macos' | 'windows',
-    arch: argument('--arch') as 'universal' | 'x86_64',
+    arch: architecture(argument('--arch')),
     version: argument('--version'),
     commit: argument('--commit'),
   });

@@ -252,7 +252,7 @@ test('search → install preview → resolve local update conflict', async ({ pa
   await injectClients(page, { conflict: true });
   await page.goto('/');
   await page.getByRole('button', { name: '能力库', exact: true }).click();
-  await page.getByPlaceholder('搜索名称、标签或发布者').fill('发布');
+  await page.getByPlaceholder('搜索名称、标识或标签').fill('发布');
   await page.getByRole('button', { name: '安装' }).click();
   await expect(page.getByText('rules/security.md')).toBeVisible();
   await page.screenshot({ path: '/tmp/capaport-install-conflict.png', fullPage: true });

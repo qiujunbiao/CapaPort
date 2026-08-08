@@ -1,0 +1,6 @@
+---
+description: Enforce secure changes
+alwaysApply: true
+---
+
+Always scan uploads before publishing.

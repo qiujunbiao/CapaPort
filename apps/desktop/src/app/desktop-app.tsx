@@ -385,13 +385,31 @@ function AppContent({
               selectedPaths,
               agents: agents as AgentId[],
             });
-            await cloud.syncProjectContext({
-              session,
-              organizationId,
-              spaceId,
-              bindingId: cloudBinding.id,
-              context,
-            });
+            const appliedTransactions: string[] = [];
+            try {
+              for (const adapterId of agents) {
+                const plan = await local.projectContextPlan({
+                  localBindingId: binding.localBindingId,
+                  selectedPaths,
+                  adapterId,
+                  rootPath: binding.localPath,
+                });
+                const applied = await local.applyInstall(plan);
+                appliedTransactions.push(applied.transactionId);
+              }
+              await cloud.syncProjectContext({
+                session,
+                organizationId,
+                spaceId,
+                bindingId: cloudBinding.id,
+                context,
+              });
+            } catch (error) {
+              for (const transactionId of appliedTransactions.reverse()) {
+                await local.rollbackInstall(transactionId).catch(() => undefined);
+              }
+              throw error;
+            }
           }}
         />
       );

@@ -5,14 +5,46 @@ import type { InstallPlan } from '../generated/commands';
 
 type Manifest = {
   metadata: { slug: string };
-  spec: { components: Array<{ type: 'skill' | 'prompt' | 'context'; path: string }> };
+  spec: {
+    components: Array<{ type: 'skill' | 'prompt' | 'context'; path: string }>;
+    compatibility?: { agents?: string[] };
+  };
 };
 
-const componentDirectories: Record<string, Record<string, string>> = {
-  codex: { skill: 'skills' },
-  'claude-code': { skill: 'skills', prompt: 'commands', context: 'rules' },
-  cursor: { skill: 'skills', prompt: 'commands', context: 'rules' },
-  'gemini-cli': { skill: 'skills', prompt: 'commands' },
+type NativeComponent = {
+  directory: string;
+  extension?: string;
+  encode?: (content: Uint8Array, slug: string) => Uint8Array;
+};
+
+function encodeCursorRule(content: Uint8Array, slug: string): Uint8Array {
+  return new TextEncoder().encode(
+    `---\ndescription: CapaPort capability ${slug}\nalwaysApply: true\n---\n\n${new TextDecoder().decode(content)}`,
+  );
+}
+
+function encodeGeminiCommand(content: Uint8Array, slug: string): Uint8Array {
+  return new TextEncoder().encode(
+    `description = ${JSON.stringify(`CapaPort capability ${slug}`)}\nprompt = ${JSON.stringify(new TextDecoder().decode(content))}\n`,
+  );
+}
+
+const componentProfiles: Record<string, Partial<Record<'skill' | 'prompt' | 'context', NativeComponent>>> = {
+  codex: { skill: { directory: 'skills' } },
+  'claude-code': {
+    skill: { directory: 'skills' },
+    prompt: { directory: 'commands', extension: '.md' },
+    context: { directory: 'rules', extension: '.md' },
+  },
+  cursor: {
+    skill: { directory: 'skills' },
+    prompt: { directory: 'commands', extension: '.md' },
+    context: { directory: 'rules', extension: '.mdc', encode: encodeCursorRule },
+  },
+  'gemini-cli': {
+    skill: { directory: 'skills' },
+    prompt: { directory: 'commands', extension: '.toml', encode: encodeGeminiCommand },
+  },
 };
 
 export type InstalledFileDigest = { relativePath: string; afterDigest: string };
@@ -130,26 +162,30 @@ export async function buildLocalInstallPlan(input: {
   if (!manifestBytes) throw new Error('能力包缺少 capaport.yaml');
   const manifest = parse(new TextDecoder().decode(manifestBytes)) as Manifest;
   if (!manifest?.metadata?.slug || !Array.isArray(manifest.spec?.components)) throw new Error('能力包清单无效');
-  const directories = componentDirectories[input.adapterId];
-  if (!directories) throw new Error('不支持所选 Agent');
+  const profiles = componentProfiles[input.adapterId];
+  if (!profiles) throw new Error('不支持所选 Agent');
+  if (!manifest.spec.compatibility?.agents?.includes(input.adapterId)) {
+    throw new Error(`能力包未声明兼容 ${input.adapterId}`);
+  }
   const installedByPath = new Map(input.installedFiles?.map((file) => [safePath(file.relativePath), file.afterDigest]));
   const writes: InstallPlan['writes'] = [];
   for (const component of manifest.spec.components) {
-    const directory = directories[component.type];
-    if (!directory) throw new Error(`所选 Agent 不支持 ${component.type}`);
+    const profile = profiles[component.type];
+    if (!profile) throw new Error(`所选 Agent 不支持 ${component.type}`);
     const prefix = `${safePath(component.path)}/`;
     const matching = Object.entries(entries).filter(([path]) => path === component.path || path.startsWith(prefix));
     if (matching.length === 0) throw new Error(`组件 ${component.path} 没有文件`);
     for (const [path, content] of matching) {
+      const nativeContent = profile.encode?.(content, manifest.metadata.slug) ?? content;
       const relativePath =
         component.type === 'skill'
-          ? `${directory}/${manifest.metadata.slug}/${safePath(path.slice(prefix.length))}`
-          : `${directory}/${manifest.metadata.slug}.md`;
+          ? `${profile.directory}/${manifest.metadata.slug}/${safePath(path.slice(prefix.length))}`
+          : `${profile.directory}/${manifest.metadata.slug}${profile.extension ?? '.md'}`;
       const expectedDigest = installedByPath.get(relativePath);
       writes.push({
         relativePath,
-        contentBase64: bytesToBase64(content),
-        contentDigest: await sha256(content),
+        contentBase64: bytesToBase64(nativeContent),
+        contentDigest: await sha256(nativeContent),
         ...(expectedDigest ? { expectedDigest } : {}),
       });
     }

@@ -61,6 +61,7 @@ try {
     CAPAPORT_API_URL: apiBase,
     CAPAPORT_MAILPIT_URL: `http://127.0.0.1:${mailpitPort}`,
     CAPAPORT_ACCEPTANCE_STAMP: `${Date.now()}-${process.pid}`,
+    CAPAPORT_COMPOSE_E2E: '1',
   };
   await new Promise<void>((resolveRun, reject) => {
     const child = spawn('pnpm', ['exec', 'vitest', 'run', '--config', 'vitest.acceptance.config.ts'], {
@@ -78,7 +79,7 @@ try {
     status: 'passed',
     completedAt: new Date().toISOString(),
     scenario:
-      'discover -> scan -> submit -> review -> install -> update -> conflict -> recover -> lifecycle -> audit -> isolate',
+      'discover -> scan -> project-context -> submit -> review -> install -> update -> conflict -> recover -> lifecycle -> audit -> isolate',
     agents: { source: 'codex', target: 'claude-code' },
     stack: { api: true, worker: true, postgres: true, redis: true, objectStorage: true, mail: true },
     desktopRuntime: {

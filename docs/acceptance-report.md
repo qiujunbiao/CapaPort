@@ -17,6 +17,7 @@
 8. 本地修改触发冲突，阻止静默覆盖，支持差异、导入草稿和恢复。
 9. 邀请、提交、审核、下载、安装和版本更新均存在审计证据。
 10. 第二组织无法搜索、读取、下载或从错误信息推断第一组织资源。
+11. 项目上下文通过真实 Compose API 上传和下载，只包含显式选择文件，不包含设备绝对路径；该用例是 `pnpm acceptance` 的强制项，不再默认跳过。
 
 同一验收还验证组织/账号数据导出、30 天关闭或注销宽限期及取消、所有权移交。`tests/acceptance/desktop-runtime.spec.ts` 会执行 Rust `Runtime` 二进制，而不是读取源码字符串；它覆盖干净更新、本地修改冲突、导出本地版本、事务回滚、卸载和卸载回滚。
 
@@ -35,9 +36,10 @@
 | 品牌门禁 | `pnpm brand:check` | 当前跟踪文件中的旧品牌残留必须为零 |
 | CLI | `pnpm artifacts:cli` | 可执行单文件与 SHA-256 |
 | 桌面运行时 | Rust acceptance harness | 更新、冲突、导入、恢复、事务卸载 |
+| Agent 原生格式 | Adapter/Rust fixtures | Cursor `.mdc`、Gemini `.toml`、Codex/Claude/Cursor/Gemini 项目上下文投影 |
 | 桌面发布 | Release workflow matrix | macOS universal、Windows x64、updater 签名、SHA-256、SPDX SBOM、provenance |
 | 云端 | Release workflow images | API、Worker、Migrate 多架构镜像、SBOM、provenance、漏洞扫描 |
 
 ## 结论
 
-0.1.0 MVP 的功能和运行链路已实现。生产上线仍需由部署组织提供正式域名、SMTP/SMS、S3、数据库、签名证书、Tauri updater 私钥、更新文件托管和监控告警接收端；这些外部服务与秘密不属于源码交付物，缺少任一签名秘密时发布流水线会失败关闭。
+0.1.0 MVP 的源码功能和运行链路已实现，并在发布前校验 Agent 与组件的真实兼容关系。生产上线仍需由部署组织提供正式域名、SMTP/SMS、S3、数据库、签名证书、Tauri updater 私钥、更新文件托管和监控告警接收端；这些外部服务与秘密不属于源码交付物。开发 updater 公钥或任一签名秘密未替换时，发布流水线会失败关闭，不能生成生产发布结论。

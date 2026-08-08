@@ -21,7 +21,7 @@ describe('desktop release artifacts', () => {
     const result = await packageDesktopRelease({
       root,
       platform: 'macos',
-      arch: 'universal',
+      arch: 'aarch64',
       version: '0.2.0',
       commit: 'abc123',
       generatedAt: '2026-08-08T00:00:00.000Z',
@@ -31,7 +31,7 @@ describe('desktop release artifacts', () => {
     expect(JSON.parse(await readFile(result.metadataPath, 'utf8'))).toMatchObject({
       version: '0.2.0',
       platform: 'macos',
-      arch: 'universal',
+      arch: 'aarch64',
       commit: 'abc123',
       artifacts: [{ path: 'dmg/CapaPort.dmg', sha256: digest }],
     });

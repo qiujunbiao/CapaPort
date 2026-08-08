@@ -78,7 +78,7 @@ export function LibraryPage({
             <input
               value={query}
               onChange={(event) => setQuery(event.target.value)}
-              placeholder="搜索名称、标签或发布者"
+              placeholder="搜索名称、标识或标签"
             />
           </label>
           <label>

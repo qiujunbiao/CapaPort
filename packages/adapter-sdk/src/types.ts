@@ -90,6 +90,11 @@ export interface AgentAdapter {
 }
 
 export type AdapterDirectoryMap = Partial<Record<ComponentType, string>>;
+export type AdapterNativeFormat = {
+  extension: `.${string}`;
+  decode?: (content: Uint8Array) => Uint8Array;
+  encode?: (content: Uint8Array, slug: string) => Uint8Array;
+};
 export type FilesystemAdapterConfig = {
   id: string;
   displayName: string;
@@ -97,4 +102,5 @@ export type FilesystemAdapterConfig = {
   environment: AdapterEnvironment;
   roots: { user: string; workspace: string };
   directories: AdapterDirectoryMap;
+  nativeFormats?: Partial<Record<ComponentType, AdapterNativeFormat>>;
 };

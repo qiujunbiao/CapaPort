@@ -11,6 +11,9 @@ async function json<T>(response: Response): Promise<T> {
   if (!response.ok) throw new Error(payload.message ?? `HTTP ${response.status}`);
   return payload;
 }
+function writeHeaders(headers: Record<string, string>) {
+  return { ...headers, 'idempotency-key': crypto.randomUUID() };
+}
 async function verificationCode(email: string) {
   for (let attempt = 0; attempt < 30; attempt += 1) {
     const mailbox = await json<{ messages: Array<{ To: Array<{ Address: string }>; Subject: string }> }>(
@@ -53,7 +56,7 @@ describe.skipIf(process.env.CAPAPORT_COMPOSE_E2E !== '1')('project context again
     const organization = await json<{ id: string }>(
       await fetch(`${apiUrl}/organizations`, {
         method: 'POST',
-        headers: authorization,
+        headers: writeHeaders(authorization),
         body: JSON.stringify({ name: `Project Team ${stamp}`, slug: `project-team-${stamp}` }),
       }),
     );
@@ -62,7 +65,7 @@ describe.skipIf(process.env.CAPAPORT_COMPOSE_E2E !== '1')('project context again
     const project = await json<{ id: string }>(
       await fetch(`${apiUrl}/spaces`, {
         method: 'POST',
-        headers,
+        headers: writeHeaders(headers),
         body: JSON.stringify({
           type: 'project',
           name: 'Payments',
@@ -74,7 +77,7 @@ describe.skipIf(process.env.CAPAPORT_COMPOSE_E2E !== '1')('project context again
     const device = await json<{ id: string }>(
       await fetch(`${apiUrl}/devices`, {
         method: 'POST',
-        headers,
+        headers: writeHeaders(headers),
         body: JSON.stringify({
           name: 'Project Mac',
           platform: 'macos',
@@ -93,7 +96,7 @@ describe.skipIf(process.env.CAPAPORT_COMPOSE_E2E !== '1')('project context again
     const binding = await json<{ id: string }>(
       await fetch(`${apiUrl}/projects/${project.id}/bindings`, {
         method: 'POST',
-        headers,
+        headers: writeHeaders(headers),
         body: bindingBody,
       }),
     );
@@ -125,7 +128,7 @@ describe.skipIf(process.env.CAPAPORT_COMPOSE_E2E !== '1')('project context again
     }>(
       await fetch(`${apiUrl}/artifacts/uploads`, {
         method: 'POST',
-        headers,
+        headers: writeHeaders(headers),
         body: JSON.stringify({
           spaceId: project.id,
           fileName: 'project-context.zip',
@@ -138,7 +141,10 @@ describe.skipIf(process.env.CAPAPORT_COMPOSE_E2E !== '1')('project context again
     const uploaded = await fetch(upload.url, { method: 'PUT', headers: upload.headers, body: archive });
     expect(uploaded.ok).toBe(true);
     const artifact = await json<{ artifactId: string }>(
-      await fetch(`${apiUrl}/artifacts/uploads/${upload.uploadId}/confirm`, { method: 'POST', headers: readHeaders }),
+      await fetch(`${apiUrl}/artifacts/uploads/${upload.uploadId}/confirm`, {
+        method: 'POST',
+        headers: writeHeaders(readHeaders),
+      }),
     );
     const contextBody = JSON.stringify({
       bindingId: binding.id,
@@ -153,7 +159,11 @@ describe.skipIf(process.env.CAPAPORT_COMPOSE_E2E !== '1')('project context again
     expect(contextBody).not.toContain('/private/customer/payments');
     expect(contextBody).not.toContain('src/unselected.ts');
     const context = await json<{ id: string }>(
-      await fetch(`${apiUrl}/projects/${project.id}/contexts`, { method: 'POST', headers, body: contextBody }),
+      await fetch(`${apiUrl}/projects/${project.id}/contexts`, {
+        method: 'POST',
+        headers: writeHeaders(headers),
+        body: contextBody,
+      }),
     );
     const download = await json<{ url: string; digest: string }>(
       await fetch(`${apiUrl}/projects/${project.id}/contexts/${context.id}/download`, { headers: readHeaders }),

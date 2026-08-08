@@ -1,6 +1,7 @@
 import type { OrganizationSummary, PublicUser } from '@capaport/contracts';
 import { Bell, Bug, Cloud, Download, KeyRound, LogOut, RefreshCw, ShieldCheck, UserRound } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { bundledAppVersion, resolveDesktopVersion } from '../../app/app-version';
 import { createTauriUpdater, type DesktopUpdaterState } from '../../app/updater';
 import { Button, PageHeader, Panel, Status } from '../../components/ui';
 import type { SyncQueueStatus } from '../../generated/commands';
@@ -23,8 +24,13 @@ export function SettingsPage({
   onSyncQueue: () => void;
 }) {
   const [diagnosticStatus, setDiagnosticStatus] = useState('');
+  const [clientVersion, setClientVersion] = useState(bundledAppVersion);
   const [updater] = useState(createTauriUpdater);
   const [update, setUpdate] = useState<DesktopUpdaterState>(updater.state());
+
+  useEffect(() => {
+    void resolveDesktopVersion().then(setClientVersion);
+  }, []);
 
   async function checkUpdate() {
     setUpdate({ status: 'checking' });
@@ -36,7 +42,7 @@ export function SettingsPage({
   }
 
   function exportDiagnostics() {
-    const payload = createDiagnosticPayload({ online, queue, generatedAt: new Date() });
+    const payload = createDiagnosticPayload({ online, queue, generatedAt: new Date(), clientVersion });
     const url = URL.createObjectURL(new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' }));
     const anchor = document.createElement('a');
     anchor.href = url;
@@ -92,7 +98,7 @@ export function SettingsPage({
           <dl className="settings-list">
             <div>
               <dt>当前版本</dt>
-              <dd className="mono">{update.currentVersion ?? '0.1.0'}</dd>
+              <dd className="mono">{update.currentVersion ?? clientVersion}</dd>
             </div>
             <div>
               <dt>更新状态</dt>
@@ -188,7 +194,7 @@ export function SettingsPage({
           <dl className="settings-list">
             <div>
               <dt>客户端版本</dt>
-              <dd className="mono">0.1.0</dd>
+              <dd className="mono">{clientVersion}</dd>
             </div>
             <div>
               <dt>本地数据库</dt>
@@ -232,15 +238,17 @@ export function createDiagnosticPayload({
   online,
   queue,
   generatedAt,
+  clientVersion,
 }: {
   online: boolean;
   queue: SyncQueueStatus | undefined;
   generatedAt: Date;
+  clientVersion: string;
 }) {
   return {
     schemaVersion: 1,
     generatedAt: generatedAt.toISOString(),
-    clientVersion: '0.1.0',
+    clientVersion,
     connectivity: online ? 'online' : 'offline',
     localDatabase: 'available',
     syncQueue: { pending: queue?.pending ?? 0, failed: queue?.failed ?? 0 },

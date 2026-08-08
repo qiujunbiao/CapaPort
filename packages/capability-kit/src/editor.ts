@@ -26,6 +26,40 @@ export type EditableCapabilityPackage = {
 
 export type EditablePackageExport = { files: PackageFile[]; archive: Uint8Array; digest: string };
 
+export const agentComponentSupport: Record<EditableAgent, readonly EditableComponentType[]> = {
+  codex: ['skill'],
+  'claude-code': ['skill', 'prompt', 'context'],
+  cursor: ['skill', 'prompt', 'context'],
+  'gemini-cli': ['skill', 'prompt'],
+};
+
+const agentLabels: Record<EditableAgent, string> = {
+  codex: 'Codex',
+  'claude-code': 'Claude Code',
+  cursor: 'Cursor',
+  'gemini-cli': 'Gemini CLI',
+};
+
+const componentLabels: Record<EditableComponentType, string> = {
+  skill: 'Skill',
+  prompt: 'Prompt',
+  context: '项目上下文',
+};
+
+export function unsupportedComponentsForAgent(
+  agent: EditableAgent,
+  components: readonly EditableComponentType[],
+): EditableComponentType[] {
+  const supported = new Set(agentComponentSupport[agent]);
+  return [...new Set(components)].filter((component) => !supported.has(component));
+}
+
+export function compatibleAgentsForComponents(components: readonly EditableComponentType[]): EditableAgent[] {
+  return (Object.keys(agentComponentSupport) as EditableAgent[]).filter(
+    (agent) => unsupportedComponentsForAgent(agent, components).length === 0,
+  );
+}
+
 export function importEditablePackage(archive: Uint8Array): EditableCapabilityPackage {
   const files = extractArchive(archive);
   const byPath = new Map(files.map((file) => [file.path, file.content]));
@@ -151,6 +185,15 @@ export function validateEditablePackage(editable: EditableCapabilityPackage): st
     }
     const expected = componentPath(editable.slug, component.type);
     if (component.path !== expected) errors.push(`${component.type} 组件路径必须为 ${expected}`);
+  }
+  const componentTypes = editable.components.map((component) => component.type);
+  for (const agent of editable.agents) {
+    const unsupported = unsupportedComponentsForAgent(agent, componentTypes);
+    if (unsupported.length) {
+      errors.push(
+        `${agentLabels[agent]} 不支持当前能力包中的${unsupported.map((component) => componentLabels[component]).join('、')}组件`,
+      );
+    }
   }
   return [...new Set(errors)];
 }

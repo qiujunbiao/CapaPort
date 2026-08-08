@@ -88,7 +88,7 @@ spec:
     - type: skill
       path: skills/release
 ${includePrompt ? '    - type: prompt\n      path: prompts/release.md\n' : ''}  compatibility:
-    agents: [codex]
+    agents: [claude-code]
   permissions:
     filesystem: read-project
     network: none
@@ -177,7 +177,7 @@ const created = (
       name: 'Publication E2E',
       description: 'Governed publication integration fixture',
       tags: ['e2e', 'governance'],
-      compatibility: ['codex'],
+      compatibility: ['claude-code'],
     }),
   })
 ).body;

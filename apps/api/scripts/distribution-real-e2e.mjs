@@ -81,7 +81,12 @@ const reviewerDevice = (
   await request('/devices', {
     token: reviewer.token,
     method: 'POST',
-    body: JSON.stringify({ name: 'Reviewer PC', platform: 'windows', appVersion: '1.0.0', supportedAgents: ['codex'] }),
+    body: JSON.stringify({
+      name: 'Reviewer PC',
+      platform: 'windows',
+      appVersion: '1.0.0',
+      supportedAgents: ['claude-code'],
+    }),
   })
 ).body;
 
@@ -106,7 +111,7 @@ const foreignDevice = await request('/distribution/install-plans', {
     deviceId: ownerDevice.id,
     capabilityId: capability.id,
     versionId: current.id,
-    agent: 'codex',
+    agent: 'claude-code',
   }),
 });
 if (foreignDevice.body.code !== 'ACCESS_DENIED') throw new Error('Foreign device ownership was disclosed.');
@@ -118,7 +123,7 @@ const privateVersion = await request('/distribution/install-plans', {
     deviceId: reviewerDevice.id,
     capabilityId: capability.id,
     versionId: current.id,
-    agent: 'codex',
+    agent: 'claude-code',
   }),
 });
 if (privateVersion.body.code !== 'ACCESS_DENIED') throw new Error('Private team version was disclosed.');
@@ -131,7 +136,7 @@ const plan = (
       deviceId: ownerDevice.id,
       capabilityId: capability.id,
       versionId: current.id,
-      agent: 'codex',
+      agent: 'claude-code',
     }),
   })
 ).body;
@@ -144,13 +149,14 @@ if (!download.ok) throw new Error(`Signed download failed: ${download.status}`);
 const bytes = new Uint8Array(await download.arrayBuffer());
 const digest = await hashPackage(extractArchive(bytes));
 if (digest !== plan.digest) throw new Error('Downloaded artifact digest does not match the install plan.');
-if (plan.adapter !== 'codex' || !plan.permissions) throw new Error('Install plan omitted adapter or permissions.');
+if (plan.adapter !== 'claude-code' || !plan.permissions)
+  throw new Error('Install plan omitted adapter or permissions.');
 
 const reportBody = {
   deviceId: ownerDevice.id,
   capabilityId: capability.id,
   versionId: current.id,
-  agent: 'codex',
+  agent: 'claude-code',
   outcome: 'installed',
 };
 const reports = await Promise.all(
@@ -215,7 +221,7 @@ const revoked = await request('/distribution/install-plans', {
     deviceId: ownerDevice.id,
     capabilityId: capability.id,
     versionId: available.id,
-    agent: 'codex',
+    agent: 'claude-code',
   }),
 });
 if (revoked.body.code !== 'ACCESS_DENIED') throw new Error('Revoked device received an install plan.');

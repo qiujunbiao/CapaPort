@@ -1,5 +1,10 @@
 import type { EditableCapabilityPackage, EditableComponentType } from '@capaport/capability-kit';
-import { addPackageComponent, removePackageComponent, updatePackageComponent } from '@capaport/capability-kit';
+import {
+  addPackageComponent,
+  compatibleAgentsForComponents,
+  removePackageComponent,
+  updatePackageComponent,
+} from '@capaport/capability-kit';
 import { Plus, Trash2 } from 'lucide-react';
 import { Button } from '../../components/ui';
 
@@ -17,6 +22,12 @@ export function PackageEditor({
   onChange: (next: EditableCapabilityPackage) => void;
 }) {
   const present = new Set(editable.components.map((component) => component.type));
+  function addCompatibleComponent(type: EditableComponentType) {
+    const next = addPackageComponent(editable, type);
+    const compatible = compatibleAgentsForComponents(next.components.map((component) => component.type));
+    const retained = next.agents.filter((agent) => compatible.includes(agent));
+    onChange({ ...next, agents: retained.length ? retained : compatible.slice(0, 1) });
+  }
   return (
     <section className="package-editor">
       <div className="package-editor__toolbar">
@@ -25,7 +36,7 @@ export function PackageEditor({
             variant="secondary"
             key={type}
             disabled={present.has(type)}
-            onClick={() => onChange(addPackageComponent(editable, type))}
+            onClick={() => addCompatibleComponent(type)}
           >
             <Plus aria-hidden size={14} />
             添加{labels[type]}

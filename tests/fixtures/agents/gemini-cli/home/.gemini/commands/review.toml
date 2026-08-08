@@ -1,0 +1,2 @@
+description = "Review the current change"
+prompt = "Review the current change for correctness and security."

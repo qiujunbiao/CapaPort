@@ -25,4 +25,4 @@ API、Worker、Migrate 使用固定 UID/GID `10001:10001`，只读根文件系�
 - 定期运行 `pnpm security:gate`、镜像漏洞扫描和依赖更新评估。
 - 发现疑似泄露时先撤销真实凭据，再隔离制品和会话；不要只删除扫描报告。
 
-完整威胁模型和门禁规则见 `docs/security/`，事件处置见[事件手册](../runbooks/incident.md)。
+完整内容见[威胁模型](../security/threat-model.md)和[安全门禁](../security/security-gates.md)，事件处置见[事件手册](../runbooks/incident.md)。

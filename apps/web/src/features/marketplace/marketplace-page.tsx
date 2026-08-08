@@ -153,7 +153,7 @@ export function MarketplacePage({
             <Search />
             <span className="sr-only">搜索能力</span>
             <input
-              placeholder="搜索名称、标签或发布者"
+              placeholder="搜索名称、标识或标签"
               value={query}
               onChange={(event) => setQuery(event.target.value)}
             />

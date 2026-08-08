@@ -5,6 +5,7 @@ import {
   hashPackage,
   type PackageFile,
   parseManifest,
+  unsupportedComponentsForAgent,
 } from '@capaport/capability-kit';
 import type {
   AgentId,
@@ -273,6 +274,17 @@ export class CapabilityService {
         'CAPABILITY_MANIFEST_MISMATCH',
         'Manifest compatibility must match the capability metadata.',
         409,
+      );
+    }
+    const componentTypes = manifest.spec.components.map((component) => component.type);
+    const incompatibleAgents = manifest.spec.compatibility.agents.filter(
+      (agent) => unsupportedComponentsForAgent(agent, componentTypes).length > 0,
+    );
+    if (incompatibleAgents.length) {
+      throw new AppError(
+        'CAPABILITY_COMPATIBILITY_INVALID',
+        `Manifest contains components unsupported by: ${incompatibleAgents.join(', ')}.`,
+        400,
       );
     }
     this.validateManifestPaths(manifest, files);

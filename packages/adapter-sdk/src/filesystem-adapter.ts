@@ -57,6 +57,10 @@ function componentPath(type: ComponentType, slug: string): string {
   return `${type === 'prompt' ? 'prompts' : 'context'}/${slug}.md`;
 }
 
+function nativeExtension(config: FilesystemAdapterConfig, type: ComponentType): string {
+  return config.nativeFormats?.[type]?.extension ?? '.md';
+}
+
 function localName(type: ComponentType, slug: string, files: PackageFile[]): string {
   if (type !== 'skill') return slug;
   const entrypoint = files.find((file) => file.path === 'SKILL.md');
@@ -147,9 +151,15 @@ export function createFilesystemAdapter(config: FilesystemAdapterConfig): AgentA
             files = await readTree(sourcePath, platform);
             if (!files.some((file) => file.path === 'SKILL.md')) continue;
           } else {
-            if (!entry.isFile() || extname(entry.name).toLowerCase() !== '.md') continue;
+            if (!entry.isFile() || extname(entry.name).toLowerCase() !== nativeExtension(config, type)) continue;
             slug = basename(entry.name, extname(entry.name));
-            files = [{ path: entry.name, content: new Uint8Array(await readFile(sourcePath)) }];
+            const nativeContent = new Uint8Array(await readFile(sourcePath));
+            files = [
+              {
+                path: entry.name,
+                content: config.nativeFormats?.[type]?.decode?.(nativeContent) ?? nativeContent,
+              },
+            ];
           }
           const packageFiles = files.map((file) => ({ path: file.path, content: file.content }));
           capabilities.push({
@@ -220,18 +230,22 @@ export function createFilesystemAdapter(config: FilesystemAdapterConfig): AgentA
         );
         if (componentFiles.length === 0) throw new Error(`Component has no files: ${component.path}`);
         for (const file of componentFiles) {
+          const nativeContent =
+            config.nativeFormats?.[component.type]?.encode?.(file.content, pkg.manifest.metadata.slug) ?? file.content;
           const relativePath =
             component.type === 'skill'
               ? assertRelativePath(
                   `${directory}/${pkg.manifest.metadata.slug}/${file.path.slice(component.path.length + 1)}`,
                 )
-              : assertRelativePath(`${directory}/${pkg.manifest.metadata.slug}.md`);
+              : assertRelativePath(
+                  `${directory}/${pkg.manifest.metadata.slug}${nativeExtension(config, component.type)}`,
+                );
           entries.push({
             operation: 'create-or-replace',
             relativePath,
             destination: resolveInside(target.installation.rootPath, relativePath, platform),
-            content: file.content,
-            digest: digest(file.content),
+            content: nativeContent,
+            digest: digest(nativeContent),
           });
         }
       }

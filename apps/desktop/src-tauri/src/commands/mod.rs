@@ -308,7 +308,7 @@ impl Runtime {
         }
         let root = Path::new(&input.root_path);
         let mut capabilities = Vec::new();
-        for (component_type, directory) in component_directories(&input.adapter_id) {
+        for (component_type, directory, extension) in component_formats(&input.adapter_id) {
             let component_root = self.engine.policy().resolve(root, Path::new(directory))?;
             if !component_root.exists() {
                 continue;
@@ -337,7 +337,7 @@ impl Runtime {
                             .and_then(|value| value.to_str())
                             .map(str::to_ascii_lowercase)
                             .as_deref()
-                            != Some("md")
+                            != Some(extension)
                     {
                         continue;
                     }
@@ -556,16 +556,16 @@ impl Runtime {
         input: &ExportPackageInput,
     ) -> RuntimeResult<LocalPackageExport> {
         validate_slug(&input.slug)?;
-        let component_directory = component_directories(&input.adapter_id)
+        let (component_directory, native_extension) = component_formats(&input.adapter_id)
             .iter()
-            .find(|(component_type, _)| component_type == &input.component_type)
-            .map(|(_, directory)| *directory)
+            .find(|(component_type, _, _)| component_type == &input.component_type)
+            .map(|(_, directory, extension)| (*directory, *extension))
             .ok_or(RuntimeError::InvalidInput)?;
         let root = Path::new(&input.root_path);
         let source_relative = if input.component_type == "skill" {
             format!("{component_directory}/{}", input.slug)
         } else {
-            format!("{component_directory}/{}.md", input.slug)
+            format!("{component_directory}/{}.{native_extension}", input.slug)
         };
         let source = self
             .engine
@@ -584,10 +584,12 @@ impl Runtime {
         };
         let mut files: Vec<(String, Vec<u8>)> = Vec::new();
         if source.is_file() {
-            files.push((
-                canonical_root.clone(),
-                std::fs::read(&source).map_err(|_| RuntimeError::TransactionFailed)?,
-            ));
+            let native = std::fs::read(&source).map_err(|_| RuntimeError::TransactionFailed)?;
+            files.push((canonical_root.clone(), canonical_component_content(
+                &input.adapter_id,
+                &input.component_type,
+                native,
+            )?));
         } else {
             for entry in WalkDir::new(&source).follow_links(false) {
                 let entry = entry.map_err(|_| RuntimeError::TransactionFailed)?;
@@ -839,17 +841,46 @@ fn agent_directories() -> [(&'static str, &'static str, &'static str); 4] {
         ("gemini-cli", "Gemini CLI", ".gemini"),
     ]
 }
-fn component_directories(adapter_id: &str) -> &'static [(&'static str, &'static str)] {
+fn component_formats(adapter_id: &str) -> &'static [(&'static str, &'static str, &'static str)] {
     match adapter_id {
-        "codex" => &[("skill", "skills")],
-        "gemini-cli" => &[("skill", "skills"), ("prompt", "commands")],
-        "claude-code" | "cursor" => &[
-            ("skill", "skills"),
-            ("prompt", "commands"),
-            ("context", "rules"),
+        "codex" => &[("skill", "skills", "")],
+        "gemini-cli" => &[("skill", "skills", ""), ("prompt", "commands", "toml")],
+        "claude-code" => &[
+            ("skill", "skills", ""),
+            ("prompt", "commands", "md"),
+            ("context", "rules", "md"),
+        ],
+        "cursor" => &[
+            ("skill", "skills", ""),
+            ("prompt", "commands", "md"),
+            ("context", "rules", "mdc"),
         ],
         _ => &[],
     }
+}
+
+fn canonical_component_content(
+    adapter_id: &str,
+    component_type: &str,
+    native: Vec<u8>,
+) -> RuntimeResult<Vec<u8>> {
+    if adapter_id == "gemini-cli" && component_type == "prompt" {
+        let text = std::str::from_utf8(&native).map_err(|_| RuntimeError::InvalidInput)?;
+        let document = toml::from_str::<toml::Table>(text).map_err(|_| RuntimeError::InvalidInput)?;
+        return document
+            .get("prompt")
+            .and_then(toml::Value::as_str)
+            .map(|prompt| prompt.as_bytes().to_vec())
+            .ok_or(RuntimeError::InvalidInput);
+    }
+    if adapter_id == "cursor" && component_type == "context" {
+        let text = std::str::from_utf8(&native).map_err(|_| RuntimeError::InvalidInput)?;
+        let body = Regex::new(r"(?s)\A---\r?\n.*?\r?\n---\r?\n?")
+            .map_err(|_| RuntimeError::InvalidInput)?
+            .replace(text, "");
+        return Ok(body.as_bytes().to_vec());
+    }
+    Ok(native)
 }
 
 fn package_digest(source: &Path) -> RuntimeResult<String> {
@@ -1050,6 +1081,72 @@ mod tests {
                 && agent.root_path.ends_with("bound-project/.cursor")
         }));
     }
+
+    #[test]
+    fn inventories_and_canonicalizes_cursor_mdc_and_gemini_toml() {
+        use std::io::Read;
+
+        let root = tempdir().unwrap();
+        std::fs::create_dir_all(root.path().join(".cursor/rules")).unwrap();
+        std::fs::write(
+            root.path().join(".cursor/rules/security.mdc"),
+            "---\ndescription: Security\nalwaysApply: true\n---\n\nAlways scan uploads.",
+        )
+        .unwrap();
+        std::fs::create_dir_all(root.path().join(".gemini/commands")).unwrap();
+        std::fs::write(
+            root.path().join(".gemini/commands/review.toml"),
+            "description = \"Review\"\nprompt = \"Review for security.\"\n",
+        )
+        .unwrap();
+        let runtime = Runtime::new(
+            &root.path().join("state.db"),
+            root.path().into(),
+            None,
+            Arc::new(MemoryCredentialStore::default()),
+        )
+        .unwrap();
+        let agents = runtime.detect_agents().unwrap();
+        let cursor = agents.iter().find(|agent| agent.adapter_id == "cursor").unwrap();
+        let gemini = agents.iter().find(|agent| agent.adapter_id == "gemini-cli").unwrap();
+        assert!(runtime
+            .inventory_agent(&InventoryInput {
+                adapter_id: "cursor".into(),
+                root_path: cursor.root_path.clone(),
+            })
+            .unwrap()
+            .iter()
+            .any(|item| item.slug == "security" && item.component_type == "context"));
+        assert!(runtime
+            .inventory_agent(&InventoryInput {
+                adapter_id: "gemini-cli".into(),
+                root_path: gemini.root_path.clone(),
+            })
+            .unwrap()
+            .iter()
+            .any(|item| item.slug == "review" && item.component_type == "prompt"));
+
+        let exported = runtime
+            .export_local_package(&ExportPackageInput {
+                adapter_id: "gemini-cli".into(),
+                root_path: gemini.root_path.clone(),
+                component_type: "prompt".into(),
+                slug: "review".into(),
+            })
+            .unwrap();
+        let archive = base64::engine::general_purpose::STANDARD
+            .decode(exported.archive_base64)
+            .unwrap();
+        let mut archive = zip::ZipArchive::new(std::io::Cursor::new(archive)).unwrap();
+        let mut prompt = String::new();
+        archive
+            .by_name("prompts/review.md")
+            .unwrap()
+            .read_to_string(&mut prompt)
+            .unwrap();
+        assert_eq!(prompt, "Review for security.");
+    }
+
     #[test]
     fn scanner_blocks_likely_secrets_and_omits_the_secret_value() {
         let (root, runtime) = runtime();

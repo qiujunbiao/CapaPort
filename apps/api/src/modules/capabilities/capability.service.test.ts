@@ -115,6 +115,33 @@ describe('CapabilityService', () => {
     expect(repository.createRevision).not.toHaveBeenCalled();
   });
 
+  it('rejects a manifest that declares an agent unable to install every component', async () => {
+    const incompatibleManifest = manifest.replace(
+      '  compatibility:',
+      '    - type: prompt\n      path: prompts/release.md\n  compatibility:',
+    );
+    artifacts.readArtifact.mockResolvedValue({
+      artifact: { id: 'artifact-a', organizationId: 'org-a', status: 'ready' },
+      bytes: buildArchive([
+        { path: 'capaport.yaml', content: new TextEncoder().encode(incompatibleManifest) },
+        { path: 'README.md', content: new TextEncoder().encode('# Release helper') },
+        { path: 'skills/release/SKILL.md', content: new TextEncoder().encode('# Skill') },
+        { path: 'prompts/release.md', content: new TextEncoder().encode('# Prompt') },
+      ]),
+    });
+
+    await expect(
+      new CapabilityService(repository, artifacts, spaces, policies).createRevision(
+        tenant,
+        'user-a',
+        'capability-a',
+        'draft-a',
+        'artifact-a',
+      ),
+    ).rejects.toMatchObject({ code: 'CAPABILITY_COMPATIBILITY_INVALID' });
+    expect(repository.createRevision).not.toHaveBeenCalled();
+  });
+
   it('limits search to the subject accessible space identifiers', async () => {
     const service = new CapabilityService(repository, artifacts, spaces, policies);
     await service.search(tenant, 'user-a', { query: 'release', limit: 25 });

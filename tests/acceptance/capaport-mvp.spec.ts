@@ -161,7 +161,7 @@ async function completePackage(imported: CanonicalPackage, version: 1 | 2 | 3): 
           { type: 'prompt', path: `prompts/${slug}.md` },
           { type: 'context', path: `context/${slug}.md` },
         ],
-        compatibility: { agents: ['codex', 'claude-code'] },
+        compatibility: { agents: ['claude-code', 'cursor'] },
         entrypoints: {
           default: skillPath,
           prompt: `prompts/${slug}.md`,

@@ -254,25 +254,76 @@ impl ProjectEngine {
         })?;
         let root = Path::new(&input.root_path).canonicalize().map_err(|_| RuntimeError::PathNotAllowed)?;
         if !self.policy.roots().contains(&root) { return Err(RuntimeError::PathNotAllowed); }
-        let prefix = match agent.as_str() {
-            "codex" | "claude-code" | "cursor" => "rules/capaport",
-            "gemini-cli" => "context/capaport",
+        let mut writes = match agent.as_str() {
+            "codex" => vec![shared_context_write(
+                &root,
+                "AGENTS.md",
+                &row.space_id,
+                &row.local_binding_id,
+                &selected,
+            )?],
+            "gemini-cli" => vec![shared_context_write(
+                &root,
+                "GEMINI.md",
+                &row.space_id,
+                &row.local_binding_id,
+                &selected,
+            )?],
+            "claude-code" => selected
+                .iter()
+                .map(|(relative, bytes)| {
+                    native_context_write(
+                        format!(
+                            ".claude/rules/capaport/{}/{}/{}.md",
+                            row.space_id, row.local_binding_id, relative
+                        ),
+                        format!("# CapaPort context: {relative}\n\n{}", String::from_utf8_lossy(bytes)),
+                    )
+                })
+                .collect(),
+            "cursor" => selected
+                .iter()
+                .map(|(relative, bytes)| {
+                    native_context_write(
+                        format!(
+                            ".cursor/rules/capaport/{}/{}/{}.mdc",
+                            row.space_id, row.local_binding_id, relative
+                        ),
+                        format!(
+                            "---\ndescription: CapaPort managed project context\nalwaysApply: true\n---\n\n{}",
+                            String::from_utf8_lossy(bytes)
+                        ),
+                    )
+                })
+                .collect(),
             _ => return Err(RuntimeError::InvalidInput),
         };
-        let mut writes = Vec::new();
-        for (relative, bytes) in selected {
-            let destination = format!("{prefix}/{}/{}/{relative}", row.space_id, row.local_binding_id);
-            writes.push(PlannedWrite {
-                relative_path: destination,
-                content_base64: base64::engine::general_purpose::STANDARD.encode(&bytes),
-                content_digest: hex::encode(Sha256::digest(&bytes)),
-                expected_digest: None,
-            });
+        let capability_slug = format!("project-{}", row.space_id);
+        if let Some(lock_json) = database.load_lock(&agent, &capability_slug, &root.to_string_lossy())? {
+            let lock: serde_json::Value = serde_json::from_str(&lock_json).map_err(|_| RuntimeError::InvalidInput)?;
+            if let Some(files) = lock.get("files").and_then(serde_json::Value::as_array) {
+                for write in &mut writes {
+                    if write.expected_digest.is_some() {
+                        continue;
+                    }
+                    write.expected_digest = files.iter().find_map(|file| {
+                        (file.get("relative_path").or_else(|| file.get("relativePath"))?.as_str()?
+                            == write.relative_path)
+                            .then(|| {
+                                file.get("after_digest")
+                                    .or_else(|| file.get("afterDigest"))?
+                                    .as_str()
+                                    .map(str::to_owned)
+                            })
+                            .flatten()
+                    });
+                }
+            }
         }
         Ok(InstallPlan {
             transaction_id: Uuid::new_v4().to_string(),
             adapter_id: agent,
-            capability_slug: format!("project-{}", row.space_id),
+            capability_slug,
             package_digest: package.digest,
             root_path: root.to_string_lossy().into(),
             writes,
@@ -318,6 +369,71 @@ impl ProjectEngine {
     }
 }
 
+fn native_context_write(relative_path: String, content: String) -> PlannedWrite {
+    let bytes = content.into_bytes();
+    PlannedWrite {
+        relative_path,
+        content_base64: base64::engine::general_purpose::STANDARD.encode(&bytes),
+        content_digest: hex::encode(Sha256::digest(&bytes)),
+        expected_digest: None,
+    }
+}
+
+fn shared_context_write(
+    root: &Path,
+    file_name: &str,
+    space_id: &str,
+    local_binding_id: &str,
+    selected: &[(String, Vec<u8>)],
+) -> RuntimeResult<PlannedWrite> {
+    let path = root.join(file_name);
+    let current = if path.exists() {
+        Some(std::fs::read(&path).map_err(|_| RuntimeError::TransactionFailed)?)
+    } else {
+        None
+    };
+    let current_text = current
+        .as_deref()
+        .map(|bytes| std::str::from_utf8(bytes).map(str::to_owned).map_err(|_| RuntimeError::InvalidInput))
+        .transpose()?
+        .unwrap_or_default();
+    let marker = format!("{space_id}:{local_binding_id}");
+    let start = format!("<!-- CAPAPORT:BEGIN {marker} -->");
+    let end = format!("<!-- CAPAPORT:END {marker} -->");
+    let mut managed = format!("{start}\n## CapaPort project context\n");
+    for (relative, bytes) in selected {
+        let text = std::str::from_utf8(bytes).map_err(|_| RuntimeError::InvalidInput)?;
+        managed.push_str(&format!("\n### Source: `{relative}`\n\n{text}\n"));
+    }
+    managed.push_str(&format!("{end}\n"));
+    let content = replace_managed_block(&current_text, &start, &end, &managed)?;
+    let bytes = content.into_bytes();
+    Ok(PlannedWrite {
+        relative_path: file_name.into(),
+        content_base64: base64::engine::general_purpose::STANDARD.encode(&bytes),
+        content_digest: hex::encode(Sha256::digest(&bytes)),
+        expected_digest: current.as_ref().map(|bytes| hex::encode(Sha256::digest(bytes))),
+    })
+}
+
+fn replace_managed_block(current: &str, start: &str, end: &str, managed: &str) -> RuntimeResult<String> {
+    match (current.find(start), current.find(end)) {
+        (Some(start_index), Some(end_index)) if end_index >= start_index => {
+            let suffix_index = end_index + end.len();
+            let mut output = String::with_capacity(current.len() + managed.len());
+            output.push_str(&current[..start_index]);
+            output.push_str(managed);
+            output.push_str(current[suffix_index..].trim_start_matches(['\r', '\n']));
+            Ok(output)
+        }
+        (None, None) => {
+            let separator = if current.is_empty() || current.ends_with('\n') { "" } else { "\n" };
+            Ok(format!("{current}{separator}{managed}"))
+        }
+        _ => Err(RuntimeError::InvalidInput),
+    }
+}
+
 fn binding(row: LocalProjectBindingRow) -> LocalProjectBinding {
     let status = if row.status == "active" && !Path::new(&row.local_path).is_dir() { "missing".into() } else { row.status.clone() };
     LocalProjectBinding {
@@ -340,7 +456,16 @@ fn normalize_agents(mut agents: Vec<String>) -> RuntimeResult<Vec<String>> {
 }
 
 fn validate_id(value: &str) -> RuntimeResult<()> {
-    if value.is_empty() || value.len() > 120 || value.chars().any(char::is_whitespace) { Err(RuntimeError::InvalidInput) } else { Ok(()) }
+    if value.is_empty()
+        || value.len() > 120
+        || !value
+            .chars()
+            .all(|character| character.is_ascii_alphanumeric() || matches!(character, '-' | '_'))
+    {
+        Err(RuntimeError::InvalidInput)
+    } else {
+        Ok(())
+    }
 }
 fn validate_uuid(value: &str) -> RuntimeResult<()> { Uuid::parse_str(value).map(|_| ()).map_err(|_| RuntimeError::InvalidInput) }
 fn normalized_relative(root: &Path, path: &Path) -> RuntimeResult<String> {
@@ -446,6 +571,24 @@ mod tests {
     }
 
     #[test]
+    fn rejects_space_identifiers_that_could_escape_native_projection_paths() {
+        let directory = tempdir().unwrap();
+        let project = directory.path().join("project");
+        std::fs::create_dir(&project).unwrap();
+        let database = Database::open(&directory.path().join("state.db")).unwrap();
+        let engine = ProjectEngine::new(PathPolicy::new([]).unwrap());
+
+        assert!(matches!(
+            engine.bind(&database, &BindProjectInput {
+                space_id: "../escape".into(),
+                path: project.to_string_lossy().into(),
+                agents: Some(vec!["cursor".into()]),
+            }),
+            Err(RuntimeError::InvalidInput)
+        ));
+    }
+
+    #[test]
     fn packages_only_explicit_selection_and_rescans_secrets() {
         let (directory, database, policy, binding) = fixture();
         let engine = ProjectEngine::new(policy);
@@ -469,9 +612,12 @@ mod tests {
     #[test]
     fn projects_to_all_adapters_and_recovers_a_removed_directory() {
         let (directory, database, policy, binding) = fixture();
-        for (agent, expected) in [("codex", "rules/capaport"), ("claude-code", "rules/capaport"), ("cursor", "rules/capaport"), ("gemini-cli", "context/capaport")] {
+        for (agent, expected) in [("codex", "AGENTS.md"), ("claude-code", ".claude/rules/capaport"), ("cursor", ".cursor/rules/capaport"), ("gemini-cli", "GEMINI.md")] {
             let target = directory.path().join(agent);
             std::fs::create_dir(&target).unwrap();
+            if agent == "codex" {
+                std::fs::write(target.join("AGENTS.md"), "# Existing project instructions\n").unwrap();
+            }
             policy.add_root(target.clone()).unwrap();
             let plan = ProjectEngine::new(policy.clone()).projection(&database, &ProjectProjectionInput {
                 local_binding_id: binding.local_binding_id.clone(),
@@ -479,7 +625,19 @@ mod tests {
                 adapter_id: agent.into(),
                 root_path: target.to_string_lossy().into(),
             }).unwrap();
-            assert!(plan.writes[0].relative_path.starts_with(expected));
+            assert!(plan.writes.iter().any(|write| write.relative_path.starts_with(expected)));
+            if agent == "cursor" {
+                assert!(plan.writes.iter().all(|write| write.relative_path.ends_with(".mdc")));
+                let content = base64::engine::general_purpose::STANDARD.decode(&plan.writes[0].content_base64).unwrap();
+                assert!(String::from_utf8(content).unwrap().contains("alwaysApply: true"));
+            }
+            if agent == "codex" {
+                let content = base64::engine::general_purpose::STANDARD.decode(&plan.writes[0].content_base64).unwrap();
+                let content = String::from_utf8(content).unwrap();
+                assert!(content.contains("# Existing project instructions"));
+                assert!(content.contains("<!-- CAPAPORT:BEGIN project-a:"));
+                assert!(plan.writes[0].expected_digest.is_some());
+            }
         }
         std::fs::remove_dir_all(directory.path().join("project")).unwrap();
         let engine = ProjectEngine::new(policy);

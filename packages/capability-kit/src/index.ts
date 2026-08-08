@@ -2,6 +2,8 @@ export { buildArchive, extractArchive } from './archive.js';
 export { diffPackages, type PackageDiff } from './diff.js';
 export {
   addPackageComponent,
+  agentComponentSupport,
+  compatibleAgentsForComponents,
   createEditablePackage,
   type EditableAgent,
   type EditableCapabilityPackage,
@@ -11,6 +13,7 @@ export {
   exportEditablePackage,
   importEditablePackage,
   removePackageComponent,
+  unsupportedComponentsForAgent,
   updatePackageComponent,
   updatePackageMetadata,
   validateEditablePackage,

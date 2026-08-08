@@ -374,7 +374,7 @@ function Console({ client, sessionStore }: { client: WebClient; sessionStore: We
             <br />
             REG
           </span>
-          <div>
+          <div className="sidebar-governance">
             <strong>组织治理已启用</strong>
             <small>租户隔离 · 不可变审计</small>
           </div>

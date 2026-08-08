@@ -329,4 +329,75 @@ describe('desktop application safety workflows', () => {
     await waitFor(() => expect(logout).toHaveBeenCalledWith(expect.objectContaining({ accessToken: 'token' })));
     expect(await screen.findByRole('heading', { name: '进入 CapaPort' })).toBeInTheDocument();
   });
+
+  it('projects selected project context into every configured local agent before cloud sync', async () => {
+    const cloud = cloudFixture();
+    cloud.spaces = async () => [
+      {
+        id: 'project-a',
+        organizationId: 'org-a',
+        type: 'project',
+        name: '支付平台',
+        slug: 'payments',
+        reviewPolicy: 'required',
+        status: 'active',
+      },
+    ];
+    cloud.projectBindings = async () => [
+      {
+        id: 'binding-cloud-a',
+        organizationId: 'org-a',
+        projectSpaceId: 'project-a',
+        deviceId: 'device-a',
+        localBindingId: '11111111-1111-4111-8111-111111111111',
+        agents: ['codex', 'cursor'],
+        status: 'active',
+        createdAt: new Date(0).toISOString(),
+      },
+    ];
+    const syncProjectContext = vi.fn(cloud.syncProjectContext);
+    cloud.syncProjectContext = syncProjectContext;
+    const local = localFixture();
+    local.listProjectBindings = async () => [
+      {
+        localBindingId: '11111111-1111-4111-8111-111111111111',
+        spaceId: 'project-a',
+        localPath: '/private/projects/payments',
+        agents: ['codex', 'cursor'],
+        status: 'active',
+        createdAt: '0001',
+      },
+    ];
+    const projectContextPlan = vi.fn(local.projectContextPlan);
+    const applyInstall = vi.fn(local.applyInstall);
+    local.projectContextPlan = projectContextPlan;
+    local.applyInstall = applyInstall;
+    render(
+      <DesktopApp
+        cloud={cloud}
+        local={local}
+        sessionStore={createMemorySessionStore({
+          accessToken: 'token',
+          refreshToken: 'refresh',
+          organizationId: 'org-a',
+        })}
+      />,
+    );
+
+    fireEvent.click(await screen.findByRole('button', { name: '项目' }));
+    fireEvent.click(await screen.findByRole('button', { name: '选择同步' }));
+    fireEvent.click(await screen.findByRole('button', { name: '同步 1 个文件' }));
+
+    await waitFor(() => expect(projectContextPlan).toHaveBeenCalledTimes(2));
+    expect(projectContextPlan).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({ adapterId: 'codex', rootPath: '/private/projects/payments' }),
+    );
+    expect(projectContextPlan).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({ adapterId: 'cursor', rootPath: '/private/projects/payments' }),
+    );
+    expect(applyInstall).toHaveBeenCalledTimes(2);
+    expect(syncProjectContext).toHaveBeenCalledTimes(1);
+  });
 });

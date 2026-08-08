@@ -9,7 +9,7 @@ describe('desktop install plan verification', () => {
   it('verifies the canonical package digest before preparing local writes', async () => {
     const entries = {
       'capaport.yaml': new TextEncoder().encode(
-        'metadata:\n  slug: secure-review\nspec:\n  components:\n    - type: skill\n      path: skills/secure-review\n',
+        'metadata:\n  slug: secure-review\nspec:\n  compatibility:\n    agents: [codex]\n  components:\n    - type: skill\n      path: skills/secure-review\n',
       ),
       'skills/secure-review/SKILL.md': new TextEncoder().encode('# Secure review'),
     };
@@ -36,7 +36,7 @@ describe('desktop install plan verification', () => {
   it('uses the persisted install-lock digest for clean updates and leaves new files without an expectation', async () => {
     const entries = {
       'capaport.yaml': new TextEncoder().encode(
-        'metadata:\n  slug: secure-review\nspec:\n  components:\n    - type: skill\n      path: skills/secure-review\n',
+        'metadata:\n  slug: secure-review\nspec:\n  compatibility:\n    agents: [codex]\n  components:\n    - type: skill\n      path: skills/secure-review\n',
       ),
       'skills/secure-review/SKILL.md': new TextEncoder().encode('# Secure review v2'),
       'skills/secure-review/reference.md': new TextEncoder().encode('# Reference'),
@@ -67,5 +67,54 @@ describe('desktop install plan verification', () => {
 
     expect(selectInstallVersion(versions)?.id).toBe('v10');
     expect(selectInstallVersion(versions, 'v2')?.id).toBe('v2');
+  });
+
+  it('projects canonical components to Cursor MDC and Gemini TOML files', async () => {
+    const cursorEntries = {
+      'capaport.yaml': new TextEncoder().encode(
+        'metadata:\n  slug: secure-review\nspec:\n  compatibility:\n    agents: [cursor]\n  components:\n    - type: context\n      path: context/secure-review.md\n',
+      ),
+      'context/secure-review.md': new TextEncoder().encode('# Secure review'),
+    };
+    const cursor = await buildLocalInstallPlan({
+      archive: zipSync(cursorEntries),
+      adapterId: 'cursor',
+      rootPath: '[authorized-root]',
+      packageDigest: await calculatePackageDigest(cursorEntries),
+    });
+    expect(cursor.writes[0]?.relativePath).toBe('rules/secure-review.mdc');
+
+    const geminiEntries = {
+      'capaport.yaml': new TextEncoder().encode(
+        'metadata:\n  slug: secure-review\nspec:\n  compatibility:\n    agents: [gemini-cli]\n  components:\n    - type: prompt\n      path: prompts/secure-review.md\n',
+      ),
+      'prompts/secure-review.md': new TextEncoder().encode('Review {{args}} for security.'),
+    };
+    const gemini = await buildLocalInstallPlan({
+      archive: zipSync(geminiEntries),
+      adapterId: 'gemini-cli',
+      rootPath: '[authorized-root]',
+      packageDigest: await calculatePackageDigest(geminiEntries),
+    });
+    expect(gemini.writes[0]?.relativePath).toBe('commands/secure-review.toml');
+    expect(atob(gemini.writes[0]?.contentBase64 ?? '')).toContain('prompt = "Review {{args}} for security."');
+  });
+
+  it('rejects installation when the manifest does not declare the selected agent', async () => {
+    const entries = {
+      'capaport.yaml': new TextEncoder().encode(
+        'metadata:\n  slug: secure-review\nspec:\n  compatibility:\n    agents: [claude-code]\n  components:\n    - type: skill\n      path: skills/secure-review\n',
+      ),
+      'skills/secure-review/SKILL.md': new TextEncoder().encode('# Secure review'),
+    };
+
+    await expect(
+      buildLocalInstallPlan({
+        archive: zipSync(entries),
+        adapterId: 'codex',
+        rootPath: '[authorized-root]',
+        packageDigest: await calculatePackageDigest(entries),
+      }),
+    ).rejects.toThrow('能力包未声明兼容 codex');
   });
 });

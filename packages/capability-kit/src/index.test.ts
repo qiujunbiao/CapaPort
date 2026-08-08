@@ -24,7 +24,7 @@ spec:
     - type: prompt
       path: prompts/summary.md
   compatibility:
-    agents: [codex, claude-code]
+    agents: [claude-code, cursor]
   permissions:
     filesystem: read-project
     network: none
