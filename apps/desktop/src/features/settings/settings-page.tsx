@@ -11,6 +11,7 @@ export function SettingsPage({
   online,
   onLogout,
   onRefreshQueue,
+  onSyncQueue,
 }: {
   user: PublicUser | undefined;
   organization: OrganizationSummary | undefined;
@@ -18,6 +19,7 @@ export function SettingsPage({
   online: boolean;
   onLogout: () => void;
   onRefreshQueue: () => void;
+  onSyncQueue: () => void;
 }) {
   const [diagnosticStatus, setDiagnosticStatus] = useState('');
 
@@ -83,6 +85,10 @@ export function SettingsPage({
           <Button variant="secondary" onClick={onRefreshQueue}>
             <RefreshCw aria-hidden size={15} />
             刷新状态
+          </Button>
+          <Button variant="secondary" disabled={!online} onClick={onSyncQueue}>
+            <RefreshCw aria-hidden size={15} />
+            {queue?.failed ? '重试失败任务' : '立即同步'}
           </Button>
         </Panel>
         <Panel>

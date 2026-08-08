@@ -13,6 +13,13 @@ export type LocalScanReport = {
   blocked: boolean;
   requiresConfirmation: boolean;
 };
+export type OfflineWrite = {
+  id: string;
+  operation: string;
+  payloadJson: string;
+  idempotencyKey: string;
+  attempts: number;
+};
 export type LocalPackageExport = { fileName: string; sizeBytes: number; sha256: string; archiveBase64: string };
 export type ManagedFileContent = { contentBase64: string; digest: string };
 export type SecureSession = { accessToken: string; refreshToken: string; expiresIn?: number; organizationId?: string };
@@ -99,6 +106,11 @@ export const localCommandNames = [
   'export_project_context',
   'project_context_plan',
   'sync_queue_status',
+  'enqueue_write',
+  'claim_ready_writes',
+  'complete_write',
+  'reschedule_write',
+  'retry_failed_writes',
   'store_session',
   'load_session',
   'clear_session',

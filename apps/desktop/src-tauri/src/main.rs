@@ -1,5 +1,8 @@
 #[cfg(feature = "tauri-app")]
-use agentdoor_runtime::commands::{ExportPackageInput, InventoryInput, PathInput, Runtime};
+use agentdoor_runtime::commands::{
+    ExportPackageInput, InventoryInput, PathInput, QueueClaimInput, QueueItemInput,
+    QueueRescheduleInput, QueueRetryFailedInput, QueueWriteInput, Runtime,
+};
 #[cfg(feature = "tauri-app")]
 use agentdoor_runtime::projects::{
     BindProjectInput, ContextPackageInput, ProjectBindingInput, ProjectProjectionInput,
@@ -162,6 +165,46 @@ fn sync_queue_status(
 }
 #[cfg(feature = "tauri-app")]
 #[tauri::command]
+fn enqueue_write(
+    input: QueueWriteInput,
+    state: tauri::State<'_, AppState>,
+) -> Result<(), CommandError> {
+    state.runtime.enqueue_write(&input).map_err(Into::into)
+}
+#[cfg(feature = "tauri-app")]
+#[tauri::command]
+fn claim_ready_writes(
+    input: QueueClaimInput,
+    state: tauri::State<'_, AppState>,
+) -> Result<Vec<agentdoor_runtime::database::RetryOperation>, CommandError> {
+    state.runtime.claim_ready_writes(&input).map_err(Into::into)
+}
+#[cfg(feature = "tauri-app")]
+#[tauri::command]
+fn complete_write(
+    input: QueueItemInput,
+    state: tauri::State<'_, AppState>,
+) -> Result<(), CommandError> {
+    state.runtime.complete_write(&input).map_err(Into::into)
+}
+#[cfg(feature = "tauri-app")]
+#[tauri::command]
+fn reschedule_write(
+    input: QueueRescheduleInput,
+    state: tauri::State<'_, AppState>,
+) -> Result<(), CommandError> {
+    state.runtime.reschedule_write(&input).map_err(Into::into)
+}
+#[cfg(feature = "tauri-app")]
+#[tauri::command]
+fn retry_failed_writes(
+    input: QueueRetryFailedInput,
+    state: tauri::State<'_, AppState>,
+) -> Result<(), CommandError> {
+    state.runtime.retry_failed_writes(&input).map_err(Into::into)
+}
+#[cfg(feature = "tauri-app")]
+#[tauri::command]
 fn store_session(
     session: agentdoor_runtime::commands::SecureSession,
     state: tauri::State<'_, AppState>,
@@ -216,6 +259,11 @@ fn main() {
             export_project_context,
             project_context_plan,
             sync_queue_status,
+            enqueue_write,
+            claim_ready_writes,
+            complete_write,
+            reschedule_write,
+            retry_failed_writes,
             store_session,
             load_session,
             clear_session

@@ -105,6 +105,44 @@ pub struct PathInput {
 
 #[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
+pub struct QueueWriteInput {
+    pub id: String,
+    pub operation: String,
+    pub payload_json: String,
+    pub idempotency_key: String,
+    pub available_at: String,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct QueueClaimInput {
+    pub now: String,
+    pub limit: u32,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct QueueItemInput {
+    pub id: String,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct QueueRescheduleInput {
+    pub id: String,
+    pub error_code: String,
+    pub available_at: String,
+    pub permanently_failed: bool,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct QueueRetryFailedInput {
+    pub now: String,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct ManagedFileInput {
     pub root_path: String,
     pub relative_path: String,
@@ -674,6 +712,56 @@ impl Runtime {
     }
     pub fn sync_queue_status(&self) -> RuntimeResult<SyncQueueStatus> {
         self.database.queue_status()
+    }
+
+    pub fn enqueue_write(&self, input: &QueueWriteInput) -> RuntimeResult<()> {
+        Uuid::parse_str(&input.id).map_err(|_| RuntimeError::InvalidInput)?;
+        Uuid::parse_str(&input.idempotency_key).map_err(|_| RuntimeError::InvalidInput)?;
+        if input.operation.is_empty()
+            || input.operation.len() > 120
+            || !input
+                .operation
+                .bytes()
+                .all(|byte| byte.is_ascii_alphanumeric() || matches!(byte, b'.' | b'_' | b'-'))
+            || input.payload_json.len() > 2_000_000
+            || serde_json::from_str::<serde_json::Value>(&input.payload_json).is_err()
+        {
+            return Err(RuntimeError::InvalidInput);
+        }
+        self.database.enqueue_retry(
+            &input.id,
+            &input.operation,
+            &input.payload_json,
+            &input.idempotency_key,
+            &input.available_at,
+            &input.available_at,
+        )
+    }
+
+    pub fn claim_ready_writes(
+        &self,
+        input: &QueueClaimInput,
+    ) -> RuntimeResult<Vec<crate::database::RetryOperation>> {
+        self.database
+            .claim_ready_retries(&input.now, input.limit.min(100))
+    }
+
+    pub fn complete_write(&self, input: &QueueItemInput) -> RuntimeResult<()> {
+        self.database.complete_retry(&input.id)
+    }
+
+    pub fn reschedule_write(&self, input: &QueueRescheduleInput) -> RuntimeResult<()> {
+        self.database.reschedule_retry(
+            &input.id,
+            &input.error_code,
+            &input.available_at,
+            &input.available_at,
+            input.permanently_failed,
+        )
+    }
+
+    pub fn retry_failed_writes(&self, input: &QueueRetryFailedInput) -> RuntimeResult<()> {
+        self.database.retry_failed(&input.now)
     }
 
     pub fn store_session(&self, session: &SecureSession) -> RuntimeResult<()> {

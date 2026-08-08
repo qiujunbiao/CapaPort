@@ -128,7 +128,9 @@ describe('desktop application safety workflows', () => {
   });
 
   it('shows retry queue and syncs again without exposing local paths', async () => {
-    const local = localFixture({ pendingRetries: 2 });
+    const local = localFixture({ pendingRetries: 2, failedRetries: 1 });
+    const retryFailedWrites = vi.fn(local.retryFailedWrites);
+    local.retryFailedWrites = retryFailedWrites;
     render(
       <DesktopApp
         cloud={cloudFixture()}
@@ -143,6 +145,8 @@ describe('desktop application safety workflows', () => {
     fireEvent.click(await screen.findByRole('button', { name: '设置' }));
     expect(await screen.findByText('2 个操作等待重试')).toBeInTheDocument();
     expect(document.body.textContent).not.toContain('/Users/private');
+    fireEvent.click(screen.getByRole('button', { name: '重试失败任务' }));
+    await waitFor(() => expect(retryFailedWrites).toHaveBeenCalledTimes(1));
   });
 
   it('creates a Skill, Prompt, and context package in the authoring workspace and submits it', async () => {

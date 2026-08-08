@@ -261,7 +261,7 @@ export function createCloudClient(
         method: 'POST',
         session: input.session,
         organizationId: input.organizationId,
-        headers: { 'idempotency-key': crypto.randomUUID() },
+        headers: { 'idempotency-key': input.idempotencyKey ?? crypto.randomUUID() },
         body: JSON.stringify({
           draftId: input.draftId,
           targetSpaceId: input.targetSpaceId,
@@ -276,7 +276,7 @@ export function createCloudClient(
         method: 'POST',
         session: input.session,
         organizationId: input.organizationId,
-        headers: { 'idempotency-key': crypto.randomUUID() },
+        headers: { 'idempotency-key': input.idempotencyKey ?? crypto.randomUUID() },
         body: JSON.stringify({
           deviceId: input.deviceId,
           capabilityId: input.capabilityId,

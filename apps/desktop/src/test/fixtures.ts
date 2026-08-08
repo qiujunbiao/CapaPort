@@ -254,7 +254,7 @@ export function cloudFixture(
 }
 
 export function localFixture(
-  options: { blockedScan?: boolean; installConflict?: boolean; pendingRetries?: number } = {},
+  options: { blockedScan?: boolean; installConflict?: boolean; pendingRetries?: number; failedRetries?: number } = {},
 ): LocalClient {
   return {
     detectAgents: async () => [
@@ -333,6 +333,11 @@ export function localFixture(
       rootPath: input.rootPath,
       writes: [],
     }),
-    syncQueueStatus: async () => ({ pending: options.pendingRetries ?? 0, failed: 0 }),
+    syncQueueStatus: async () => ({ pending: options.pendingRetries ?? 0, failed: options.failedRetries ?? 0 }),
+    enqueueWrite: async () => undefined,
+    claimReadyWrites: async () => [],
+    completeWrite: async () => undefined,
+    rescheduleWrite: async () => undefined,
+    retryFailedWrites: async () => undefined,
   };
 }

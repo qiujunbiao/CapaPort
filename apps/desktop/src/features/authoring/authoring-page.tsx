@@ -201,7 +201,7 @@ export function AuthoringPage({
       if (revision.findings.length && (!riskAccepted || riskReason.trim().length < 3)) {
         throw new Error('请确认可接受风险并填写确认理由');
       }
-      await cloud.submitPublication({
+      const publication = await cloud.submitPublication({
         session,
         organizationId,
         capabilityId: revision.capabilityId,
@@ -212,7 +212,7 @@ export function AuthoringPage({
           ? { riskAcceptance: { findingDigests: revision.findings, reason: riskReason.trim() } }
           : {}),
       });
-      setMessage('已提交到审核流程');
+      setMessage(publication.queued ? '已加入离线队列，联网后自动提交' : '已提交到审核流程');
       onSubmitted();
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : '提交审核失败');

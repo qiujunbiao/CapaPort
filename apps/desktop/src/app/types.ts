@@ -26,6 +26,7 @@ import type {
   ProjectInventory,
   SyncQueueStatus,
 } from '../generated/commands';
+import type { OfflineWrite, RescheduleInput } from './offline-queue';
 
 export type Session = Omit<TokenPair, 'expiresIn'> & { expiresIn?: number; organizationId?: string };
 
@@ -182,7 +183,8 @@ export interface CloudClient {
     targetSpaceId: string;
     version: string;
     riskAcceptance?: { findingDigests: string[]; reason: string };
-  }): Promise<{ publicationId: string }>;
+    idempotencyKey?: string;
+  }): Promise<{ publicationId: string; queued?: boolean }>;
   reportInstallation(input: {
     session: Session;
     organizationId: string;
@@ -192,6 +194,7 @@ export interface CloudClient {
     agent: AgentId;
     outcome: 'installed' | 'failed' | 'uninstalled';
     failureCode?: string;
+    idempotencyKey?: string;
   }): Promise<void>;
   createProjectBinding(input: {
     session: Session;
@@ -248,6 +251,11 @@ export interface LocalClient {
     rootPath: string;
   }): Promise<InstallPlan>;
   syncQueueStatus(): Promise<SyncQueueStatus>;
+  enqueueWrite(write: OfflineWrite & { availableAt: string }): Promise<void>;
+  claimReadyWrites(now: string, limit: number): Promise<OfflineWrite[]>;
+  completeWrite(id: string): Promise<void>;
+  rescheduleWrite(input: RescheduleInput): Promise<void>;
+  retryFailedWrites(now: string): Promise<void>;
   storeSession?(session: Session): Promise<void>;
   loadSession?(): Promise<Session | undefined>;
   clearSession?(): Promise<void>;

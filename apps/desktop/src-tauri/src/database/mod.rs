@@ -12,7 +12,7 @@ CREATE TABLE IF NOT EXISTS local_project_bindings (id TEXT PRIMARY KEY,space_id 
 CREATE TABLE IF NOT EXISTS install_locks (id TEXT PRIMARY KEY,adapter_id TEXT NOT NULL,capability_slug TEXT NOT NULL,root_path TEXT NOT NULL,lock_json TEXT NOT NULL,updated_at TEXT NOT NULL,UNIQUE(adapter_id,capability_slug,root_path));
 CREATE TABLE IF NOT EXISTS backups (id TEXT PRIMARY KEY,transaction_id TEXT NOT NULL,relative_path TEXT NOT NULL,backup_path TEXT NOT NULL,created_at TEXT NOT NULL);
 CREATE TABLE IF NOT EXISTS sync_cursors (scope_key TEXT PRIMARY KEY,cursor TEXT NOT NULL,updated_at TEXT NOT NULL);
-CREATE TABLE IF NOT EXISTS retry_queue (id TEXT PRIMARY KEY,operation TEXT NOT NULL,payload_json TEXT NOT NULL,status TEXT NOT NULL DEFAULT 'pending',attempts INTEGER NOT NULL DEFAULT 0,available_at TEXT NOT NULL,last_error_code TEXT,created_at TEXT NOT NULL,updated_at TEXT NOT NULL);
+CREATE TABLE IF NOT EXISTS retry_queue (id TEXT PRIMARY KEY,operation TEXT NOT NULL,payload_json TEXT NOT NULL,idempotency_key TEXT NOT NULL,status TEXT NOT NULL DEFAULT 'pending',attempts INTEGER NOT NULL DEFAULT 0,available_at TEXT NOT NULL,last_error_code TEXT,created_at TEXT NOT NULL,updated_at TEXT NOT NULL);
 CREATE TABLE IF NOT EXISTS recovery_journal (transaction_id TEXT PRIMARY KEY,state TEXT NOT NULL,journal_path TEXT NOT NULL,updated_at TEXT NOT NULL);
 CREATE INDEX IF NOT EXISTS retry_queue_ready_idx ON retry_queue(status,available_at);
 "#;
@@ -31,6 +31,7 @@ pub struct RetryOperation {
     pub id: String,
     pub operation: String,
     pub payload_json: String,
+    pub idempotency_key: String,
     pub attempts: u32,
 }
 
@@ -57,6 +58,26 @@ impl Database {
         let connection = Connection::open(path).map_err(|_| RuntimeError::Database)?;
         connection
             .execute_batch(MIGRATION)
+            .map_err(|_| RuntimeError::Database)?;
+        let has_idempotency_key = connection
+            .prepare("PRAGMA table_info(retry_queue)")
+            .and_then(|mut statement| {
+                let columns = statement.query_map([], |row| row.get::<_, String>(1))?;
+                columns.collect::<Result<Vec<_>, _>>()
+            })
+            .map_err(|_| RuntimeError::Database)?
+            .iter()
+            .any(|column| column == "idempotency_key");
+        if !has_idempotency_key {
+            connection
+                .execute(
+                    "ALTER TABLE retry_queue ADD COLUMN idempotency_key TEXT NOT NULL DEFAULT ''",
+                    [],
+                )
+                .map_err(|_| RuntimeError::Database)?;
+        }
+        connection
+            .execute("UPDATE retry_queue SET status='pending' WHERE status='running'", [])
             .map_err(|_| RuntimeError::Database)?;
         Ok(Self {
             connection: Mutex::new(connection),
@@ -226,33 +247,47 @@ impl Database {
         id: &str,
         operation: &str,
         payload_json: &str,
+        idempotency_key: &str,
         available_at: &str,
         now: &str,
     ) -> RuntimeResult<()> {
         self.connection.lock().execute(
-            "INSERT INTO retry_queue(id,operation,payload_json,status,attempts,available_at,created_at,updated_at) VALUES(?1,?2,?3,'pending',0,?4,?5,?5) ON CONFLICT(id) DO NOTHING",
-            params![id, operation, payload_json, available_at, now],
+            "INSERT INTO retry_queue(id,operation,payload_json,idempotency_key,status,attempts,available_at,created_at,updated_at) VALUES(?1,?2,?3,?4,'pending',0,?5,?6,?6) ON CONFLICT(id) DO NOTHING",
+            params![id, operation, payload_json, idempotency_key, available_at, now],
         ).map_err(|_| RuntimeError::Database)?;
         Ok(())
     }
 
-    pub fn ready_retries(&self, now: &str, limit: u32) -> RuntimeResult<Vec<RetryOperation>> {
-        let connection = self.connection.lock();
-        let mut statement = connection.prepare(
-            "SELECT id,operation,payload_json,attempts FROM retry_queue WHERE status='pending' AND available_at<=?1 ORDER BY available_at,id LIMIT ?2",
-        ).map_err(|_| RuntimeError::Database)?;
-        let rows = statement
-            .query_map(params![now, limit], |row| {
-                Ok(RetryOperation {
-                    id: row.get(0)?,
-                    operation: row.get(1)?,
-                    payload_json: row.get(2)?,
-                    attempts: row.get::<_, i64>(3)? as u32,
+    pub fn claim_ready_retries(&self, now: &str, limit: u32) -> RuntimeResult<Vec<RetryOperation>> {
+        let mut connection = self.connection.lock();
+        let transaction = connection.transaction().map_err(|_| RuntimeError::Database)?;
+        let writes = {
+            let mut statement = transaction.prepare(
+                "SELECT id,operation,payload_json,idempotency_key,attempts FROM retry_queue WHERE status='pending' AND available_at<=?1 ORDER BY available_at,id LIMIT ?2",
+            ).map_err(|_| RuntimeError::Database)?;
+            let rows = statement
+                .query_map(params![now, limit], |row| {
+                    Ok(RetryOperation {
+                        id: row.get(0)?,
+                        operation: row.get(1)?,
+                        payload_json: row.get(2)?,
+                        idempotency_key: row.get(3)?,
+                        attempts: row.get::<_, i64>(4)? as u32,
+                    })
                 })
-            })
-            .map_err(|_| RuntimeError::Database)?;
-        rows.collect::<Result<Vec<_>, _>>()
-            .map_err(|_| RuntimeError::Database)
+                .map_err(|_| RuntimeError::Database)?;
+            rows.collect::<Result<Vec<_>, _>>().map_err(|_| RuntimeError::Database)?
+        };
+        for write in &writes {
+            transaction
+                .execute(
+                    "UPDATE retry_queue SET status='running',updated_at=?2 WHERE id=?1 AND status='pending'",
+                    params![write.id, now],
+                )
+                .map_err(|_| RuntimeError::Database)?;
+        }
+        transaction.commit().map_err(|_| RuntimeError::Database)?;
+        Ok(writes)
     }
 
     pub fn reschedule_retry(
@@ -279,6 +314,17 @@ impl Database {
         self.connection
             .lock()
             .execute("DELETE FROM retry_queue WHERE id=?1", [id])
+            .map_err(|_| RuntimeError::Database)?;
+        Ok(())
+    }
+
+    pub fn retry_failed(&self, now: &str) -> RuntimeResult<()> {
+        self.connection
+            .lock()
+            .execute(
+                "UPDATE retry_queue SET status='pending',available_at=?1,last_error_code=NULL,updated_at=?1 WHERE status='failed'",
+                [now],
+            )
             .map_err(|_| RuntimeError::Database)?;
         Ok(())
     }
@@ -323,7 +369,7 @@ impl Database {
 
     pub fn queue_status(&self) -> RuntimeResult<SyncQueueStatus> {
         self.connection.lock().query_row(
-            "SELECT count(*) FILTER(WHERE status='pending'),count(*) FILTER(WHERE status='failed'),min(available_at) FILTER(WHERE status='pending') FROM retry_queue",
+            "SELECT count(*) FILTER(WHERE status IN ('pending','running')),count(*) FILTER(WHERE status='failed'),min(available_at) FILTER(WHERE status='pending') FROM retry_queue",
             [], |row| Ok(SyncQueueStatus { pending: row.get::<_, i64>(0)? as u64, failed: row.get::<_, i64>(1)? as u64, next_available_at: row.get(2)? }),
         ).map_err(|_| RuntimeError::Database)
     }
@@ -378,18 +424,27 @@ mod tests {
         );
 
         database
-            .enqueue_retry("retry-1", "sync_pull", r#"{"spaceId":"1"}"#, "0001", "0001")
+            .enqueue_retry(
+                "retry-1",
+                "sync_pull",
+                r#"{"spaceId":"1"}"#,
+                "idem-1",
+                "0001",
+                "0001",
+            )
             .unwrap();
         database
-            .enqueue_retry("retry-2", "sync_push", "{}", "0003", "0001")
+            .enqueue_retry("retry-2", "sync_push", "{}", "idem-2", "0003", "0001")
             .unwrap();
-        let ready = database.ready_retries("0002", 10).unwrap();
+        let ready = database.claim_ready_retries("0002", 10).unwrap();
         assert_eq!(ready.len(), 1);
         assert_eq!(ready[0].id, "retry-1");
+        assert_eq!(ready[0].idempotency_key, "idem-1");
+        assert!(database.claim_ready_retries("0002", 10).unwrap().is_empty());
         database
             .reschedule_retry("retry-1", "NETWORK", "0004", "0002", false)
             .unwrap();
-        let ready = database.ready_retries("0003", 10).unwrap();
+        let ready = database.claim_ready_retries("0003", 10).unwrap();
         assert_eq!(ready.len(), 1);
         assert_eq!(ready[0].id, "retry-2");
         database
@@ -398,5 +453,26 @@ mod tests {
         assert_eq!(database.queue_status().unwrap().failed, 1);
         database.complete_retry("retry-1").unwrap();
         assert_eq!(database.queue_status().unwrap().failed, 0);
+    }
+
+    #[test]
+    fn recovers_claimed_writes_after_restart_and_allows_manual_dead_letter_retry() {
+        let directory = tempdir().unwrap();
+        let path = directory.path().join("agentdoor.db");
+        {
+            let database = Database::open(&path).unwrap();
+            database
+                .enqueue_retry("retry-1", "sync_push", "{}", "idem-1", "0001", "0001")
+                .unwrap();
+            assert_eq!(database.claim_ready_retries("0001", 1).unwrap().len(), 1);
+        }
+        let database = Database::open(&path).unwrap();
+        assert_eq!(database.claim_ready_retries("0001", 1).unwrap().len(), 1);
+        database
+            .reschedule_retry("retry-1", "ACCESS_DENIED", "0002", "0001", true)
+            .unwrap();
+        assert_eq!(database.queue_status().unwrap().failed, 1);
+        database.retry_failed("0003").unwrap();
+        assert_eq!(database.claim_ready_retries("0003", 1).unwrap().len(), 1);
     }
 }

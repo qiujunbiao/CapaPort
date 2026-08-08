@@ -26,6 +26,7 @@ import { LibraryPage } from '../features/library/library-page';
 import { ProjectsPage } from '../features/projects/projects-page';
 import { PublishingPage } from '../features/publishing/publishing-page';
 import { SettingsPage } from '../features/settings/settings-page';
+import { createQueuedCloudClient, OfflineWriteQueue, queuedCloudHandlers } from './offline-queue';
 import type { CloudClient, InstallationSummary, LocalClient, SessionStore } from './types';
 
 type Page = 'home' | 'library' | 'authoring' | 'projects' | 'publishing' | 'settings';
@@ -58,7 +59,7 @@ function writeCache(organizationId: string, kind: string, value: unknown) {
 }
 
 function AppContent({
-  cloud,
+  cloud: baseCloud,
   local,
   sessionStore,
 }: {
@@ -68,22 +69,27 @@ function AppContent({
 }) {
   const session = useSyncExternalStore(sessionStore.subscribe, sessionStore.get, sessionStore.get);
   const queryClient = useQueryClient();
+  const offlineQueue = useMemo(
+    () => new OfflineWriteQueue(local, { online: () => baseCloud.isOnline() }),
+    [baseCloud, local],
+  );
+  const cloud = useMemo(() => createQueuedCloudClient(baseCloud, offlineQueue), [baseCloud, offlineQueue]);
   const [page, setPage] = useState<Page>('home');
   const [railCollapsed, setRailCollapsed] = useState(false);
-  const [online, setOnline] = useState(cloud.isOnline());
+  const [online, setOnline] = useState(baseCloud.isOnline());
   const [discovering, setDiscovering] = useState(false);
   const [installing, setInstalling] = useState<CapabilitySummary>();
   const [notificationsOpen, setNotificationsOpen] = useState(false);
 
   useEffect(() => {
-    const update = () => setOnline(cloud.isOnline());
+    const update = () => setOnline(baseCloud.isOnline());
     window.addEventListener('online', update);
     window.addEventListener('offline', update);
     return () => {
       window.removeEventListener('online', update);
       window.removeEventListener('offline', update);
     };
-  }, [cloud]);
+  }, [baseCloud]);
 
   const organizationsQuery = useQuery({
     queryKey: ['organizations', session?.accessToken],
@@ -186,6 +192,10 @@ function AppContent({
     enabled: Boolean(session),
     retry: false,
   });
+  useEffect(() => {
+    if (!online || !session) return;
+    void offlineQueue.syncNow(queuedCloudHandlers(baseCloud, session)).then(() => queueQuery.refetch());
+  }, [baseCloud, offlineQueue, online, queueQuery.refetch, session]);
   const notificationsQuery = useQuery({
     queryKey: ['notifications', organizationId],
     queryFn: () => {
@@ -354,6 +364,13 @@ function AppContent({
           queryClient.clear();
         }}
         onRefreshQueue={() => void queueQuery.refetch()}
+        onSyncQueue={() => {
+          if (!session) return;
+          void offlineQueue
+            .retryFailed()
+            .then(() => offlineQueue.syncNow(queuedCloudHandlers(baseCloud, session)))
+            .then(() => queueQuery.refetch());
+        }}
       />
     );
   })();
