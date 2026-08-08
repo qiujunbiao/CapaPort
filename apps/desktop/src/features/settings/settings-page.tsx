@@ -1,6 +1,7 @@
 import type { OrganizationSummary, PublicUser } from '@agentdoor/contracts';
-import { Bell, Bug, Cloud, KeyRound, LogOut, RefreshCw, ShieldCheck, UserRound } from 'lucide-react';
+import { Bell, Bug, Cloud, Download, KeyRound, LogOut, RefreshCw, ShieldCheck, UserRound } from 'lucide-react';
 import { useState } from 'react';
+import { createTauriUpdater, type DesktopUpdaterState } from '../../app/updater';
 import { Button, PageHeader, Panel, Status } from '../../components/ui';
 import type { SyncQueueStatus } from '../../generated/commands';
 
@@ -22,6 +23,17 @@ export function SettingsPage({
   onSyncQueue: () => void;
 }) {
   const [diagnosticStatus, setDiagnosticStatus] = useState('');
+  const [updater] = useState(createTauriUpdater);
+  const [update, setUpdate] = useState<DesktopUpdaterState>(updater.state());
+
+  async function checkUpdate() {
+    setUpdate({ status: 'checking' });
+    setUpdate(await updater.check());
+  }
+
+  async function installUpdate() {
+    setUpdate(await updater.install(setUpdate));
+  }
 
   function exportDiagnostics() {
     const payload = createDiagnosticPayload({ online, queue, generatedAt: new Date() });
@@ -68,6 +80,48 @@ export function SettingsPage({
             <LogOut aria-hidden size={15} />
             退出登录
           </Button>
+        </Panel>
+        <Panel>
+          <div className="settings-section-title">
+            <Download aria-hidden />
+            <div>
+              <h2>桌面客户端更新</h2>
+              <p>只安装通过内置公钥验证的签名更新</p>
+            </div>
+          </div>
+          <dl className="settings-list">
+            <div>
+              <dt>当前版本</dt>
+              <dd className="mono">{update.currentVersion ?? '0.1.0'}</dd>
+            </div>
+            <div>
+              <dt>更新状态</dt>
+              <dd>
+                <Status tone={update.status === 'error' ? 'warn' : update.status === 'ready' ? 'good' : 'neutral'}>
+                  {updateLabel(update)}
+                </Status>
+              </dd>
+            </div>
+          </dl>
+          {update.version ? <p className="quiet-copy">可用版本：{update.version}</p> : null}
+          {update.body ? <p className="quiet-copy">{update.body}</p> : null}
+          {update.status === 'downloading' ? (
+            <progress aria-label="更新下载进度" max={100} value={update.progress ?? 0} />
+          ) : null}
+          {update.error ? <p className="diagnostic-status">{update.error}</p> : null}
+          <Button variant="secondary" disabled={update.status === 'checking'} onClick={() => void checkUpdate()}>
+            <RefreshCw aria-hidden size={15} />
+            {update.status === 'checking' ? '正在检查' : '检查更新'}
+          </Button>
+          {update.status === 'available' ? (
+            <Button onClick={() => void installUpdate()}>
+              <Download aria-hidden size={15} />
+              下载并安装
+            </Button>
+          ) : null}
+          {update.status === 'ready' ? (
+            <Button onClick={() => void updater.restart().then(setUpdate)}>重启完成更新</Button>
+          ) : null}
         </Panel>
         <Panel>
           <div className="settings-section-title">
@@ -159,6 +213,19 @@ export function SettingsPage({
       </div>
     </div>
   );
+}
+
+function updateLabel(update: DesktopUpdaterState): string {
+  const labels: Record<DesktopUpdaterState['status'], string> = {
+    idle: '尚未检查',
+    checking: '检查签名清单',
+    current: '已是最新版本',
+    available: '发现签名更新',
+    downloading: `下载安装中 ${update.progress ?? 0}%`,
+    ready: '安装完成，等待重启',
+    error: '更新失败',
+  };
+  return labels[update.status];
 }
 
 export function createDiagnosticPayload({

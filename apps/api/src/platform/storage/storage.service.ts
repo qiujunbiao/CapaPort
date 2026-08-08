@@ -12,6 +12,24 @@ import type { AppConfig } from '../../config/config.js';
 import { APP_CONFIG } from '../../config/config.js';
 import type { DependencyProbe } from '../health/health.service.js';
 
+export function encryptionRequest(config: AppConfig): {
+  command: { ServerSideEncryption?: 'AES256' | 'aws:kms'; SSEKMSKeyId?: string };
+  headers: Record<string, string>;
+} {
+  const encryption = config.s3.encryption;
+  if (!encryption) return { command: {}, headers: {} };
+  return {
+    command: {
+      ServerSideEncryption: encryption.algorithm,
+      ...(encryption.kmsKeyId ? { SSEKMSKeyId: encryption.kmsKeyId } : {}),
+    },
+    headers: {
+      'x-amz-server-side-encryption': encryption.algorithm,
+      ...(encryption.kmsKeyId ? { 'x-amz-server-side-encryption-aws-kms-key-id': encryption.kmsKeyId } : {}),
+    },
+  };
+}
+
 @Injectable()
 export class StorageService implements DependencyProbe {
   readonly name = 'storage';
@@ -38,11 +56,21 @@ export class StorageService implements DependencyProbe {
   }
 
   createUploadUrl(objectKey: string, contentType: 'application/zip', expiresIn = 300): Promise<string> {
+    const encryption = encryptionRequest(this.config);
     return getSignedUrl(
       this.uploadClient,
-      new PutObjectCommand({ Bucket: this.config.s3.bucket, Key: objectKey, ContentType: contentType }),
+      new PutObjectCommand({
+        Bucket: this.config.s3.bucket,
+        Key: objectKey,
+        ContentType: contentType,
+        ...encryption.command,
+      }),
       { expiresIn },
     );
+  }
+
+  uploadHeaders(): Record<string, string> {
+    return encryptionRequest(this.config).headers;
   }
 
   createDownloadUrl(objectKey: string, expiresIn = 120): Promise<string> {
@@ -55,6 +83,10 @@ export class StorageService implements DependencyProbe {
 
   async statObject(objectKey: string): Promise<{ sizeBytes: number }> {
     const result = await this.client.send(new HeadObjectCommand({ Bucket: this.config.s3.bucket, Key: objectKey }));
+    const expected = this.config.s3.encryption?.algorithm;
+    if (expected && result.ServerSideEncryption !== expected) {
+      throw new Error(`Stored artifact does not use the required ${expected} server-side encryption.`);
+    }
     return { sizeBytes: result.ContentLength ?? 0 };
   }
 
@@ -65,12 +97,14 @@ export class StorageService implements DependencyProbe {
   }
 
   async writeVerifiedObject(objectKey: string, bytes: Uint8Array, contentType: 'application/zip'): Promise<void> {
+    const encryption = encryptionRequest(this.config);
     await this.client.send(
       new PutObjectCommand({
         Bucket: this.config.s3.bucket,
         Key: objectKey,
         Body: bytes,
         ContentType: contentType,
+        ...encryption.command,
       }),
     );
   }

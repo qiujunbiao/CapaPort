@@ -408,7 +408,7 @@ export class OperationsWorker {
           date_trunc('month',min(created_at))+interval '1 month' AS period_end,count(*)::int AS row_count,
           jsonb_agg(to_jsonb(a) ORDER BY created_at,id) AS payload,
           md5(jsonb_agg(to_jsonb(a) ORDER BY created_at,id)::text) AS checksum
-         FROM (SELECT * FROM audit_logs WHERE expires_at < now() ORDER BY created_at) a
+         FROM (SELECT * FROM audit_logs WHERE organization_id IS NOT NULL AND expires_at < now() ORDER BY created_at) a
          GROUP BY organization_id,date_trunc('month',created_at)`,
       );
       for (const group of groups.rows) {
@@ -434,6 +434,7 @@ export class OperationsWorker {
           WHERE a.organization_id=archive.organization_id AND a.expires_at < now()
             AND a.created_at >= archive.period_start AND a.created_at < archive.period_end`,
       );
+      await client.query('DELETE FROM audit_logs WHERE organization_id IS NULL AND expires_at < now()');
       await client.query('COMMIT');
     } catch (error) {
       await client.query('ROLLBACK');
@@ -532,6 +533,19 @@ export class OperationsWorker {
     const client = await this.pool.connect();
     try {
       await client.query('BEGIN');
+      await client.query(
+        `UPDATE organization_invitations invitation
+         SET target=concat('deleted-',invitation.id::text)
+         WHERE EXISTS (
+           SELECT 1 FROM user_identities identity
+           WHERE identity.user_id=$1 AND identity.kind=invitation.kind
+             AND identity.normalized_value=invitation.target
+         )`,
+        [userId],
+      );
+      await client.query('DELETE FROM verification_challenges WHERE user_id=$1', [userId]);
+      await client.query('DELETE FROM notifications WHERE user_id=$1', [userId]);
+      await client.query('DELETE FROM devices WHERE user_id=$1', [userId]);
       await client.query('DELETE FROM user_identities WHERE user_id=$1', [userId]);
       await client.query('DELETE FROM sessions WHERE user_id=$1', [userId]);
       await client.query(

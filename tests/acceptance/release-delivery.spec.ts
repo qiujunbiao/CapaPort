@@ -24,12 +24,30 @@ describe('release delivery contract', () => {
     const workflow = await source('.github/workflows/release.yml');
     expect(workflow).toContain('macos-14');
     expect(workflow).toContain('windows-2025');
+    expect(workflow).toContain('universal-apple-darwin');
+    expect(workflow).toContain('x86_64-pc-windows-msvc');
     expect(workflow).toContain('APPLE_SIGNING_IDENTITY');
     expect(workflow).toContain('WINDOWS_CERTIFICATE_THUMBPRINT');
     expect(workflow).toContain('agentdoor-web');
     expect(workflow).toContain('agentdoor-cli');
     expect(workflow).toContain('pnpm images:build');
+    expect(workflow).toContain('anchore/sbom-action');
+    expect(workflow).toContain('attest-build-provenance');
+    expect(workflow).toContain('package-desktop-release.ts');
+    expect(workflow).toContain('SHA256SUMS');
     expect(await source('scripts/package-cli.ts')).toContain('sha256');
+  });
+
+  it('ships an executable Rust runtime acceptance harness instead of source-string assertions', async () => {
+    const harness = await source('apps/desktop/src-tauri/src/bin/runtime_harness.rs');
+    const test = await source('tests/acceptance/desktop-runtime.spec.ts');
+    expect(harness).toContain('Runtime::new');
+    expect(harness).toContain('preview_install');
+    expect(harness).toContain('apply_install');
+    expect(harness).toContain('export_local_package');
+    expect(harness).toContain('rollback_install');
+    expect(harness).toContain('uninstall');
+    expect(test).toContain('agentdoor-runtime-harness');
   });
 
   it('contains runnable user, administrator, security, operations, and acceptance documentation', async () => {

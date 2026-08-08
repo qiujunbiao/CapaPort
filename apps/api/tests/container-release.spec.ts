@@ -36,4 +36,10 @@ describe('container release contract', () => {
     await expect(source('infra/deploy/backup.sh')).resolves.toContain('pg_dump');
     await expect(source('infra/deploy/restore.sh')).resolves.toContain('pg_restore');
   });
+
+  it('builds Web workspace dependencies inside a clean container', async () => {
+    const dockerfile = await source('infra/docker/web.Dockerfile');
+    expect(dockerfile).toContain('pnpm turbo run build --filter=@agentdoor/web');
+    expect(dockerfile).not.toContain('pnpm --filter @agentdoor/web build');
+  });
 });

@@ -12,6 +12,8 @@ const environmentSchema = z
     S3_BUCKET: z.string().min(3),
     S3_ACCESS_KEY: z.string().min(1),
     S3_SECRET_KEY: z.string().min(8),
+    S3_SERVER_SIDE_ENCRYPTION: z.enum(['AES256', 'aws:kms']).optional(),
+    S3_KMS_KEY_ID: z.preprocess((value) => (value === '' ? undefined : value), z.string().min(1).optional()),
     JWT_SECRET: z.string().min(32),
     REFRESH_TOKEN_PEPPER: z.string().min(32),
     VERIFICATION_PEPPER: z.string().min(32),
@@ -32,9 +34,19 @@ const environmentSchema = z
       context.addIssue({ code: 'custom', path: ['METRICS_TOKEN'], message: 'is required in production' });
     }
     if (value.NODE_ENV === 'production') {
+      if (!value.S3_SERVER_SIDE_ENCRYPTION) {
+        context.addIssue({
+          code: 'custom',
+          path: ['S3_SERVER_SIDE_ENCRYPTION'],
+          message: 'is required in production',
+        });
+      }
       for (const key of ['SMS_PROVIDER_URL', 'SMS_PROVIDER_TOKEN', 'SMS_SENDER'] as const) {
         if (!value[key]) context.addIssue({ code: 'custom', path: [key], message: 'is required in production' });
       }
+    }
+    if (value.S3_SERVER_SIDE_ENCRYPTION === 'aws:kms' && !value.S3_KMS_KEY_ID) {
+      context.addIssue({ code: 'custom', path: ['S3_KMS_KEY_ID'], message: 'is required when using aws:kms' });
     }
   });
 
@@ -50,6 +62,7 @@ export type AppConfig = {
     bucket: string;
     accessKey: string;
     secretKey: string;
+    encryption?: { algorithm: 'AES256' | 'aws:kms'; kmsKeyId?: string };
   };
   auth: {
     jwtSecret: string;
@@ -88,6 +101,14 @@ export function parseConfig(environment: Record<string, string | undefined>): Ap
       bucket: parsed.data.S3_BUCKET,
       accessKey: parsed.data.S3_ACCESS_KEY,
       secretKey: parsed.data.S3_SECRET_KEY,
+      ...(parsed.data.S3_SERVER_SIDE_ENCRYPTION
+        ? {
+            encryption: {
+              algorithm: parsed.data.S3_SERVER_SIDE_ENCRYPTION,
+              ...(parsed.data.S3_KMS_KEY_ID ? { kmsKeyId: parsed.data.S3_KMS_KEY_ID } : {}),
+            },
+          }
+        : {}),
     },
     auth: {
       jwtSecret: parsed.data.JWT_SECRET,

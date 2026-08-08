@@ -13,10 +13,12 @@
   "dependencies": {
     "@agentdoor/capability-kit": "workspace:*",
     "@agentdoor/contracts": "workspace:*",
-    "@agentdoor/security-scan": "workspace:*",
     "@agentdoor/sdk": "workspace:*",
+    "@agentdoor/security-scan": "workspace:*",
     "@tanstack/react-query": "5.101.4",
     "@tauri-apps/api": "2.11.1",
+    "@tauri-apps/plugin-process": "2.3.1",
+    "@tauri-apps/plugin-updater": "2.10.1",
     "fflate": "0.8.3",
     "lucide-react": "1.30.0",
     "react": "19.2.8",

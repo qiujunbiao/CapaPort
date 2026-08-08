@@ -71,14 +71,26 @@ jobs:
 
   desktop:
     needs: verify
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
     strategy:
       fail-fast: false
       matrix:
         include:
           - os: macos-14
             artifact: agentdoor-macos
+            platform: macos
+            arch: universal
+            target: universal-apple-darwin
+            bundle: apps/desktop/src-tauri/target/universal-apple-darwin/release/bundle
           - os: windows-2025
             artifact: agentdoor-windows
+            platform: windows
+            arch: x86_64
+            target: x86_64-pc-windows-msvc
+            bundle: apps/desktop/src-tauri/target/x86_64-pc-windows-msvc/release/bundle
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
@@ -91,12 +103,32 @@ jobs:
           cache: pnpm
       - uses: dtolnay/rust-toolchain@stable
       - run: pnpm install --frozen-lockfile
+      - if: runner.os == 'macOS'
+        run: rustup target add aarch64-apple-darwin x86_64-apple-darwin
+      - if: runner.os == 'Windows'
+        run: rustup target add x86_64-pc-windows-msvc
+      - if: runner.os == 'macOS'
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          test -n "$TAURI_SIGNING_PRIVATE_KEY"
+          test -n "$APPLE_CERTIFICATE"
+          test -n "$APPLE_SIGNING_IDENTITY"
+          test -n "$APPLE_ID"
+          test -n "$APPLE_PASSWORD"
+          test -n "$APPLE_TEAM_ID"
       - if: runner.os == 'Windows'
         shell: pwsh
         env:
           WINDOWS_CERTIFICATE: ${{ secrets.WINDOWS_CERTIFICATE }}
           WINDOWS_CERTIFICATE_PASSWORD: ${{ secrets.WINDOWS_CERTIFICATE_PASSWORD }}
         run: |
+          if (-not $env:WINDOWS_CERTIFICATE -or -not $env:WINDOWS_CERTIFICATE_PASSWORD) { throw 'Windows signing secrets are required.' }
           $bytes = [Convert]::FromBase64String($env:WINDOWS_CERTIFICATE)
           $path = Join-Path $env:RUNNER_TEMP 'agentdoor-signing.pfx'
           [IO.File]::WriteAllBytes($path, $bytes)
@@ -117,6 +149,7 @@ jobs:
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
         with:
           projectPath: apps/desktop
+          args: --bundles app,dmg --target universal-apple-darwin
       - if: runner.os == 'Windows'
         uses: tauri-apps/tauri-action@v0
         env:
@@ -125,11 +158,33 @@ jobs:
         with:
           projectPath: apps/desktop
           args: >-
+            --bundles nsis --target x86_64-pc-windows-msvc
             --config '{"bundle":{"windows":{"certificateThumbprint":"${{ env.WINDOWS_CERTIFICATE_THUMBPRINT }}","digestAlgorithm":"sha256","timestampUrl":"http://timestamp.digicert.com"}}}'
+      - uses: anchore/sbom-action@v0
+        with:
+          path: ${{ matrix.bundle }}
+          format: spdx-json
+          output-file: ${{ matrix.bundle }}/agentdoor.spdx.json
+          upload-artifact: false
+      - run: >-
+          pnpm exec tsx scripts/package-desktop-release.ts
+          --root "${{ matrix.bundle }}"
+          --platform "${{ matrix.platform }}"
+          --arch "${{ matrix.arch }}"
+          --version "${{ github.ref_name }}"
+          --commit "${{ github.sha }}"
+      - if: runner.os == 'macOS'
+        run: test -f "${{ matrix.bundle }}/SHA256SUMS"
+      - if: runner.os == 'Windows'
+        shell: pwsh
+        run: if (-not (Test-Path "${{ matrix.bundle }}/SHA256SUMS")) { throw 'SHA256SUMS missing.' }
+      - uses: actions/attest-build-provenance@v3
+        with:
+          subject-path: ${{ matrix.bundle }}/**/*
       - uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.artifact }}
-          path: apps/desktop/src-tauri/target/release/bundle/**/*
+          path: ${{ matrix.bundle }}/**/*
           if-no-files-found: error
 
   images:
@@ -161,3 +216,47 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
       - run: pnpm install --frozen-lockfile
       - run: pnpm images:build -- --registry ghcr.io/${{ github.repository_owner }} --push
+
+  publish:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: [cli, web, desktop]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.16.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: agentdoor-*
+          path: release-assets
+      - name: Create signed updater manifest
+        env:
+          RELEASE_VERSION: ${{ github.ref_name }}
+        run: >-
+          pnpm exec tsx -e
+          "import { createUpdaterManifest } from './scripts/create-updater-manifest.ts';
+          await createUpdaterManifest({root:'release-assets',version:process.env.RELEASE_VERSION.replace(/^v/,''),repository:process.env.GITHUB_REPOSITORY,tag:process.env.RELEASE_VERSION,output:'release-assets/latest.json'});"
+      - uses: softprops/action-gh-release@v2
+        with:
+          generate_release_notes: true
+          files: |
+            release-assets/latest.json
+            release-assets/**/*.dmg
+            release-assets/**/*.app.tar.gz
+            release-assets/**/*.app.tar.gz.sig
+            release-assets/**/*-setup.exe
+            release-assets/**/*.nsis.zip
+            release-assets/**/*.nsis.zip.sig
+            release-assets/**/SHA256SUMS
+            release-assets/**/release-metadata.json
+            release-assets/**/agentdoor.spdx.json
+            release-assets/**/*.mjs
+            release-assets/**/*.sha256

@@ -66,6 +66,10 @@ export type ArtifactUploadPlan = {
   uploadId: string;
   method: 'PUT';
   url: string;
-  headers: { 'content-type': 'application/zip' };
+  headers: {
+    'content-type': 'application/zip';
+    'x-amz-server-side-encryption'?: 'AES256' | 'aws:kms';
+    'x-amz-server-side-encryption-aws-kms-key-id'?: string;
+  };
   expiresIn: number;
 };

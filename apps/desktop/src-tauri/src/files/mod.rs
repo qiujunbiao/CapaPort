@@ -103,7 +103,7 @@ struct LockRestore {
     adapter_id: String,
     capability_slug: String,
     root_path: String,
-    lock_json: String,
+    lock_json: Option<String>,
 }
 
 #[derive(Clone)]
@@ -199,12 +199,19 @@ impl FileEngine {
             fs::create_dir_all(parent).map_err(|_| RuntimeError::TransactionFailed)?;
         }
 
+        let previous_lock = database.load_lock(&plan.adapter_id, &plan.capability_slug, &plan.root_path)?;
         let mut journal = RecoveryJournal {
             transaction_id: plan.transaction_id.clone(),
             root: root.clone(),
             state: "applying".into(),
             entries: Vec::new(),
-            restore_lock: None,
+            restore_lock: Some(LockRestore {
+                id: format!("rollback-{}", plan.transaction_id),
+                adapter_id: plan.adapter_id.clone(),
+                capability_slug: plan.capability_slug.clone(),
+                root_path: plan.root_path.clone(),
+                lock_json: previous_lock,
+            }),
         };
         for write in &plan.writes {
             let relative = safe_relative(&write.relative_path)?;
@@ -394,7 +401,7 @@ impl FileEngine {
                 adapter_id: plan.adapter_id.clone(),
                 capability_slug: plan.capability_slug.clone(),
                 root_path: plan.root_path.clone(),
-                lock_json,
+                lock_json: Some(lock_json),
             }),
         };
         for (index, file) in plan.files.iter().enumerate() {
@@ -531,14 +538,18 @@ impl FileEngine {
             }
         }
         if let Some(lock) = &journal.restore_lock {
-            database.save_lock(
-                &lock.id,
-                &lock.adapter_id,
-                &lock.capability_slug,
-                &lock.root_path,
-                &lock.lock_json,
-                &now(),
-            )?;
+            if let Some(lock_json) = &lock.lock_json {
+                database.save_lock(
+                    &lock.id,
+                    &lock.adapter_id,
+                    &lock.capability_slug,
+                    &lock.root_path,
+                    lock_json,
+                    &now(),
+                )?;
+            } else {
+                database.remove_lock(&lock.adapter_id, &lock.capability_slug, &lock.root_path)?;
+            }
         }
         journal.state = "rolled_back".into();
         write_journal(journal_path, &journal)?;
@@ -650,6 +661,12 @@ mod tests {
             "rolled_back"
         );
         assert_eq!(fs::read_to_string(&target).unwrap(), "old");
+        assert!(
+            database
+                .load_lock("codex", "release", &root.path().to_string_lossy())
+                .unwrap()
+                .is_none()
+        );
     }
     #[test]
     fn blocks_local_modification_conflicts() {

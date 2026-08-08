@@ -50,7 +50,7 @@ describe('desktop security gate', () => {
       'sync_queue_status',
       'uninstall',
     ]);
-    expect(capability.permissions).toEqual(['core:default']);
+    expect(capability.permissions).toEqual(['core:default', 'updater:default', 'process:allow-restart']);
     expect(JSON.stringify(capability)).not.toMatch(/shell:|fs:|remote/i);
   });
 
@@ -63,6 +63,7 @@ describe('desktop security gate', () => {
     expect(updater.endpoints.every((endpoint: string) => endpoint.startsWith('https://'))).toBe(true);
     expect(updater.dangerousInsecureTransportProtocol).toBe(false);
     expect(rustMain).toContain('tauri_plugin_updater::Builder::new().build()');
+    expect(rustMain).toContain('tauri_plugin_process::init()');
   });
 
   it('redacts diagnostics and serializes only stable Rust command error codes', () => {

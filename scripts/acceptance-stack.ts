@@ -77,12 +77,20 @@ try {
   const summary = {
     status: 'passed',
     completedAt: new Date().toISOString(),
-    scenario: 'discover -> scan -> submit -> review -> install -> update -> conflict -> audit -> isolate',
+    scenario:
+      'discover -> scan -> submit -> review -> install -> update -> conflict -> recover -> lifecycle -> audit -> isolate',
     agents: { source: 'codex', target: 'claude-code' },
     stack: { api: true, worker: true, postgres: true, redis: true, objectStorage: true, mail: true },
+    desktopRuntime: {
+      cleanUpdate: true,
+      conflictImportRecovery: true,
+      transactionalUninstall: true,
+    },
   };
   await writeFile(resolve(repositoryRoot, 'reports/acceptance-summary.json'), `${JSON.stringify(summary, null, 2)}\n`);
-  process.stdout.write('final-acceptance=passed steps=10 source=codex target=claude-code tenant_isolation=true\n');
+  process.stdout.write(
+    'final-acceptance=passed steps=10 source=codex target=claude-code desktop_runtime=true lifecycle=true tenant_isolation=true\n',
+  );
 } finally {
   if (!keep) run('docker', [...composeArguments, 'down', '-v', '--remove-orphans'], stackEnvironment);
   if (keep) process.stdout.write(`acceptance-stack-kept project=${project} api=${apiBase}\n`);

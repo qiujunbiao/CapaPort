@@ -31,6 +31,8 @@ export S3_ENDPOINT=https://s3.internal.example
 export S3_PUBLIC_ENDPOINT=https://downloads.example
 export S3_BUCKET=agentdoor
 export S3_REGION=us-east-1
+export S3_SERVER_SIDE_ENCRYPTION=AES256
+# 使用 AWS KMS 时改为 aws:kms，并设置 S3_KMS_KEY_ID=alias/agentdoor
 export SMTP_HOST=smtp.example
 export SMTP_PORT=587
 export SMTP_FROM='Agentdoor <no-reply@example.com>'
@@ -39,7 +41,7 @@ docker compose -f infra/compose/compose.production.yaml up migrate
 docker compose -f infra/compose/compose.production.yaml up -d api worker
 ```
 
-迁移使用 PostgreSQL advisory lock 串行化；多个发布实例同时执行不会并发修改结构。反向代理仅暴露 API，强制 HTTPS/HSTS，并把对象下载域名限制为受控域。
+迁移使用 PostgreSQL advisory lock 串行化；多个发布实例同时执行不会并发修改结构。生产环境必须启用对象存储服务端加密，API 会把加密参数纳入上传签名并在确认上传时校验对象加密状态。反向代理仅暴露 API，强制 HTTPS/HSTS，并把对象下载域名限制为受控域。
 
 ## 启动验证
 

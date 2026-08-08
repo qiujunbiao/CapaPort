@@ -11,9 +11,19 @@ path = "src/lib.rs"
 name = "agentdoor-desktop"
 path = "src/main.rs"
 
+[[bin]]
+name = "agentdoor-runtime-harness"
+path = "src/bin/runtime_harness.rs"
+
 [features]
 default = []
-tauri-app = ["dep:directories", "dep:keyring", "dep:tauri", "dep:tauri-plugin-updater"]
+tauri-app = [
+  "dep:directories",
+  "dep:keyring",
+  "dep:tauri",
+  "dep:tauri-plugin-process",
+  "dep:tauri-plugin-updater",
+]
 
 [dependencies]
 base64 = "0.22.1"
@@ -26,8 +36,9 @@ rusqlite = { version = "0.37.0", features = ["bundled"] }
 serde = { version = "1.0.228", features = ["derive"] }
 serde_json = "1.0.145"
 sha2 = "0.10.9"
-tauri = { version = "2", optional = true }
+tauri = { version = "2", optional = true , features = [] }
 tauri-plugin-updater = { version = "2", optional = true }
+tauri-plugin-process = { version = "2", optional = true }
 thiserror = "2.0.17"
 uuid = { version = "1.18.1", features = ["v4", "serde"] }
 walkdir = "2.5.0"

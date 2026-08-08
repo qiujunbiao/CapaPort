@@ -18,6 +18,8 @@
 9. 邀请、提交、审核、下载、安装和版本更新均存在审计证据。
 10. 第二组织无法搜索、读取、下载或从错误信息推断第一组织资源。
 
+同一验收还验证组织/账号数据导出、30 天关闭或注销宽限期及取消、所有权移交。`tests/acceptance/desktop-runtime.spec.ts` 会执行 Rust `Runtime` 二进制，而不是读取源码字符串；它覆盖干净更新、本地修改冲突、导出本地版本、事务回滚、卸载和卸载回滚。
+
 最近一次实跑结果：`final-acceptance=passed steps=10 source=codex target=claude-code tenant_isolation=true`。
 
 ## 工程验收矩阵
@@ -30,9 +32,10 @@
 | 容器 | `pnpm stack:smoke` | 非 root、只读、迁移、发布分发、备份恢复、重启持久化 |
 | 业务 | `pnpm acceptance` | 十步跨端、跨 Agent、跨租户真实流程 |
 | CLI | `pnpm artifacts:cli` | 可执行单文件与 SHA-256 |
-| 桌面 | Release workflow matrix | macOS、Windows Tauri bundle 与 updater 签名 |
+| 桌面运行时 | Rust acceptance harness | 更新、冲突、导入、恢复、事务卸载 |
+| 桌面发布 | Release workflow matrix | macOS universal、Windows x64、updater 签名、SHA-256、SPDX SBOM、provenance |
 | 云端 | Release workflow images | API、Worker、Migrate 多架构镜像、SBOM、provenance、漏洞扫描 |
 
 ## 结论
 
-0.1.0 MVP 的功能和运行链路已实现。生产上线仍需由部署组织提供正式域名、SMTP/SMS、S3、数据库、签名证书、Tauri updater 密钥和监控告警接收端；这些外部秘密不属于源码交付物。
+0.1.0 MVP 的功能和运行链路已实现。生产上线仍需由部署组织提供正式域名、SMTP/SMS、S3、数据库、签名证书、Tauri updater 私钥、更新文件托管和监控告警接收端；这些外部服务与秘密不属于源码交付物，缺少任一签名秘密时发布流水线会失败关闭。

@@ -47,6 +47,7 @@ export interface ArtifactDataStore {
 
 export interface ArtifactObjectStore {
   createUploadUrl(objectKey: string, contentType: 'application/zip', expiresIn: number): Promise<string>;
+  uploadHeaders?(): Record<string, string>;
   statObject(objectKey: string): Promise<{ sizeBytes: number }>;
   readObject(objectKey: string): Promise<Uint8Array>;
   writeVerifiedObject(objectKey: string, bytes: Uint8Array, contentType: 'application/zip'): Promise<void>;
@@ -86,7 +87,7 @@ export class ArtifactService {
       uploadId,
       method: 'PUT' as const,
       url,
-      headers: { 'content-type': 'application/zip' as const },
+      headers: { 'content-type': 'application/zip' as const, ...this.storage.uploadHeaders?.() },
       expiresIn,
     };
   }

@@ -37,16 +37,29 @@ describe('configuration', () => {
 
   it('requires a complete SMS provider configuration in production', () => {
     const production = { ...validEnvironment, NODE_ENV: 'production', METRICS_TOKEN: 'm'.repeat(32) };
-    expect(() => parseConfig(production)).toThrow(/SMS_PROVIDER_URL/);
+    expect(() => parseConfig(production)).toThrow(/S3_SERVER_SIDE_ENCRYPTION/);
     expect(
       parseConfig({
         ...production,
         SMS_PROVIDER_URL: 'https://sms.example.com/v1/messages',
         SMS_PROVIDER_TOKEN: 'sms-provider-secret-token',
         SMS_SENDER: 'Agentdoor',
+        S3_SERVER_SIDE_ENCRYPTION: 'AES256',
+        S3_KMS_KEY_ID: '',
       }),
     ).toMatchObject({
       notification: { sms: { endpoint: 'https://sms.example.com/v1/messages', sender: 'Agentdoor' } },
     });
+  });
+
+  it('requires a KMS key when KMS encryption is selected', () => {
+    expect(() => parseConfig({ ...validEnvironment, S3_SERVER_SIDE_ENCRYPTION: 'aws:kms' })).toThrow(/S3_KMS_KEY_ID/);
+    expect(
+      parseConfig({
+        ...validEnvironment,
+        S3_SERVER_SIDE_ENCRYPTION: 'aws:kms',
+        S3_KMS_KEY_ID: 'alias/agentdoor',
+      }),
+    ).toMatchObject({ s3: { encryption: { algorithm: 'aws:kms', kmsKeyId: 'alias/agentdoor' } } });
   });
 });

@@ -35,6 +35,7 @@ type InstallPlan = {
   download: { url: string; expiresIn: number };
 };
 type AuditEntry = { action: string; resourceId: string; metadata: Record<string, unknown> };
+type OrganizationMember = { id: string; userId: string; role: string; status: string };
 
 class LocalTransaction implements FileTransaction {
   async writeFile(path: string, content: Uint8Array): Promise<void> {
@@ -543,6 +544,37 @@ describe('Agentdoor MVP final acceptance', () => {
       expect.arrayContaining([publishedV1.publishedVersionId, publishedV2.publishedVersionId]),
     );
 
+    // 9b. Data export, grace-period closure/cancellation, account deletion cancellation, and ownership transfer work.
+    const organizationExport = await request<{ schemaVersion: number; organization: { id: string } }>(
+      `/organizations/${organization.id}/export`,
+      { token: memberA.token },
+    );
+    expect(organizationExport.body).toMatchObject({ schemaVersion: 1, organization: { id: organization.id } });
+    const accountExport = await request<{ schemaVersion: number; account: { id: string } }>('/auth/me/export', {
+      token: memberB.token,
+    });
+    expect(accountExport.body).toMatchObject({ schemaVersion: 1, account: { id: memberB.userId } });
+    const closing = await request<{ status: string; deletionScheduledAt: string }>(
+      `/organizations/${organization.id}/closure`,
+      {
+        token: memberA.token,
+        method: 'POST',
+        body: JSON.stringify({ confirmation: `acceptance-${stamp}` }),
+      },
+    );
+    expect(closing.body.status).toBe('closing');
+    expect(Date.parse(closing.body.deletionScheduledAt)).toBeGreaterThan(Date.now() + 29 * 86_400_000);
+    await request(`/organizations/${organization.id}/closure`, { token: memberA.token, method: 'DELETE' });
+    const deletion = await request<{ deletionScheduledAt: string }>('/auth/me/deletion', {
+      token: memberB.token,
+      method: 'POST',
+    });
+    expect(Date.parse(deletion.body.deletionScheduledAt)).toBeGreaterThan(Date.now() + 29 * 86_400_000);
+    await request('/auth/me/deletion', { token: memberB.token, method: 'DELETE' });
+    expect((await request<{ status: string }>('/auth/me/deletion', { token: memberB.token })).body.status).toBe(
+      'cancelled',
+    );
+
     // 10. A second organization cannot search, fetch, publish, download, or infer the first organization's resources.
     const secondOrganization = (
       await request<{ id: string }>('/organizations', {
@@ -583,9 +615,29 @@ describe('Agentdoor MVP final acceptance', () => {
     expect(['ACCESS_DENIED', 'TENANT_ACCESS_DENIED']).toContain(foreignPlan.body.code);
     expect(foreignPlan.text).not.toContain(slug);
 
+    const members = (
+      await request<OrganizationMember[]>(`/organizations/${organization.id}/members`, {
+        token: memberA.token,
+      })
+    ).body;
+    const reviewerMembership = members.find((member) => member.userId === reviewer.userId);
+    if (!reviewerMembership) throw new Error('Reviewer membership is unavailable for ownership transfer.');
+    await request(`/organizations/${organization.id}/owner/transfer`, {
+      token: memberA.token,
+      method: 'POST',
+      body: JSON.stringify({ membershipId: reviewerMembership.id }),
+    });
+    const transferred = (
+      await request<OrganizationMember[]>(`/organizations/${organization.id}/members`, {
+        token: reviewer.token,
+      })
+    ).body;
+    expect(transferred.find((member) => member.userId === reviewer.userId)?.role).toBe('owner');
+    expect(transferred.find((member) => member.userId === memberA.userId)?.role).toBe('admin');
+
     process.stdout.write(
       `acceptance=passed organization=${organization.id} capability=${created.capability.id} ` +
-        `codex_discovery=true cloud_scan=true review=true claude_install=true update=true conflict=true audit=true tenant_isolation=true\n`,
+        `codex_discovery=true cloud_scan=true review=true claude_install=true update=true conflict=true audit=true lifecycle=true ownership_transfer=true tenant_isolation=true\n`,
     );
   });
 });

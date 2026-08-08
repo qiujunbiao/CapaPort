@@ -8,7 +8,7 @@ RUN --mount=type=cache,id=agentdoor-web-pnpm,target=/root/.local/share/pnpm/stor
     pnpm install --frozen-lockfile
 ARG VITE_API_URL=http://127.0.0.1:3210/api/v1
 ENV VITE_API_URL=$VITE_API_URL
-RUN pnpm --filter @agentdoor/web build
+RUN pnpm turbo run build --filter=@agentdoor/web
 
 FROM nginxinc/nginx-unprivileged:1.27-alpine AS runtime
 LABEL org.opencontainers.image.title="Agentdoor Web" \
