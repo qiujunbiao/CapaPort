@@ -36,9 +36,7 @@
             "description": ""
           }
         },
-        "tags": [
-          "Analytics"
-        ]
+        "tags": ["Analytics"]
       }
     },
     "/api/v1/analytics/metrics": {
@@ -50,9 +48,7 @@
             "description": ""
           }
         },
-        "tags": [
-          "Analytics"
-        ]
+        "tags": ["Analytics"]
       }
     },
     "/api/v1/artifacts/uploads": {
@@ -64,9 +60,7 @@
             "description": ""
           }
         },
-        "tags": [
-          "Artifact"
-        ]
+        "tags": ["Artifact"]
       }
     },
     "/api/v1/artifacts/uploads/{uploadId}/confirm": {
@@ -78,9 +72,7 @@
             "description": ""
           }
         },
-        "tags": [
-          "Artifact"
-        ]
+        "tags": ["Artifact"]
       }
     },
     "/api/v1/audit": {
@@ -92,9 +84,7 @@
             "description": ""
           }
         },
-        "tags": [
-          "Audit"
-        ]
+        "tags": ["Audit"]
       }
     },
     "/api/v1/auth/login": {
@@ -106,9 +96,7 @@
             "description": ""
           }
         },
-        "tags": [
-          "Auth"
-        ]
+        "tags": ["Auth"]
       }
     },
     "/api/v1/auth/logout": {
@@ -120,9 +108,7 @@
             "description": ""
           }
         },
-        "tags": [
-          "Auth"
-        ]
+        "tags": ["Auth"]
       }
     },
     "/api/v1/auth/me": {
@@ -134,9 +120,51 @@
             "description": ""
           }
         },
-        "tags": [
-          "Auth"
-        ]
+        "tags": ["Auth"]
+      }
+    },
+    "/api/v1/auth/me/deletion": {
+      "delete": {
+        "operationId": "auth_cancelAccountDeletion",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": ["Auth"]
+      },
+      "get": {
+        "operationId": "auth_accountDeletionStatus",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": ["Auth"]
+      },
+      "post": {
+        "operationId": "auth_requestAccountDeletion",
+        "parameters": [],
+        "responses": {
+          "202": {
+            "description": ""
+          }
+        },
+        "tags": ["Auth"]
+      }
+    },
+    "/api/v1/auth/me/export": {
+      "get": {
+        "operationId": "auth_exportAccount",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": ["Auth"]
       }
     },
     "/api/v1/auth/recovery/complete": {
@@ -148,9 +176,7 @@
             "description": ""
           }
         },
-        "tags": [
-          "Auth"
-        ]
+        "tags": ["Auth"]
       }
     },
     "/api/v1/auth/recovery/start": {
@@ -162,9 +188,7 @@
             "description": ""
           }
         },
-        "tags": [
-          "Auth"
-        ]
+        "tags": ["Auth"]
       }
     },
     "/api/v1/auth/refresh": {
@@ -176,9 +200,7 @@
             "description": ""
           }
         },
-        "tags": [
-          "Auth"
-        ]
+        "tags": ["Auth"]
       }
     },
     "/api/v1/auth/register": {
@@ -190,9 +212,7 @@
             "description": ""
           }
         },
-        "tags": [
-          "Auth"
-        ]
+        "tags": ["Auth"]
       }
     },
     "/api/v1/auth/sessions": {
@@ -204,9 +224,7 @@
             "description": ""
           }
         },
-        "tags": [
-          "Auth"
-        ]
+        "tags": ["Auth"]
       }
     },
     "/api/v1/auth/sessions/{sessionId}": {
@@ -218,9 +236,7 @@
             "description": ""
           }
         },
-        "tags": [
-          "Auth"
-        ]
+        "tags": ["Auth"]
       }
     },
     "/api/v1/auth/verify": {
@@ -232,9 +248,7 @@
             "description": ""
           }
         },
-        "tags": [
-          "Auth"
-        ]
+        "tags": ["Auth"]
       }
     },
     "/api/v1/capabilities": {
@@ -246,9 +260,7 @@
             "description": ""
           }
         },
-        "tags": [
-          "Capability"
-        ]
+        "tags": ["Capability"]
       },
       "post": {
         "operationId": "capability_create",
@@ -258,9 +270,7 @@
             "description": ""
           }
         },
-        "tags": [
-          "Capability"
-        ]
+        "tags": ["Capability"]
       }
     },
     "/api/v1/capabilities/{capabilityId}": {
@@ -272,9 +282,7 @@
             "description": ""
           }
         },
-        "tags": [
-          "Capability"
-        ]
+        "tags": ["Capability"]
       },
       "patch": {
         "operationId": "capability_update",
@@ -284,9 +292,7 @@
             "description": ""
           }
         },
-        "tags": [
-          "Capability"
-        ]
+        "tags": ["Capability"]
       }
     },
     "/api/v1/capabilities/{capabilityId}/drafts": {
@@ -298,9 +304,7 @@
             "description": ""
           }
         },
-        "tags": [
-          "Capability"
-        ]
+        "tags": ["Capability"]
       },
       "post": {
         "operationId": "capability_createDraft",
@@ -310,9 +314,7 @@
             "description": ""
           }
         },
-        "tags": [
-          "Capability"
-        ]
+        "tags": ["Capability"]
       }
     },
     "/api/v1/capabilities/{capabilityId}/drafts/{draftId}/revisions": {
@@ -324,9 +326,7 @@
             "description": ""
           }
         },
-        "tags": [
-          "Capability"
-        ]
+        "tags": ["Capability"]
       },
       "post": {
         "operationId": "capability_createRevision",
@@ -336,9 +336,7 @@
             "description": ""
           }
         },
-        "tags": [
-          "Capability"
-        ]
+        "tags": ["Capability"]
       }
     },
     "/api/v1/capabilities/{capabilityId}/drafts/{draftId}/revisions/{revisionId}/download": {
@@ -350,9 +348,7 @@
             "description": ""
           }
         },
-        "tags": [
-          "Capability"
-        ]
+        "tags": ["Capability"]
       }
     },
     "/api/v1/capabilities/{capabilityId}/promotions": {
@@ -364,9 +360,7 @@
             "description": ""
           }
         },
-        "tags": [
-          "Version"
-        ]
+        "tags": ["Version"]
       }
     },
     "/api/v1/capabilities/{capabilityId}/publications": {
@@ -378,9 +372,7 @@
             "description": ""
           }
         },
-        "tags": [
-          "Version"
-        ]
+        "tags": ["Version"]
       }
     },
     "/api/v1/capabilities/{capabilityId}/versions": {
@@ -392,9 +384,7 @@
             "description": ""
           }
         },
-        "tags": [
-          "Version"
-        ]
+        "tags": ["Version"]
       }
     },
     "/api/v1/capabilities/{capabilityId}/versions/{versionId}": {
@@ -406,9 +396,7 @@
             "description": ""
           }
         },
-        "tags": [
-          "Version"
-        ]
+        "tags": ["Version"]
       }
     },
     "/api/v1/capabilities/{capabilityId}/versions/{versionId}/archive": {
@@ -420,9 +408,7 @@
             "description": ""
           }
         },
-        "tags": [
-          "Version"
-        ]
+        "tags": ["Version"]
       }
     },
     "/api/v1/capabilities/{capabilityId}/versions/{versionId}/deprecate": {
@@ -434,9 +420,7 @@
             "description": ""
           }
         },
-        "tags": [
-          "Version"
-        ]
+        "tags": ["Version"]
       }
     },
     "/api/v1/capabilities/{capabilityId}/versions/{versionId}/diff": {
@@ -448,9 +432,7 @@
             "description": ""
           }
         },
-        "tags": [
-          "Version"
-        ]
+        "tags": ["Version"]
       }
     },
     "/api/v1/capabilities/{capabilityId}/versions/{versionId}/withdraw": {
@@ -462,9 +444,7 @@
             "description": ""
           }
         },
-        "tags": [
-          "Version"
-        ]
+        "tags": ["Version"]
       }
     },
     "/api/v1/devices": {
@@ -476,9 +456,7 @@
             "description": ""
           }
         },
-        "tags": [
-          "Device"
-        ]
+        "tags": ["Device"]
       },
       "post": {
         "operationId": "device_register",
@@ -488,9 +466,7 @@
             "description": ""
           }
         },
-        "tags": [
-          "Device"
-        ]
+        "tags": ["Device"]
       }
     },
     "/api/v1/devices/{deviceId}": {
@@ -502,9 +478,7 @@
             "description": ""
           }
         },
-        "tags": [
-          "Device"
-        ]
+        "tags": ["Device"]
       },
       "patch": {
         "operationId": "device_update",
@@ -514,9 +488,7 @@
             "description": ""
           }
         },
-        "tags": [
-          "Device"
-        ]
+        "tags": ["Device"]
       }
     },
     "/api/v1/distribution/install-plans": {
@@ -528,9 +500,7 @@
             "description": ""
           }
         },
-        "tags": [
-          "Distribution"
-        ]
+        "tags": ["Distribution"]
       }
     },
     "/api/v1/health/live": {
@@ -542,9 +512,7 @@
             "description": ""
           }
         },
-        "tags": [
-          "Health"
-        ]
+        "tags": ["Health"]
       }
     },
     "/api/v1/health/ready": {
@@ -556,9 +524,7 @@
             "description": ""
           }
         },
-        "tags": [
-          "Health"
-        ]
+        "tags": ["Health"]
       }
     },
     "/api/v1/installations": {
@@ -570,9 +536,7 @@
             "description": ""
           }
         },
-        "tags": [
-          "Installation"
-        ]
+        "tags": ["Installation"]
       },
       "post": {
         "operationId": "installation_report",
@@ -582,9 +546,7 @@
             "description": ""
           }
         },
-        "tags": [
-          "Installation"
-        ]
+        "tags": ["Installation"]
       }
     },
     "/api/v1/installations/{installationId}/update-check": {
@@ -596,9 +558,7 @@
             "description": ""
           }
         },
-        "tags": [
-          "Installation"
-        ]
+        "tags": ["Installation"]
       }
     },
     "/api/v1/metrics": {
@@ -610,9 +570,7 @@
             "description": ""
           }
         },
-        "tags": [
-          "Telemetry"
-        ]
+        "tags": ["Telemetry"]
       }
     },
     "/api/v1/notifications": {
@@ -624,9 +582,7 @@
             "description": ""
           }
         },
-        "tags": [
-          "Notification"
-        ]
+        "tags": ["Notification"]
       }
     },
     "/api/v1/notifications/{notificationId}/read": {
@@ -638,9 +594,7 @@
             "description": ""
           }
         },
-        "tags": [
-          "Notification"
-        ]
+        "tags": ["Notification"]
       }
     },
     "/api/v1/notifications/dead-letters": {
@@ -652,9 +606,7 @@
             "description": ""
           }
         },
-        "tags": [
-          "Notification"
-        ]
+        "tags": ["Notification"]
       }
     },
     "/api/v1/notifications/dead-letters/{kind}/{jobId}/retry": {
@@ -666,9 +618,7 @@
             "description": ""
           }
         },
-        "tags": [
-          "Notification"
-        ]
+        "tags": ["Notification"]
       }
     },
     "/api/v1/organizations": {
@@ -680,9 +630,7 @@
             "description": ""
           }
         },
-        "tags": [
-          "Organization"
-        ]
+        "tags": ["Organization"]
       },
       "post": {
         "operationId": "organization_create",
@@ -692,23 +640,19 @@
             "description": ""
           }
         },
-        "tags": [
-          "Organization"
-        ]
+        "tags": ["Organization"]
       }
     },
     "/api/v1/organizations/{organizationId}": {
       "delete": {
-        "operationId": "organization_archive",
+        "operationId": "organization_closeLegacy",
         "parameters": [],
         "responses": {
-          "204": {
+          "202": {
             "description": ""
           }
         },
-        "tags": [
-          "Organization"
-        ]
+        "tags": ["Organization"]
       },
       "get": {
         "operationId": "organization_get",
@@ -718,9 +662,7 @@
             "description": ""
           }
         },
-        "tags": [
-          "Organization"
-        ]
+        "tags": ["Organization"]
       },
       "patch": {
         "operationId": "organization_update",
@@ -730,9 +672,41 @@
             "description": ""
           }
         },
-        "tags": [
-          "Organization"
-        ]
+        "tags": ["Organization"]
+      }
+    },
+    "/api/v1/organizations/{organizationId}/closure": {
+      "delete": {
+        "operationId": "organization_cancelClosure",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": ["Organization"]
+      },
+      "post": {
+        "operationId": "organization_close",
+        "parameters": [],
+        "responses": {
+          "202": {
+            "description": ""
+          }
+        },
+        "tags": ["Organization"]
+      }
+    },
+    "/api/v1/organizations/{organizationId}/export": {
+      "get": {
+        "operationId": "organization_export",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": ["Organization"]
       }
     },
     "/api/v1/organizations/{organizationId}/invitations": {
@@ -744,9 +718,7 @@
             "description": ""
           }
         },
-        "tags": [
-          "Organization"
-        ]
+        "tags": ["Organization"]
       },
       "post": {
         "operationId": "organization_invite",
@@ -756,9 +728,7 @@
             "description": ""
           }
         },
-        "tags": [
-          "Organization"
-        ]
+        "tags": ["Organization"]
       }
     },
     "/api/v1/organizations/{organizationId}/invitations/{invitationId}": {
@@ -770,9 +740,7 @@
             "description": ""
           }
         },
-        "tags": [
-          "Organization"
-        ]
+        "tags": ["Organization"]
       }
     },
     "/api/v1/organizations/{organizationId}/leave": {
@@ -784,9 +752,7 @@
             "description": ""
           }
         },
-        "tags": [
-          "Organization"
-        ]
+        "tags": ["Organization"]
       }
     },
     "/api/v1/organizations/{organizationId}/members": {
@@ -798,9 +764,7 @@
             "description": ""
           }
         },
-        "tags": [
-          "Organization"
-        ]
+        "tags": ["Organization"]
       }
     },
     "/api/v1/organizations/{organizationId}/members/{membershipId}": {
@@ -812,9 +776,7 @@
             "description": ""
           }
         },
-        "tags": [
-          "Organization"
-        ]
+        "tags": ["Organization"]
       }
     },
     "/api/v1/organizations/{organizationId}/members/{membershipId}/role": {
@@ -826,9 +788,7 @@
             "description": ""
           }
         },
-        "tags": [
-          "Organization"
-        ]
+        "tags": ["Organization"]
       }
     },
     "/api/v1/organizations/{organizationId}/owner/transfer": {
@@ -840,9 +800,7 @@
             "description": ""
           }
         },
-        "tags": [
-          "Organization"
-        ]
+        "tags": ["Organization"]
       }
     },
     "/api/v1/organizations/{organizationId}/switch": {
@@ -854,9 +812,7 @@
             "description": ""
           }
         },
-        "tags": [
-          "Organization"
-        ]
+        "tags": ["Organization"]
       }
     },
     "/api/v1/organizations/invitations/accept": {
@@ -868,9 +824,7 @@
             "description": ""
           }
         },
-        "tags": [
-          "Organization"
-        ]
+        "tags": ["Organization"]
       }
     },
     "/api/v1/projects/{spaceId}/bindings": {
@@ -882,9 +836,7 @@
             "description": ""
           }
         },
-        "tags": [
-          "Project"
-        ]
+        "tags": ["Project"]
       },
       "post": {
         "operationId": "project_createBinding",
@@ -894,9 +846,7 @@
             "description": ""
           }
         },
-        "tags": [
-          "Project"
-        ]
+        "tags": ["Project"]
       }
     },
     "/api/v1/projects/{spaceId}/bindings/{bindingId}": {
@@ -908,9 +858,7 @@
             "description": ""
           }
         },
-        "tags": [
-          "Project"
-        ]
+        "tags": ["Project"]
       }
     },
     "/api/v1/projects/{spaceId}/contexts": {
@@ -922,9 +870,7 @@
             "description": ""
           }
         },
-        "tags": [
-          "Project"
-        ]
+        "tags": ["Project"]
       },
       "post": {
         "operationId": "project_registerContext",
@@ -934,9 +880,7 @@
             "description": ""
           }
         },
-        "tags": [
-          "Project"
-        ]
+        "tags": ["Project"]
       }
     },
     "/api/v1/projects/{spaceId}/contexts/{contextId}/download": {
@@ -948,9 +892,7 @@
             "description": ""
           }
         },
-        "tags": [
-          "Project"
-        ]
+        "tags": ["Project"]
       }
     },
     "/api/v1/publications": {
@@ -962,9 +904,7 @@
             "description": ""
           }
         },
-        "tags": [
-          "Publication"
-        ]
+        "tags": ["Publication"]
       }
     },
     "/api/v1/publications/{publicationId}": {
@@ -976,9 +916,7 @@
             "description": ""
           }
         },
-        "tags": [
-          "Publication"
-        ]
+        "tags": ["Publication"]
       }
     },
     "/api/v1/publications/{publicationId}/approve": {
@@ -990,9 +928,7 @@
             "description": ""
           }
         },
-        "tags": [
-          "Publication"
-        ]
+        "tags": ["Publication"]
       }
     },
     "/api/v1/publications/{publicationId}/diff": {
@@ -1004,9 +940,7 @@
             "description": ""
           }
         },
-        "tags": [
-          "Publication"
-        ]
+        "tags": ["Publication"]
       }
     },
     "/api/v1/publications/{publicationId}/reject": {
@@ -1018,9 +952,7 @@
             "description": ""
           }
         },
-        "tags": [
-          "Publication"
-        ]
+        "tags": ["Publication"]
       }
     },
     "/api/v1/publications/{publicationId}/request-changes": {
@@ -1032,9 +964,7 @@
             "description": ""
           }
         },
-        "tags": [
-          "Publication"
-        ]
+        "tags": ["Publication"]
       }
     },
     "/api/v1/publications/{publicationId}/scan-report": {
@@ -1046,9 +976,7 @@
             "description": ""
           }
         },
-        "tags": [
-          "Publication"
-        ]
+        "tags": ["Publication"]
       }
     },
     "/api/v1/publications/{publicationId}/withdraw": {
@@ -1060,9 +988,7 @@
             "description": ""
           }
         },
-        "tags": [
-          "Publication"
-        ]
+        "tags": ["Publication"]
       }
     },
     "/api/v1/spaces": {
@@ -1074,9 +1000,7 @@
             "description": ""
           }
         },
-        "tags": [
-          "Space"
-        ]
+        "tags": ["Space"]
       },
       "post": {
         "operationId": "space_create",
@@ -1086,9 +1010,7 @@
             "description": ""
           }
         },
-        "tags": [
-          "Space"
-        ]
+        "tags": ["Space"]
       }
     },
     "/api/v1/spaces/{spaceId}": {
@@ -1100,9 +1022,7 @@
             "description": ""
           }
         },
-        "tags": [
-          "Space"
-        ]
+        "tags": ["Space"]
       },
       "get": {
         "operationId": "space_get",
@@ -1112,9 +1032,7 @@
             "description": ""
           }
         },
-        "tags": [
-          "Space"
-        ]
+        "tags": ["Space"]
       },
       "patch": {
         "operationId": "space_update",
@@ -1124,9 +1042,7 @@
             "description": ""
           }
         },
-        "tags": [
-          "Space"
-        ]
+        "tags": ["Space"]
       }
     },
     "/api/v1/spaces/{spaceId}/members": {
@@ -1138,9 +1054,7 @@
             "description": ""
           }
         },
-        "tags": [
-          "Space"
-        ]
+        "tags": ["Space"]
       },
       "post": {
         "operationId": "space_addMember",
@@ -1150,9 +1064,7 @@
             "description": ""
           }
         },
-        "tags": [
-          "Space"
-        ]
+        "tags": ["Space"]
       }
     },
     "/api/v1/spaces/{spaceId}/members/{spaceMembershipId}": {
@@ -1164,9 +1076,7 @@
             "description": ""
           }
         },
-        "tags": [
-          "Space"
-        ]
+        "tags": ["Space"]
       },
       "patch": {
         "operationId": "space_changeMemberRole",
@@ -1176,9 +1086,7 @@
             "description": ""
           }
         },
-        "tags": [
-          "Space"
-        ]
+        "tags": ["Space"]
       }
     },
     "/api/v1/spaces/{spaceId}/review-policy": {
@@ -1190,9 +1098,7 @@
             "description": ""
           }
         },
-        "tags": [
-          "Space"
-        ]
+        "tags": ["Space"]
       }
     }
   },

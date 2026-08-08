@@ -24,3 +24,5 @@ CONFIRM_RESTORE=RESTORE BACKUP_DIR=/secure/backups/<timestamp> infra/deploy/rest
 ## 容量与保留
 
 监控 PostgreSQL 表/索引增长、Redis 内存、S3 制品数和审计日志增长。发布版本默认不可变，不应以清理缓存方式删除；按组织合规策略制定审计保留和账号删除流程。
+
+组织关闭和账号注销由 `lifecycle_deletion` 持久化作业执行。作业具备数据库去重键、租约恢复、指数退避与死信状态；对象删除失败时不会提交租户数据删除。管理员应监控 `operation_jobs` 的 `pending`、`running`、`dead_letter` 数量，并只在确认外部依赖恢复后从 Web 后台重试死信作业。

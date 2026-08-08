@@ -95,7 +95,15 @@ export interface WebClient {
   switchOrganization(organizationId: string): Promise<void>;
   acceptInvitation(token: string): Promise<{ status: string; organizationId?: string }>;
   updateOrganization(organizationId: string, name: string): Promise<void>;
+  exportOrganization(organizationId: string): Promise<Record<string, unknown>>;
+  closeOrganization(organizationId: string, confirmation: string): Promise<OrganizationSummary>;
+  cancelOrganizationClosure(organizationId: string): Promise<OrganizationSummary>;
+  transferOwnership(organizationId: string, membershipId: string): Promise<void>;
   leaveOrganization(organizationId: string): Promise<void>;
+  exportAccount(): Promise<Record<string, unknown>>;
+  requestAccountDeletion(): Promise<{ deletionScheduledAt: string }>;
+  cancelAccountDeletion(): Promise<{ cancelled: true }>;
+  accountDeletionStatus(): Promise<{ status: string; deletionScheduledAt?: string }>;
   members(organizationId: string): Promise<OrganizationMember[]>;
   invitations(organizationId: string): Promise<OrganizationInvitation[]>;
   invite(

@@ -191,3 +191,27 @@ export const auditArchives = pgTable(
     uniqueIndex('audit_archives_org_period_uidx').on(table.organizationId, table.periodStart, table.periodEnd),
   ],
 );
+
+export const accountDeletionRequests = pgTable('account_deletion_requests', {
+  userId: uuid('user_id')
+    .primaryKey()
+    .references(() => users.id, { onDelete: 'cascade' }),
+  status: text('status').notNull().default('scheduled'),
+  requestedAt: timestamp('requested_at', { withTimezone: true }).notNull().defaultNow(),
+  scheduledAt: timestamp('scheduled_at', { withTimezone: true }).notNull(),
+  completedAt: timestamp('completed_at', { withTimezone: true }),
+});
+
+export const lifecycleAuditEvents = pgTable(
+  'lifecycle_audit_events',
+  {
+    id: uuid('id').primaryKey(),
+    scopeType: text('scope_type').notNull(),
+    scopeId: text('scope_id').notNull(),
+    actorUserId: text('actor_user_id'),
+    action: text('action').notNull(),
+    metadata: jsonb('metadata').$type<Record<string, unknown>>().notNull().default({}),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [index('lifecycle_audit_scope_idx').on(table.scopeType, table.scopeId, table.createdAt)],
+);

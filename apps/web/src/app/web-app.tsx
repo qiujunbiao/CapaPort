@@ -185,6 +185,12 @@ function Console({ client, sessionStore }: { client: WebClient; sessionStore: We
     enabled: Boolean(organizationId && canObserve),
     retry: false,
   });
+  const accountDeletionQuery = useQuery({
+    queryKey: ['web-account-deletion'],
+    queryFn: () => client.accountDeletionStatus(),
+    enabled: Boolean(session),
+    retry: false,
+  });
   const invitationsQuery = useQuery({
     queryKey: ['web-invitations', organizationId],
     queryFn: () => client.invitations(organizationId ?? ''),
@@ -302,6 +308,8 @@ function Console({ client, sessionStore }: { client: WebClient; sessionStore: We
         client={client}
         organization={organization}
         user={userQuery.data}
+        members={membersQuery.data ?? []}
+        accountDeletionStatus={accountDeletionQuery.data}
         canManage={canGovern}
         onSaved={async () => {
           await organizationsQuery.refetch();

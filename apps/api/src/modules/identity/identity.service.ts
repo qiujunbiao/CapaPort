@@ -35,6 +35,10 @@ export interface IdentityDataStore {
   }): Promise<void>;
   changePasswordAndRevoke(userId: string, passwordHash: string, now: Date): Promise<void>;
   listIdentities(userId: string): Promise<Array<{ kind: IdentityKind; value: string; verifiedAt: Date | null }>>;
+  exportAccount(userId: string): Promise<Record<string, unknown>>;
+  requestAccountDeletion(userId: string, scheduledAt: Date): Promise<void>;
+  cancelAccountDeletion(userId: string): Promise<void>;
+  accountDeletionStatus(userId: string): Promise<{ status: string; scheduledAt: Date } | undefined>;
 }
 
 export interface PasswordHasher {
@@ -196,6 +200,30 @@ export class IdentityService {
     const identity = await this.repository.findUserById?.(userId);
     if (!identity) throw new AppError('AUTH_USER_NOT_FOUND', 'The account no longer exists.', 404);
     return this.publicUser(identity);
+  }
+
+  exportAccount(userId: string): Promise<Record<string, unknown>> {
+    return this.repository.exportAccount(userId);
+  }
+
+  async requestDeletion(userId: string): Promise<{ deletionScheduledAt: string }> {
+    const existing = await this.repository.accountDeletionStatus(userId);
+    if (existing?.status === 'scheduled') return { deletionScheduledAt: existing.scheduledAt.toISOString() };
+    const scheduledAt = new Date(Date.now() + 30 * 86_400_000);
+    await this.repository.requestAccountDeletion(userId, scheduledAt);
+    return { deletionScheduledAt: scheduledAt.toISOString() };
+  }
+
+  async cancelDeletion(userId: string): Promise<{ cancelled: true }> {
+    await this.repository.cancelAccountDeletion(userId);
+    return { cancelled: true };
+  }
+
+  async deletionStatus(userId: string): Promise<{ status: string; deletionScheduledAt?: string }> {
+    const request = await this.repository.accountDeletionStatus(userId);
+    return request
+      ? { status: request.status, deletionScheduledAt: request.scheduledAt.toISOString() }
+      : { status: 'none' };
   }
 
   private isUniqueViolation(error: unknown): boolean {

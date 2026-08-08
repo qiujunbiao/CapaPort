@@ -39,8 +39,27 @@ export function createWebClient(baseUrl: string, sessionStore: WebSessionStore):
     acceptInvitation: (token) => request('/organizations/invitations/accept', { method: 'POST', body: { token } }),
     updateOrganization: (organizationId, name) =>
       request(`/organizations/${organizationId}`, { method: 'PATCH', body: { name }, ...org(organizationId) }),
+    exportOrganization: (organizationId) => request(`/organizations/${organizationId}/export`, org(organizationId)),
+    closeOrganization: (organizationId, confirmation) =>
+      request(`/organizations/${organizationId}/closure`, {
+        method: 'POST',
+        body: { confirmation },
+        ...org(organizationId),
+      }),
+    cancelOrganizationClosure: (organizationId) =>
+      request(`/organizations/${organizationId}/closure`, { method: 'DELETE', ...org(organizationId) }),
+    transferOwnership: (organizationId, membershipId) =>
+      request(`/organizations/${organizationId}/owner/transfer`, {
+        method: 'POST',
+        body: { membershipId },
+        ...org(organizationId),
+      }),
     leaveOrganization: (organizationId) =>
       request(`/organizations/${organizationId}/leave`, { method: 'POST', ...org(organizationId) }),
+    exportAccount: () => request('/auth/me/export'),
+    requestAccountDeletion: () => request('/auth/me/deletion', { method: 'POST' }),
+    cancelAccountDeletion: () => request('/auth/me/deletion', { method: 'DELETE' }),
+    accountDeletionStatus: () => request('/auth/me/deletion'),
     members: (organizationId) => request(`/organizations/${organizationId}/members`, org(organizationId)),
     invitations: (organizationId) => request(`/organizations/${organizationId}/invitations`, org(organizationId)),
     invite: (organizationId, input) =>

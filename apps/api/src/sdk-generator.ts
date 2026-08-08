@@ -95,7 +95,10 @@ const app = await NestFactory.create<NestFastifyApplication>(AppModule, new Fast
 try {
   app.setGlobalPrefix('api/v1');
   const document = createOpenApiDocument(app);
-  const openApi = `${JSON.stringify(sorted(document), null, 2)}\n`;
+  const openApi = `${JSON.stringify(sorted(document), null, 2).replace(
+    /\[\n\s+("(?:[^"\\]|\\.)*")\n\s+\]/g,
+    '[$1]',
+  )}\n`;
   const generated = generateTypes(document);
   if (check) {
     await assertCurrent(openApiPath, openApi);

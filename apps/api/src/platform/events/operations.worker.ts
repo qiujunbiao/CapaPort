@@ -29,6 +29,7 @@ export const OPERATION_JOB_TYPES = [
   'daily_aggregate',
   'audit_archive',
   'object_cleanup',
+  'lifecycle_deletion',
 ] as const;
 export type OperationJobType = (typeof OPERATION_JOB_TYPES)[number];
 export type OperationJob = {
@@ -186,6 +187,7 @@ export class OperationsWorker {
       daily_aggregate: (job) => this.replaceDailyAggregates(job),
       audit_archive: (job) => this.archiveAuditLogs(job),
       object_cleanup: () => this.cleanupExpiredUploads(),
+      lifecycle_deletion: (job) => this.performLifecycleDeletion(job),
     });
     this.worker = new Worker(queueName, (job) => this.process(job), {
       connection,
@@ -452,6 +454,106 @@ export class OperationsWorker {
         "UPDATE artifact_uploads SET status='expired',failure_code='expired' WHERE id=$1 AND status='pending'",
         [upload.id],
       );
+    }
+  }
+
+  private async performLifecycleDeletion(job: OperationJob): Promise<void> {
+    const scope = this.payloadString(job, 'scope');
+    const scopeId = this.payloadString(job, 'scopeId');
+    if (scope === 'organization') {
+      await this.deleteOrganization(scopeId);
+      return;
+    }
+    if (scope === 'account') {
+      await this.anonymizeAccount(scopeId);
+      return;
+    }
+    throw new Error('OperationPayloadInvalid_scope');
+  }
+
+  private async deleteOrganization(organizationId: string): Promise<void> {
+    const due = await this.pool.query<{ id: string }>(
+      "SELECT id FROM organizations WHERE id=$1 AND status='closing' AND deletion_scheduled_at <= now()",
+      [organizationId],
+    );
+    if (!due.rows[0]) return;
+    const objects = await this.pool.query<{ object_key: string }>(
+      `SELECT object_key FROM artifacts WHERE organization_id=$1
+       UNION SELECT object_key FROM artifact_uploads WHERE organization_id=$1`,
+      [organizationId],
+    );
+    for (const object of objects.rows) {
+      await this.storage.send(new DeleteObjectCommand({ Bucket: this.config.s3.bucket, Key: object.object_key }));
+    }
+    const client = await this.pool.connect();
+    try {
+      await client.query('BEGIN');
+      await client.query(
+        `INSERT INTO lifecycle_audit_events (id,scope_type,scope_id,action,metadata)
+         VALUES ($1,'organization',$2,'organization.deletion_completed',$3::jsonb)`,
+        [randomUUID(), organizationId, JSON.stringify({ deletedObjectCount: objects.rows.length })],
+      );
+      await client.query("SET LOCAL agentdoor.lifecycle_delete = 'on'");
+      await client.query(
+        'UPDATE audit_logs SET organization_id=NULL,actor_membership_id=NULL WHERE organization_id=$1',
+        [organizationId],
+      );
+      await client.query(
+        "DELETE FROM organizations WHERE id=$1 AND status='closing' AND deletion_scheduled_at <= now()",
+        [organizationId],
+      );
+      await client.query('COMMIT');
+    } catch (error) {
+      await client.query('ROLLBACK');
+      throw error;
+    } finally {
+      client.release();
+    }
+  }
+
+  private async anonymizeAccount(userId: string): Promise<void> {
+    const due = await this.pool.query<{ user_id: string }>(
+      "SELECT user_id FROM account_deletion_requests WHERE user_id=$1 AND status='scheduled' AND scheduled_at <= now()",
+      [userId],
+    );
+    if (!due.rows[0]) return;
+    const soleOwner = await this.pool.query<{ organization_id: string }>(
+      `SELECT membership.organization_id FROM organization_memberships membership
+       JOIN organizations organization ON organization.id=membership.organization_id AND organization.status='active'
+       WHERE membership.user_id=$1 AND membership.role='owner' AND membership.status='active'
+       AND NOT EXISTS (
+         SELECT 1 FROM organization_memberships another
+         WHERE another.organization_id=membership.organization_id AND another.role='owner'
+           AND another.status='active' AND another.user_id<>$1
+       ) LIMIT 1`,
+      [userId],
+    );
+    if (soleOwner.rows[0]) throw new Error('AccountStillOwnsOrganization');
+    const client = await this.pool.connect();
+    try {
+      await client.query('BEGIN');
+      await client.query('DELETE FROM user_identities WHERE user_id=$1', [userId]);
+      await client.query('DELETE FROM sessions WHERE user_id=$1', [userId]);
+      await client.query(
+        `UPDATE users SET display_name='Deleted user',password_hash='!account-deleted!',status='deleted',updated_at=now()
+         WHERE id=$1`,
+        [userId],
+      );
+      await client.query(
+        "UPDATE account_deletion_requests SET status='completed',completed_at=now() WHERE user_id=$1 AND status='scheduled'",
+        [userId],
+      );
+      await client.query(
+        `INSERT INTO lifecycle_audit_events (id,scope_type,scope_id,action,metadata)
+         VALUES ($1,'account',$2,'account.deletion_completed','{}'::jsonb)`,
+        [randomUUID(), userId],
+      );
+      await client.query('COMMIT');
+    } catch (error) {
+      await client.query('ROLLBACK');
+      throw error;
+    } finally {
+      client.release();
     }
   }
 

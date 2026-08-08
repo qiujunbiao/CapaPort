@@ -18,6 +18,7 @@ import {
   Param,
   Post,
   Req,
+  StreamableFile,
   UseGuards,
 } from '@nestjs/common';
 import type { FastifyRequest } from 'fastify';
@@ -105,6 +106,43 @@ export class AuthController {
   @UseGuards(AuthGuard)
   me(@Req() request: RequestWithAuth) {
     return this.identity.me(request.auth?.userId ?? '');
+  }
+
+  @Get('me/export')
+  @UseGuards(AuthGuard, RecentAuthGuard)
+  async exportAccount(@Req() request: RequestWithAuth) {
+    const userId = request.auth?.userId;
+    if (!userId) throw new AppError('AUTH_REQUIRED', 'Authentication is required.', 401);
+    const data = await this.identity.exportAccount(userId);
+    return new StreamableFile(Buffer.from(JSON.stringify(data)), {
+      type: 'application/json; charset=utf-8',
+      disposition: `attachment; filename="agentdoor-account-${userId}.json"`,
+    });
+  }
+
+  @Post('me/deletion')
+  @UseGuards(AuthGuard, RecentAuthGuard)
+  @HttpCode(HttpStatus.ACCEPTED)
+  requestAccountDeletion(@Req() request: RequestWithAuth) {
+    const userId = request.auth?.userId;
+    if (!userId) throw new AppError('AUTH_REQUIRED', 'Authentication is required.', 401);
+    return this.identity.requestDeletion(userId);
+  }
+
+  @Get('me/deletion')
+  @UseGuards(AuthGuard)
+  accountDeletionStatus(@Req() request: RequestWithAuth) {
+    const userId = request.auth?.userId;
+    if (!userId) throw new AppError('AUTH_REQUIRED', 'Authentication is required.', 401);
+    return this.identity.deletionStatus(userId);
+  }
+
+  @Delete('me/deletion')
+  @UseGuards(AuthGuard, RecentAuthGuard)
+  cancelAccountDeletion(@Req() request: RequestWithAuth) {
+    const userId = request.auth?.userId;
+    if (!userId) throw new AppError('AUTH_REQUIRED', 'Authentication is required.', 401);
+    return this.identity.cancelDeletion(userId);
   }
 
   @Get('sessions')

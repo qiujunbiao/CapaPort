@@ -41,6 +41,26 @@ export const apiOperations = [
     operationId: 'auth_me',
   },
   {
+    method: 'DELETE',
+    path: '/auth/me/deletion',
+    operationId: 'auth_cancelAccountDeletion',
+  },
+  {
+    method: 'GET',
+    path: '/auth/me/deletion',
+    operationId: 'auth_accountDeletionStatus',
+  },
+  {
+    method: 'POST',
+    path: '/auth/me/deletion',
+    operationId: 'auth_requestAccountDeletion',
+  },
+  {
+    method: 'GET',
+    path: '/auth/me/export',
+    operationId: 'auth_exportAccount',
+  },
+  {
     method: 'POST',
     path: '/auth/recovery/complete',
     operationId: 'auth_completeRecovery',
@@ -248,7 +268,7 @@ export const apiOperations = [
   {
     method: 'DELETE',
     path: '/organizations/{organizationId}',
-    operationId: 'organization_archive',
+    operationId: 'organization_closeLegacy',
   },
   {
     method: 'GET',
@@ -259,6 +279,21 @@ export const apiOperations = [
     method: 'PATCH',
     path: '/organizations/{organizationId}',
     operationId: 'organization_update',
+  },
+  {
+    method: 'DELETE',
+    path: '/organizations/{organizationId}/closure',
+    operationId: 'organization_cancelClosure',
+  },
+  {
+    method: 'POST',
+    path: '/organizations/{organizationId}/closure',
+    operationId: 'organization_close',
+  },
+  {
+    method: 'GET',
+    path: '/organizations/{organizationId}/export',
+    operationId: 'organization_export',
   },
   {
     method: 'GET',

@@ -9,13 +9,18 @@ export const organizations = pgTable(
     name: text('name').notNull(),
     slug: text('slug').notNull(),
     status: text('status').notNull().default('active'),
+    closureRequestedAt: timestamp('closure_requested_at', { withTimezone: true }),
+    deletionScheduledAt: timestamp('deletion_scheduled_at', { withTimezone: true }),
     createdBy: uuid('created_by')
       .notNull()
       .references(() => users.id),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
   },
-  (table) => [uniqueIndex('organizations_slug_uidx').on(table.slug)],
+  (table) => [
+    uniqueIndex('organizations_slug_uidx').on(table.slug),
+    index('organizations_deletion_idx').on(table.status, table.deletionScheduledAt),
+  ],
 );
 
 export const organizationMemberships = pgTable(

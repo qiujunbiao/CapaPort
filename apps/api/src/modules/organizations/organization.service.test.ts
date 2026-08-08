@@ -18,7 +18,15 @@ function dependencies() {
     listOrganizations: vi.fn(),
     findOrganization: vi.fn().mockResolvedValue({ id: 'org-1', name: 'Acme', slug: 'acme', status: 'active' }),
     updateOrganization: vi.fn(),
-    archiveOrganization: vi.fn(),
+    requestClosure: vi.fn().mockImplementation(async (_org, _user, _membership, scheduledAt) => ({
+      id: 'org-1',
+      name: 'Acme',
+      slug: 'acme',
+      status: 'closing',
+      deletionScheduledAt: scheduledAt,
+    })),
+    cancelClosure: vi.fn().mockResolvedValue({ id: 'org-1', name: 'Acme', slug: 'acme', status: 'active' }),
+    exportOrganization: vi.fn().mockResolvedValue({ schemaVersion: 1 }),
     listMembers: vi.fn(),
     findMembership: vi.fn(),
     countOwners: vi.fn(),
@@ -85,5 +93,36 @@ describe('OrganizationService', () => {
     await expect(service.accept('user-1', 'session-1', 'invitation-token-that-is-long-enough')).rejects.toMatchObject({
       code: 'INVITATION_ALREADY_USED',
     });
+  });
+
+  it('requires owner confirmation and schedules organization deletion after a grace period', async () => {
+    const deps = dependencies();
+    const service = new OrganizationService(deps.repository, deps.tenants, deps.sender, {
+      verificationPepper: 'organization-test-pepper-longer-than-thirty-two-characters',
+    });
+    await expect(service.close(ownerContext, 'user-1', 'wrong')).rejects.toMatchObject({
+      code: 'ORGANIZATION_CONFIRMATION_MISMATCH',
+    });
+    const result = await service.close(ownerContext, 'user-1', 'acme');
+    expect(result.status).toBe('closing');
+    expect(deps.repository.requestClosure).toHaveBeenCalledWith(
+      'org-1',
+      'user-1',
+      'membership-owner',
+      expect.any(Date),
+    );
+    const scheduledAt = vi.mocked(deps.repository.requestClosure).mock.calls[0]?.[3];
+    expect(scheduledAt?.getTime()).toBeGreaterThan(Date.now() + 29 * 86_400_000);
+  });
+
+  it('limits organization exports to owners and auditors', async () => {
+    const deps = dependencies();
+    const service = new OrganizationService(deps.repository, deps.tenants, deps.sender, {
+      verificationPepper: 'organization-test-pepper-longer-than-thirty-two-characters',
+    });
+    await expect(service.export({ ...ownerContext, organizationRole: 'member' })).rejects.toMatchObject({
+      code: 'ACCESS_DENIED',
+    });
+    await expect(service.export(ownerContext)).resolves.toEqual({ schemaVersion: 1 });
   });
 });

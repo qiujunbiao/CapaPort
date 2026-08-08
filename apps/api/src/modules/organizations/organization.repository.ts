@@ -5,8 +5,9 @@ import type {
   UpdateOrganizationRequest,
 } from '@agentdoor/contracts/organizations';
 import { Inject, Injectable } from '@nestjs/common';
-import { and, desc, eq, isNull } from 'drizzle-orm';
+import { and, desc, eq, gt, isNull, ne } from 'drizzle-orm';
 import { sessions, userIdentities, users } from '../../db/schema/identity.js';
+import { lifecycleAuditEvents, operationJobs } from '../../db/schema/operations.js';
 import {
   auditLogs,
   organizationInvitations,
@@ -112,6 +113,7 @@ export class OrganizationRepository implements OrganizationDataStore, TenantStor
         name: organizations.name,
         slug: organizations.slug,
         status: organizations.status,
+        deletionScheduledAt: organizations.deletionScheduledAt,
         role: organizationMemberships.role,
       })
       .from(organizationMemberships)
@@ -123,6 +125,7 @@ export class OrganizationRepository implements OrganizationDataStore, TenantStor
       name: row.name,
       slug: row.slug,
       status: row.status as OrganizationRecord['status'],
+      ...(row.deletionScheduledAt ? { deletionScheduledAt: row.deletionScheduledAt.toISOString() } : {}),
       role: row.role as OrganizationRole,
     }));
   }
@@ -134,11 +137,20 @@ export class OrganizationRepository implements OrganizationDataStore, TenantStor
         name: organizations.name,
         slug: organizations.slug,
         status: organizations.status,
+        deletionScheduledAt: organizations.deletionScheduledAt,
       })
       .from(organizations)
       .where(eq(organizations.id, organizationId))
       .limit(1);
-    return row ? { ...row, status: row.status as OrganizationRecord['status'] } : undefined;
+    return row
+      ? {
+          id: row.id,
+          name: row.name,
+          slug: row.slug,
+          status: row.status as OrganizationRecord['status'],
+          ...(row.deletionScheduledAt ? { deletionScheduledAt: row.deletionScheduledAt } : {}),
+        }
+      : undefined;
   }
 
   async updateOrganization(
@@ -174,21 +186,151 @@ export class OrganizationRepository implements OrganizationDataStore, TenantStor
     return { ...updated, status: updated.status as OrganizationRecord['status'] };
   }
 
-  async archiveOrganization(organizationId: string, actorMembershipId: string): Promise<void> {
-    await this.database.transaction(async (transaction) => {
-      await transaction
+  async requestClosure(
+    organizationId: string,
+    actorUserId: string,
+    actorMembershipId: string,
+    scheduledAt: Date,
+  ): Promise<OrganizationRecord> {
+    return this.database.transaction(async (transaction) => {
+      const [updated] = await transaction
         .update(organizations)
-        .set({ status: 'archived', updatedAt: new Date() })
-        .where(eq(organizations.id, organizationId));
+        .set({
+          status: 'closing',
+          closureRequestedAt: new Date(),
+          deletionScheduledAt: scheduledAt,
+          updatedAt: new Date(),
+        })
+        .where(and(eq(organizations.id, organizationId), eq(organizations.status, 'active')))
+        .returning({ id: organizations.id, name: organizations.name, slug: organizations.slug });
+      if (!updated) throw new AppError('ORGANIZATION_NOT_FOUND', 'Organization not found.', 404);
       await this.insertAudit(
         transaction,
         organizationId,
         actorMembershipId,
-        'organization.archived',
+        'organization.closure_requested',
+        'organization',
+        organizationId,
+        { deletionScheduledAt: scheduledAt.toISOString() },
+      );
+      await transaction.insert(lifecycleAuditEvents).values({
+        id: randomUUID(),
+        scopeType: 'organization',
+        scopeId: organizationId,
+        actorUserId,
+        action: 'organization.closure_requested',
+        metadata: { deletionScheduledAt: scheduledAt.toISOString() },
+      });
+      await transaction
+        .insert(operationJobs)
+        .values({
+          id: randomUUID(),
+          organizationId,
+          type: 'lifecycle_deletion',
+          dedupKey: `organization:${organizationId}`,
+          payload: { scope: 'organization', scopeId: organizationId },
+          availableAt: scheduledAt,
+        })
+        .onConflictDoUpdate({
+          target: [operationJobs.type, operationJobs.dedupKey],
+          set: { status: 'pending', attempts: 0, availableAt: scheduledAt, updatedAt: new Date(), lastError: null },
+        });
+      return { ...updated, status: 'closing', deletionScheduledAt: scheduledAt };
+    });
+  }
+
+  async cancelClosure(
+    organizationId: string,
+    actorUserId: string,
+    actorMembershipId: string,
+  ): Promise<OrganizationRecord> {
+    return this.database.transaction(async (transaction) => {
+      const [updated] = await transaction
+        .update(organizations)
+        .set({ status: 'active', closureRequestedAt: null, deletionScheduledAt: null, updatedAt: new Date() })
+        .where(
+          and(
+            eq(organizations.id, organizationId),
+            eq(organizations.status, 'closing'),
+            gt(organizations.deletionScheduledAt, new Date()),
+          ),
+        )
+        .returning({ id: organizations.id, name: organizations.name, slug: organizations.slug });
+      if (!updated) throw new AppError('ORGANIZATION_NOT_CLOSING', 'Organization closure is not scheduled.', 409);
+      await transaction
+        .update(operationJobs)
+        .set({ status: 'completed', completedAt: new Date(), lastError: 'Cancelled', updatedAt: new Date() })
+        .where(
+          and(
+            eq(operationJobs.type, 'lifecycle_deletion'),
+            eq(operationJobs.dedupKey, `organization:${organizationId}`),
+            eq(operationJobs.status, 'pending'),
+          ),
+        );
+      await this.insertAudit(
+        transaction,
+        organizationId,
+        actorMembershipId,
+        'organization.closure_cancelled',
         'organization',
         organizationId,
       );
+      await transaction.insert(lifecycleAuditEvents).values({
+        id: randomUUID(),
+        scopeType: 'organization',
+        scopeId: organizationId,
+        actorUserId,
+        action: 'organization.closure_cancelled',
+      });
+      return { ...updated, status: 'active' };
     });
+  }
+
+  async exportOrganization(organizationId: string): Promise<Record<string, unknown>> {
+    const [organization, members, organizationSpaces, capabilities, versions, logs] = await Promise.all([
+      this.database.pool.query(
+        `SELECT id,name,slug,status,created_at,updated_at,closure_requested_at,deletion_scheduled_at
+         FROM organizations WHERE id=$1`,
+        [organizationId],
+      ),
+      this.database.pool.query(
+        `SELECT membership.id,membership.user_id,"user".display_name,membership.role,membership.status,
+                membership.joined_at,membership.disabled_at
+         FROM organization_memberships membership JOIN users "user" ON "user".id=membership.user_id
+         WHERE membership.organization_id=$1 ORDER BY membership.joined_at`,
+        [organizationId],
+      ),
+      this.database.pool.query(
+        `SELECT id,type,name,slug,review_policy,status,created_at FROM spaces WHERE organization_id=$1 ORDER BY created_at`,
+        [organizationId],
+      ),
+      this.database.pool.query(
+        `SELECT id,space_id,slug,name,description,tags,compatibility,owner_user_id,status,created_at,updated_at
+         FROM capabilities WHERE organization_id=$1 ORDER BY created_at`,
+        [organizationId],
+      ),
+      this.database.pool.query(
+        `SELECT id,space_id,capability_id,version,content_digest,manifest,status,published_at
+         FROM capability_versions WHERE organization_id=$1 ORDER BY published_at`,
+        [organizationId],
+      ),
+      this.database.pool.query(
+        `SELECT id,actor_user_id,action,resource_type,resource_id,metadata,created_at
+         FROM audit_logs WHERE organization_id=$1 ORDER BY created_at`,
+        [organizationId],
+      ),
+    ]);
+    if (!organization.rows[0]) throw new AppError('ORGANIZATION_NOT_FOUND', 'Organization not found.', 404);
+    return {
+      schemaVersion: 1,
+      generatedAt: new Date().toISOString(),
+      organization: organization.rows[0],
+      members: members.rows,
+      spaces: organizationSpaces.rows,
+      capabilities: capabilities.rows,
+      versions: versions.rows,
+      auditLogs: logs.rows,
+    };
   }
 
   async listMembers(organizationId: string): Promise<OrganizationMember[]> {
@@ -603,7 +745,7 @@ export class OrganizationRepository implements OrganizationDataStore, TenantStor
           eq(organizationMemberships.organizationId, organizationId),
           eq(organizationMemberships.userId, userId),
           eq(organizationMemberships.status, 'active'),
-          eq(organizations.status, 'active'),
+          ne(organizations.status, 'archived'),
         ),
       )
       .limit(1);

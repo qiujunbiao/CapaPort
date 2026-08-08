@@ -58,7 +58,28 @@ export function webFixture(
     switchOrganization: async () => undefined,
     acceptInvitation: async () => ({ status: 'accepted', organizationId: 'org-a' }),
     updateOrganization: async () => undefined,
+    exportOrganization: async () => ({ schemaVersion: 1 }),
+    closeOrganization: async () => ({
+      id: 'org-a',
+      name: '平台研发',
+      slug: 'platform',
+      role,
+      status: 'closing',
+      deletionScheduledAt: '2026-09-07T00:00:00.000Z',
+    }),
+    cancelOrganizationClosure: async () => ({
+      id: 'org-a',
+      name: '平台研发',
+      slug: 'platform',
+      role,
+      status: 'active',
+    }),
+    transferOwnership: async () => undefined,
     leaveOrganization: async () => undefined,
+    exportAccount: async () => ({ schemaVersion: 1 }),
+    requestAccountDeletion: async () => ({ deletionScheduledAt: '2026-09-07T00:00:00.000Z' }),
+    cancelAccountDeletion: async () => ({ cancelled: true }),
+    accountDeletionStatus: async () => ({ status: 'none' }),
     members: async () => [
       {
         id: 'member-a',

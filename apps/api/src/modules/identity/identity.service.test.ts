@@ -8,6 +8,10 @@ function dependencies() {
     createRegistration: vi.fn().mockResolvedValue(undefined),
     changePasswordAndRevoke: vi.fn().mockResolvedValue(undefined),
     listIdentities: vi.fn().mockResolvedValue([]),
+    exportAccount: vi.fn().mockResolvedValue({ schemaVersion: 1 }),
+    requestAccountDeletion: vi.fn().mockResolvedValue(undefined),
+    cancelAccountDeletion: vi.fn().mockResolvedValue(undefined),
+    accountDeletionStatus: vi.fn().mockResolvedValue(undefined),
   };
   const password: PasswordHasher = {
     hash: vi.fn().mockResolvedValue('argon2id-hash'),

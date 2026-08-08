@@ -2,6 +2,7 @@ import { zodFieldErrors } from '@agentdoor/contracts/errors';
 import {
   acceptInvitationRequestSchema,
   changeOrganizationRoleRequestSchema,
+  closeOrganizationRequestSchema,
   createOrganizationRequestSchema,
   inviteMemberRequestSchema,
   transferOwnershipRequestSchema,
@@ -19,6 +20,7 @@ import {
   Patch,
   Post,
   Req,
+  StreamableFile,
   UseGuards,
 } from '@nestjs/common';
 import type { ZodType } from 'zod';
@@ -94,9 +96,39 @@ export class OrganizationController {
 
   @Delete(':organizationId')
   @UseGuards(AuthGuard, TenantGuard, RecentAuthGuard)
-  @HttpCode(HttpStatus.NO_CONTENT)
-  archive(@Req() request: TenantRequest) {
-    return this.organizations.archive(tenant(request));
+  @HttpCode(HttpStatus.ACCEPTED)
+  closeLegacy(@Req() request: TenantRequest) {
+    const user = auth(request);
+    return this.organizations.close(tenant(request), user.userId);
+  }
+
+  @Post(':organizationId/closure')
+  @UseGuards(AuthGuard, TenantGuard, RecentAuthGuard)
+  @HttpCode(HttpStatus.ACCEPTED)
+  close(@Req() request: TenantRequest, @Body() body: unknown) {
+    const user = auth(request);
+    return this.organizations.close(
+      tenant(request),
+      user.userId,
+      parse(closeOrganizationRequestSchema, body).confirmation,
+    );
+  }
+
+  @Delete(':organizationId/closure')
+  @UseGuards(AuthGuard, TenantGuard, RecentAuthGuard)
+  cancelClosure(@Req() request: TenantRequest) {
+    const user = auth(request);
+    return this.organizations.cancelClosure(tenant(request), user.userId);
+  }
+
+  @Get(':organizationId/export')
+  @UseGuards(AuthGuard, TenantGuard, RecentAuthGuard)
+  async export(@Req() request: TenantRequest) {
+    const data = await this.organizations.export(tenant(request));
+    return new StreamableFile(Buffer.from(JSON.stringify(data)), {
+      type: 'application/json; charset=utf-8',
+      disposition: `attachment; filename="agentdoor-organization-${tenant(request).organizationId}.json"`,
+    });
   }
 
   @Get(':organizationId/members')

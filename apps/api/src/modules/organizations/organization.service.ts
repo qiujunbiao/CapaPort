@@ -20,7 +20,13 @@ import {
   requireAnotherOwner,
 } from './organization.policy.js';
 
-export type OrganizationRecord = { id: string; name: string; slug: string; status: 'active' | 'archived' };
+export type OrganizationRecord = {
+  id: string;
+  name: string;
+  slug: string;
+  status: 'active' | 'closing' | 'archived';
+  deletionScheduledAt?: Date;
+};
 export type OrganizationMember = {
   id: string;
   userId: string;
@@ -58,7 +64,14 @@ export interface OrganizationDataStore {
     actorMembershipId: string,
     input: UpdateOrganizationRequest,
   ): Promise<OrganizationRecord>;
-  archiveOrganization(organizationId: string, actorMembershipId: string): Promise<void>;
+  requestClosure(
+    organizationId: string,
+    actorUserId: string,
+    actorMembershipId: string,
+    scheduledAt: Date,
+  ): Promise<OrganizationRecord>;
+  cancelClosure(organizationId: string, actorUserId: string, actorMembershipId: string): Promise<OrganizationRecord>;
+  exportOrganization(organizationId: string): Promise<Record<string, unknown>>;
   listMembers(organizationId: string): Promise<OrganizationMember[]>;
   findMembership(organizationId: string, membershipId: string): Promise<OrganizationMember | undefined>;
   countOwners(organizationId: string): Promise<number>;
@@ -132,7 +145,16 @@ export class OrganizationService {
       throw error;
     }
     await this.tenants.switch(userId, sessionId, organization.id);
-    return { ...organization, role: 'owner' };
+    return {
+      id: organization.id,
+      name: organization.name,
+      slug: organization.slug,
+      status: organization.status,
+      role: 'owner',
+      ...(organization.deletionScheduledAt
+        ? { deletionScheduledAt: organization.deletionScheduledAt.toISOString() }
+        : {}),
+    };
   }
 
   list(userId: string): Promise<OrganizationSummary[]> {
@@ -154,10 +176,33 @@ export class OrganizationService {
     return this.repository.updateOrganization(context.organizationId, context.membershipId, input);
   }
 
-  async archive(context: TenantContext): Promise<void> {
+  async close(context: TenantContext, actorUserId: string, confirmation?: string): Promise<OrganizationRecord> {
     if (context.organizationRole !== 'owner')
-      throw new AppError('ACCESS_DENIED', 'Only an owner can archive the organization.', 403);
-    await this.repository.archiveOrganization(context.organizationId, context.membershipId);
+      throw new AppError('ACCESS_DENIED', 'Only an owner can close the organization.', 403);
+    const organization = await this.get(context);
+    if (organization.status === 'closing') return organization;
+    if (confirmation !== undefined && confirmation !== organization.slug && confirmation !== organization.name) {
+      throw new AppError('ORGANIZATION_CONFIRMATION_MISMATCH', 'Enter the organization name or slug to confirm.', 400);
+    }
+    return this.repository.requestClosure(
+      context.organizationId,
+      actorUserId,
+      context.membershipId,
+      new Date(Date.now() + 30 * 86_400_000),
+    );
+  }
+
+  async cancelClosure(context: TenantContext, actorUserId: string): Promise<OrganizationRecord> {
+    if (context.organizationRole !== 'owner')
+      throw new AppError('ACCESS_DENIED', 'Only an owner can cancel organization closure.', 403);
+    return this.repository.cancelClosure(context.organizationId, actorUserId, context.membershipId);
+  }
+
+  async export(context: TenantContext): Promise<Record<string, unknown>> {
+    if (context.organizationRole !== 'owner' && context.organizationRole !== 'auditor') {
+      throw new AppError('ACCESS_DENIED', 'Owner or auditor access is required to export organization data.', 403);
+    }
+    return this.repository.exportOrganization(context.organizationId);
   }
 
   members(context: TenantContext): Promise<OrganizationMember[]> {

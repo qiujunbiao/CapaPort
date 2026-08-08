@@ -95,6 +95,29 @@ describe('organization web console', () => {
     expect(await screen.findByRole('heading', { name: '登录管理后台' })).toBeInTheDocument();
   });
 
+  it('exposes export, ownership transfer, and confirmed closure controls to an owner', async () => {
+    render(
+      <WebApp
+        client={webFixture({ role: 'owner' })}
+        sessionStore={createMemoryWebSessionStore({
+          accessToken: 'token',
+          refreshToken: 'refresh',
+          organizationId: 'org-a',
+        })}
+      />,
+    );
+    fireEvent.click(await screen.findByRole('button', { name: '组织设置' }));
+    expect(await screen.findByRole('button', { name: '导出组织数据' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '导出我的数据' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '移交所有权' })).toBeDisabled();
+    fireEvent.change(screen.getByLabelText('新所有者'), { target: { value: 'member-b' } });
+    expect(screen.getByRole('button', { name: '移交所有权' })).toBeEnabled();
+    const close = screen.getByRole('button', { name: '安排关闭组织' });
+    expect(close).toBeDisabled();
+    fireEvent.change(screen.getByLabelText('输入组织名称或标识确认关闭'), { target: { value: 'platform' } });
+    expect(close).toBeEnabled();
+  });
+
   it('manages roles inside a team space', async () => {
     render(
       <WebApp
