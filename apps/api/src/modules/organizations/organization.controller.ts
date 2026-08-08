@@ -23,6 +23,8 @@ import {
 } from '@nestjs/common';
 import type { ZodType } from 'zod';
 import { AppError } from '../../platform/errors/app-error.js';
+import { RateLimitService } from '../../platform/security/rate-limit.service.js';
+import { RecentAuthGuard } from '../../platform/security/recent-auth.guard.js';
 import { TenantGuard, type TenantRequest } from '../../platform/tenancy/tenant.guard.js';
 import { type AuthenticatedRequest, AuthGuard } from '../identity/auth.guard.js';
 import { OrganizationService } from './organization.service.js';
@@ -46,7 +48,10 @@ function tenant(request: TenantRequest) {
 
 @Controller('organizations')
 export class OrganizationController {
-  constructor(@Inject(OrganizationService) private readonly organizations: OrganizationService) {}
+  constructor(
+    @Inject(OrganizationService) private readonly organizations: OrganizationService,
+    @Inject(RateLimitService) private readonly rateLimits: RateLimitService,
+  ) {}
 
   @Post()
   @UseGuards(AuthGuard)
@@ -88,7 +93,7 @@ export class OrganizationController {
   }
 
   @Delete(':organizationId')
-  @UseGuards(AuthGuard, TenantGuard)
+  @UseGuards(AuthGuard, TenantGuard, RecentAuthGuard)
   @HttpCode(HttpStatus.NO_CONTENT)
   archive(@Req() request: TenantRequest) {
     return this.organizations.archive(tenant(request));
@@ -101,7 +106,7 @@ export class OrganizationController {
   }
 
   @Patch(':organizationId/members/:membershipId/role')
-  @UseGuards(AuthGuard, TenantGuard)
+  @UseGuards(AuthGuard, TenantGuard, RecentAuthGuard)
   @HttpCode(HttpStatus.NO_CONTENT)
   changeRole(@Req() request: TenantRequest, @Param('membershipId') membershipId: string, @Body() body: unknown) {
     return this.organizations.changeRole(
@@ -112,14 +117,14 @@ export class OrganizationController {
   }
 
   @Delete(':organizationId/members/:membershipId')
-  @UseGuards(AuthGuard, TenantGuard)
+  @UseGuards(AuthGuard, TenantGuard, RecentAuthGuard)
   @HttpCode(HttpStatus.NO_CONTENT)
   removeMember(@Req() request: TenantRequest, @Param('membershipId') membershipId: string) {
     return this.organizations.removeMember(tenant(request), membershipId);
   }
 
   @Post(':organizationId/owner/transfer')
-  @UseGuards(AuthGuard, TenantGuard)
+  @UseGuards(AuthGuard, TenantGuard, RecentAuthGuard)
   @HttpCode(HttpStatus.NO_CONTENT)
   transferOwnership(@Req() request: TenantRequest, @Body() body: unknown) {
     return this.organizations.transferOwnership(
@@ -138,8 +143,13 @@ export class OrganizationController {
   @Post(':organizationId/invitations')
   @UseGuards(AuthGuard, TenantGuard)
   @HttpCode(HttpStatus.ACCEPTED)
-  invite(@Req() request: TenantRequest, @Body() body: unknown) {
+  async invite(@Req() request: TenantRequest, @Body() body: unknown) {
     const user = auth(request);
+    await this.rateLimits.assertAllowed('invitation', {
+      account: user.userId,
+      ...(request.ip ? { ipAddress: request.ip } : {}),
+      deviceId: user.sessionId,
+    });
     return this.organizations.invite(tenant(request), user.userId, parse(inviteMemberRequestSchema, body));
   }
 
@@ -150,7 +160,7 @@ export class OrganizationController {
   }
 
   @Delete(':organizationId/invitations/:invitationId')
-  @UseGuards(AuthGuard, TenantGuard)
+  @UseGuards(AuthGuard, TenantGuard, RecentAuthGuard)
   @HttpCode(HttpStatus.NO_CONTENT)
   revokeInvitation(@Req() request: TenantRequest, @Param('invitationId') invitationId: string) {
     return this.organizations.revokeInvitation(tenant(request), invitationId);

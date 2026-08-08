@@ -23,6 +23,8 @@ import {
 import type { FastifyRequest } from 'fastify';
 import type { ZodType } from 'zod';
 import { AppError } from '../../platform/errors/app-error.js';
+import { RateLimitService } from '../../platform/security/rate-limit.service.js';
+import { RecentAuthGuard } from '../../platform/security/recent-auth.guard.js';
 import type { AuthenticatedRequest } from './auth.guard.js';
 import { AuthGuard } from './auth.guard.js';
 import { IdentityService } from './identity.service.js';
@@ -43,17 +45,21 @@ export class AuthController {
   constructor(
     @Inject(IdentityService) private readonly identity: IdentityService,
     @Inject(SessionService) private readonly sessions: SessionService,
+    @Inject(RateLimitService) private readonly rateLimits: RateLimitService,
   ) {}
 
   @Post('register')
   @HttpCode(HttpStatus.ACCEPTED)
-  register(@Body() body: unknown) {
-    return this.identity.register(parse(registerRequestSchema, body));
+  async register(@Body() body: unknown, @Req() request: FastifyRequest) {
+    const input = parse(registerRequestSchema, body);
+    await this.rateLimits.assertAllowed('verification', this.dimensions(request, input.target));
+    return this.identity.register(input);
   }
 
   @Post('verify')
-  verify(@Body() body: unknown) {
+  async verify(@Body() body: unknown, @Req() request: FastifyRequest) {
     const input = parse(verificationRequestSchema, body);
+    await this.rateLimits.assertAllowed('verification', this.dimensions(request, input.challengeId));
     return this.identity.verify(input.challengeId, input.code);
   }
 
@@ -75,13 +81,17 @@ export class AuthController {
 
   @Post('recovery/start')
   @HttpCode(HttpStatus.ACCEPTED)
-  startRecovery(@Body() body: unknown) {
-    return this.identity.startRecovery(parse(recoveryStartRequestSchema, body));
+  async startRecovery(@Body() body: unknown, @Req() request: FastifyRequest) {
+    const input = parse(recoveryStartRequestSchema, body);
+    await this.rateLimits.assertAllowed('recovery', this.dimensions(request, input.target));
+    return this.identity.startRecovery(input);
   }
 
   @Post('recovery/complete')
-  completeRecovery(@Body() body: unknown) {
-    return this.identity.completeRecovery(parse(recoveryCompleteRequestSchema, body));
+  async completeRecovery(@Body() body: unknown, @Req() request: FastifyRequest) {
+    const input = parse(recoveryCompleteRequestSchema, body);
+    await this.rateLimits.assertAllowed('recovery', this.dimensions(request, input.challengeId));
+    return this.identity.completeRecovery(input);
   }
 
   @Post('logout')
@@ -106,11 +116,26 @@ export class AuthController {
   }
 
   @Delete('sessions/:sessionId')
-  @UseGuards(AuthGuard)
+  @UseGuards(AuthGuard, RecentAuthGuard)
   @HttpCode(HttpStatus.NO_CONTENT)
   async revokeSession(@Req() request: RequestWithAuth, @Param('sessionId') sessionId: string): Promise<void> {
     const auth = request.auth;
     if (!auth) throw new AppError('AUTH_REQUIRED', 'Authentication is required.', 401);
     await this.sessions.revoke(auth.userId, sessionId, 'user_revoked');
+  }
+
+  private dimensions(request: FastifyRequest, account: string) {
+    const deviceHeader = request.headers['x-device-id'];
+    const userAgent = request.headers['user-agent'];
+    return {
+      account: account.trim().toLowerCase(),
+      ipAddress: request.ip,
+      deviceId:
+        typeof deviceHeader === 'string'
+          ? deviceHeader
+          : typeof userAgent === 'string'
+            ? userAgent.slice(0, 512)
+            : 'unknown',
+    };
   }
 }

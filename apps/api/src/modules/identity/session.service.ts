@@ -68,7 +68,7 @@ export class SessionService {
         ...(client.userAgent ? { userAgent: client.userAgent.slice(0, 512) } : {}),
       },
     });
-    return this.tokenPair(userId, sessionId, refreshToken);
+    return this.tokenPair(userId, sessionId, refreshToken, Math.floor(Date.now() / 1000));
   }
 
   async refresh(currentToken: string): Promise<TokenPair> {
@@ -95,9 +95,14 @@ export class SessionService {
       const result = await jwtVerify(accessToken, this.jwtKey, { issuer: 'agentdoor', audience: 'agentdoor-client' });
       const userId = result.payload.sub;
       const sessionId = result.payload.sid;
+      const recentlyAuthenticatedAt = result.payload.auth_time;
       if (typeof userId !== 'string' || typeof sessionId !== 'string') throw new Error('missing claims');
       if (!(await this.store.assertActive(userId, sessionId))) throw new Error('revoked session');
-      return { userId, sessionId };
+      return {
+        userId,
+        sessionId,
+        recentlyAuthenticatedAt: typeof recentlyAuthenticatedAt === 'number' ? recentlyAuthenticatedAt : 0,
+      };
     } catch {
       throw new AppError('AUTH_ACCESS_INVALID', 'The access token is invalid or expired.', 401);
     }
@@ -111,8 +116,16 @@ export class SessionService {
     return this.store.list(userId, currentSessionId);
   }
 
-  private async tokenPair(userId: string, sessionId: string, refreshToken: string): Promise<TokenPair> {
-    const accessToken = await new SignJWT({ sid: sessionId })
+  private async tokenPair(
+    userId: string,
+    sessionId: string,
+    refreshToken: string,
+    recentlyAuthenticatedAt?: number,
+  ): Promise<TokenPair> {
+    const accessToken = await new SignJWT({
+      sid: sessionId,
+      ...(recentlyAuthenticatedAt === undefined ? {} : { auth_time: recentlyAuthenticatedAt }),
+    })
       .setProtectedHeader({ alg: 'HS256', typ: 'JWT' })
       .setSubject(userId)
       .setIssuer('agentdoor')

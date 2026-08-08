@@ -43,8 +43,12 @@ export function createCloudClient(
     const headers = new Headers(options.headers);
     if (options.body && !headers.has('content-type')) headers.set('content-type', 'application/json');
     if (options.session) headers.set('authorization', `Bearer ${options.session.accessToken}`);
+    const method = (options.method ?? 'GET').toUpperCase();
+    if (options.session && !['GET', 'HEAD', 'OPTIONS'].includes(method) && !headers.has('idempotency-key')) {
+      headers.set('idempotency-key', crypto.randomUUID());
+    }
     if (options.organizationId) headers.set('x-organization-id', options.organizationId);
-    const response = await fetch(`${baseUrl}${path}`, { ...options, headers });
+    const response = await fetch(`${baseUrl}${path}`, { ...options, method, headers });
     if (!response.ok) {
       const error = (await response
         .json()

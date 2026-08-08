@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import type { TokenPair } from '@agentdoor/contracts';
 import type { CredentialStore } from './credentials.js';
 import { AuthError, NetworkError } from './parser.js';
@@ -27,12 +28,16 @@ export class ApiClient {
     const headers = new Headers({ accept: 'application/json', ...init.headers });
     if (init.body !== undefined) headers.set('content-type', 'application/json');
     if (init.authenticated !== false && session) headers.set('authorization', `Bearer ${session.accessToken}`);
+    const method = (init.method ?? 'GET').toUpperCase();
+    if (init.authenticated !== false && session && !['GET', 'HEAD', 'OPTIONS'].includes(method)) {
+      if (!headers.has('idempotency-key')) headers.set('idempotency-key', randomUUID());
+    }
     const organizationId = init.organizationId ?? session?.organizationId;
     if (organizationId) headers.set('x-organization-id', organizationId);
     let response: Response;
     try {
       response = await fetch(`${this.baseUrl}${path}`, {
-        method: init.method ?? 'GET',
+        method,
         headers,
         ...(init.body !== undefined ? { body: JSON.stringify(init.body) } : {}),
       });

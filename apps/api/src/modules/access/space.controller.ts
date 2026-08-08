@@ -22,6 +22,7 @@ import {
 } from '@nestjs/common';
 import type { ZodType } from 'zod';
 import { AppError } from '../../platform/errors/app-error.js';
+import { RecentAuthGuard } from '../../platform/security/recent-auth.guard.js';
 import { TenantGuard, type TenantRequest } from '../../platform/tenancy/tenant.guard.js';
 import { AuthGuard } from '../identity/auth.guard.js';
 import { RequireSpaceAction, SpaceAccessGuard, type SpaceRequest } from './space.guard.js';
@@ -79,7 +80,7 @@ export class SpaceController {
 
   @Delete(':spaceId')
   @RequireSpaceAction('space:archive')
-  @UseGuards(AuthGuard, TenantGuard, SpaceAccessGuard)
+  @UseGuards(AuthGuard, TenantGuard, SpaceAccessGuard, RecentAuthGuard)
   @HttpCode(HttpStatus.NO_CONTENT)
   archive(@Req() request: SpaceRequest) {
     return this.spaces.archive(access(request));
@@ -87,7 +88,7 @@ export class SpaceController {
 
   @Patch(':spaceId/review-policy')
   @RequireSpaceAction('space:update-review-policy')
-  @UseGuards(AuthGuard, TenantGuard, SpaceAccessGuard)
+  @UseGuards(AuthGuard, TenantGuard, SpaceAccessGuard, RecentAuthGuard)
   updateReviewPolicy(@Req() request: SpaceRequest, @Body() body: unknown) {
     const input = parse(updateSpaceReviewPolicyRequestSchema, body);
     return this.spaces.updateReviewPolicy(access(request), input.reviewPolicy);
@@ -102,7 +103,7 @@ export class SpaceController {
 
   @Post(':spaceId/members')
   @RequireSpaceAction('space:manage-members')
-  @UseGuards(AuthGuard, TenantGuard, SpaceAccessGuard)
+  @UseGuards(AuthGuard, TenantGuard, SpaceAccessGuard, RecentAuthGuard)
   addMember(@Req() request: SpaceRequest, @Body() body: unknown) {
     const input = parse(addSpaceMemberRequestSchema, body);
     return this.spaces.addMember(access(request), input.userId, input.role);
@@ -110,7 +111,7 @@ export class SpaceController {
 
   @Patch(':spaceId/members/:spaceMembershipId')
   @RequireSpaceAction('space:manage-members')
-  @UseGuards(AuthGuard, TenantGuard, SpaceAccessGuard)
+  @UseGuards(AuthGuard, TenantGuard, SpaceAccessGuard, RecentAuthGuard)
   @HttpCode(HttpStatus.NO_CONTENT)
   changeMemberRole(
     @Req() request: SpaceRequest,
@@ -123,7 +124,7 @@ export class SpaceController {
 
   @Delete(':spaceId/members/:spaceMembershipId')
   @RequireSpaceAction('space:manage-members')
-  @UseGuards(AuthGuard, TenantGuard, SpaceAccessGuard)
+  @UseGuards(AuthGuard, TenantGuard, SpaceAccessGuard, RecentAuthGuard)
   @HttpCode(HttpStatus.NO_CONTENT)
   removeMember(@Req() request: SpaceRequest, @Param('spaceMembershipId') spaceMembershipId: string) {
     return this.spaces.removeMember(access(request), spaceMembershipId);

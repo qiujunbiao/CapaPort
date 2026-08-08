@@ -1,7 +1,13 @@
 import type { TokenPair } from '@agentdoor/contracts';
 import type { WebClient, WebSessionStore } from './types';
 
-type RequestOptions = { method?: string; body?: unknown; organizationId?: string; authenticated?: boolean };
+type RequestOptions = {
+  method?: string;
+  body?: unknown;
+  organizationId?: string;
+  authenticated?: boolean;
+  idempotencyKey?: string;
+};
 
 export function createWebClient(baseUrl: string, sessionStore: WebSessionStore): WebClient {
   const api = baseUrl.replace(/\/$/, '');
@@ -11,10 +17,16 @@ export function createWebClient(baseUrl: string, sessionStore: WebSessionStore):
     const headers = new Headers({ accept: 'application/json' });
     if (options.body !== undefined) headers.set('content-type', 'application/json');
     if (options.authenticated !== false && session) headers.set('authorization', `Bearer ${session.accessToken}`);
+    const method = (options.method ?? 'GET').toUpperCase();
+    const idempotencyKey =
+      options.authenticated !== false && session && !['GET', 'HEAD', 'OPTIONS'].includes(method)
+        ? (options.idempotencyKey ?? crypto.randomUUID())
+        : undefined;
+    if (idempotencyKey) headers.set('idempotency-key', idempotencyKey);
     const organizationId = options.organizationId ?? session?.organizationId;
     if (organizationId) headers.set('x-organization-id', organizationId);
     const response = await fetch(`${api}${path}`, {
-      method: options.method ?? 'GET',
+      method,
       headers,
       ...(options.body !== undefined ? { body: JSON.stringify(options.body) } : {}),
     });
@@ -25,7 +37,7 @@ export function createWebClient(baseUrl: string, sessionStore: WebSessionStore):
         false,
       );
       sessionStore.set({ ...refreshed, ...(session.organizationId ? { organizationId: session.organizationId } : {}) });
-      return request<T>(path, options, false);
+      return request<T>(path, { ...options, ...(idempotencyKey ? { idempotencyKey } : {}) }, false);
     }
     if (!response.ok) {
       const payload = (await response.json().catch(() => undefined)) as

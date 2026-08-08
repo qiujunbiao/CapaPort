@@ -9,6 +9,7 @@ import { OrganizationService } from '../../src/modules/organizations/organizatio
 import { AppError } from '../../src/platform/errors/app-error.js';
 import { AppExceptionFilter } from '../../src/platform/errors/app-exception.filter.js';
 import { RequestIdMiddleware } from '../../src/platform/request-context/request-id.middleware.js';
+import { RateLimitService } from '../../src/platform/security/rate-limit.service.js';
 import { TenantGuard } from '../../src/platform/tenancy/tenant.guard.js';
 import { TenantContextService } from '../../src/platform/tenancy/tenant-context.service.js';
 
@@ -29,6 +30,7 @@ describe('organization invitation HTTP contract', () => {
       controllers: [OrganizationController],
       providers: [
         { provide: OrganizationService, useValue: organizations },
+        { provide: RateLimitService, useValue: { assertAllowed: vi.fn().mockResolvedValue(undefined) } },
         {
           provide: SessionService,
           useValue: { authenticate: vi.fn().mockResolvedValue({ userId: 'user-a', sessionId: 'session-a' }) },

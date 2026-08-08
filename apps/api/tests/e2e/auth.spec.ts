@@ -8,6 +8,7 @@ import { IdentityService } from '../../src/modules/identity/identity.service.js'
 import { SessionService } from '../../src/modules/identity/session.service.js';
 import { AppExceptionFilter } from '../../src/platform/errors/app-exception.filter.js';
 import { RequestIdMiddleware } from '../../src/platform/request-context/request-id.middleware.js';
+import { RateLimitService } from '../../src/platform/security/rate-limit.service.js';
 
 describe('auth HTTP contract', () => {
   let app: INestApplication | undefined;
@@ -31,6 +32,7 @@ describe('auth HTTP contract', () => {
       providers: [
         { provide: IdentityService, useValue: identity },
         { provide: SessionService, useValue: sessions },
+        { provide: RateLimitService, useValue: { assertAllowed: vi.fn().mockResolvedValue(undefined) } },
         AuthGuard,
       ],
     }).compile();

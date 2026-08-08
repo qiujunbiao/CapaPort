@@ -40,7 +40,7 @@ export type RefreshRequest = z.infer<typeof refreshRequestSchema>;
 export type RecoveryStartRequest = z.infer<typeof recoveryStartRequestSchema>;
 export type RecoveryCompleteRequest = z.infer<typeof recoveryCompleteRequestSchema>;
 
-export type AuthenticatedUser = { userId: string; sessionId: string };
+export type AuthenticatedUser = { userId: string; sessionId: string; recentlyAuthenticatedAt?: number };
 export type TokenPair = { accessToken: string; refreshToken: string; expiresIn: number };
 export type PublicUser = {
   id: string;

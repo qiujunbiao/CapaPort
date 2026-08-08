@@ -24,6 +24,9 @@ describe('SessionService', () => {
     };
     const service = new SessionService(store, config);
     const issued = await service.issue('user-1', { deviceName: 'MacBook', ipAddress: '127.0.0.1', userAgent: 'test' });
+    await expect(service.authenticate(issued.accessToken)).resolves.toEqual(
+      expect.objectContaining({ recentlyAuthenticatedAt: expect.any(Number) }),
+    );
     expect(store.create).toHaveBeenCalledWith(
       expect.objectContaining({
         client: expect.objectContaining({ ipHash: expect.stringMatching(/^[a-f0-9]{64}$/) }),
@@ -32,6 +35,9 @@ describe('SessionService', () => {
     expect(JSON.stringify(vi.mocked(store.create).mock.calls)).not.toContain('127.0.0.1');
     const rotated = await service.refresh(issued.refreshToken);
     expect(rotated.refreshToken).not.toBe(issued.refreshToken);
+    await expect(service.authenticate(rotated.accessToken)).resolves.toEqual(
+      expect.objectContaining({ recentlyAuthenticatedAt: 0 }),
+    );
 
     await expect(service.refresh(issued.refreshToken)).rejects.toMatchObject({
       code: 'AUTH_REFRESH_REPLAY',
