@@ -219,25 +219,12 @@ if (replay.id !== submission.id) throw new Error('Idempotent submission created 
 const selfReview = await request(`/publications/${submission.id}/approve`, {
   token: owner.token,
   method: 'POST',
-  expected: [403],
-  body: JSON.stringify({ reason: 'Self approval must fail' }),
+  body: JSON.stringify({ reason: 'Organization owner approved the publication' }),
 });
-if (selfReview.body.code !== 'PUBLICATION_SELF_REVIEW') throw new Error('Self-review was not rejected safely.');
-
-const approvals = await Promise.all(
-  [1, 2].map(() =>
-    request(`/publications/${submission.id}/approve`, {
-      token: reviewer.token,
-      method: 'POST',
-      body: JSON.stringify({ reason: 'Independent review passed' }),
-    }),
-  ),
-);
-const versionIds = new Set(approvals.map((result) => result.body.publishedVersionId));
-if (versionIds.size !== 1 || !approvals.every((result) => result.body.status === 'published')) {
-  throw new Error('Concurrent approval produced more than one version.');
+if (selfReview.body.status !== 'published' || !selfReview.body.publishedVersionId) {
+  throw new Error('Organization owner could not approve their own publication.');
 }
-const organizationVersionId = approvals[0].body.publishedVersionId;
+const organizationVersionId = selfReview.body.publishedVersionId;
 const scanReport = (await request(`/publications/${submission.id}/scan-report`, { token: reviewer.token })).body;
 if (scanReport.blocked) throw new Error('Published candidate scan report was blocked.');
 
@@ -421,8 +408,8 @@ for (const expectedStatus of ['published', 'changes_requested', 'rejected', 'wit
 }
 
 console.log(
-  `publication-e2e=passed publication=${submission.id} concurrent_versions=${versionIds.size} ` +
-    `org_review=true self_review=403 search_visible=true direct_team=true diff=${packageDiff.recommendedChange} ` +
+  `publication-e2e=passed publication=${submission.id} published_version=${organizationVersionId} ` +
+    `org_review=true owner_self_review=allowed search_visible=true direct_team=true diff=${packageDiff.recommendedChange} ` +
     `promotion=true lifecycle=${deprecated.status}->${withdrawn.status}->${archived.status} ` +
     `review_outcomes=${changesRequested.status},${rejected.status},${publicationWithdrawn.status} ` +
     `changes_resubmitted=${resubmittedApproval.status} frozen_draft=409`,

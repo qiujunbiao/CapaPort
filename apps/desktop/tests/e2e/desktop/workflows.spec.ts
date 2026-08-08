@@ -253,6 +253,21 @@ async function injectClients(page: Page, options: { conflict?: boolean; pendingP
       detectAgents: async () => [
         { adapterId: 'codex', displayName: 'Codex', scope: 'user', rootPath: '[authorized-root]' },
       ],
+      discoverLocalSkills: async () => ({
+        skills: [
+          {
+            adapterId: 'codex',
+            displayName: 'Codex',
+            scope: 'user',
+            sourceKind: 'shared',
+            linked: false,
+            sourcePath: '[authorized-root]/skills/release-helper',
+            slug: 'release-helper',
+            digest: 'b'.repeat(64),
+          },
+        ],
+        issues: [],
+      }),
       inventoryAgent: async () => [
         {
           slug: 'release-helper',

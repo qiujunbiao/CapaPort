@@ -19,9 +19,13 @@ export const createCapabilityRequestSchema = z.object({
   compatibility: z.array(agentIdSchema).min(1).max(4),
   forkedFromVersionId: z.uuid().optional(),
 });
-export const updateCapabilityRequestSchema = createCapabilityRequestSchema
-  .pick({ name: true, description: true, tags: true, compatibility: true })
-  .partial()
+export const updateCapabilityRequestSchema = z
+  .object({
+    name: z.string().trim().min(1).max(120).optional(),
+    description: z.string().trim().max(2_000).optional(),
+    tags: z.array(tagSchema).max(20).optional(),
+    compatibility: z.array(agentIdSchema).min(1).max(4).optional(),
+  })
   .refine((value) => Object.keys(value).length > 0, 'At least one field is required.');
 
 export const requestArtifactUploadSchema = z.object({

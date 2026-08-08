@@ -1,6 +1,11 @@
-import type { SpaceReviewPolicy, SpaceRole, SpaceSummary } from '@capaport/contracts';
+import {
+  createSpaceRequestSchema,
+  type SpaceReviewPolicy,
+  type SpaceRole,
+  type SpaceSummary,
+} from '@capaport/contracts';
 import { Archive, FolderKanban, Plus, UsersRound } from 'lucide-react';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import type { OrganizationMember, SpaceMember, WebClient } from '../../app/types';
 import { Button, EmptyState, ErrorNotice, PageHeader, Panel, Status } from '../../components/ui';
 
@@ -17,27 +22,36 @@ export function SpacesPage({
 }) {
   const [creating, setCreating] = useState(false);
   const [name, setName] = useState('');
-  const [slug, setSlug] = useState('');
   const [type, setType] = useState<'team' | 'project'>('team');
   const [policy, setPolicy] = useState<SpaceReviewPolicy>('required');
+  const [createPending, setCreatePending] = useState(false);
   const [error, setError] = useState('');
   const [managedSpace, setManagedSpace] = useState<SpaceSummary>();
   const [spaceMembers, setSpaceMembers] = useState<SpaceMember[]>([]);
   const [newUserId, setNewUserId] = useState('');
   const [newRole, setNewRole] = useState<SpaceRole>('contributor');
+  const createOperationPending = useRef(false);
+  const createInput = createSpaceRequestSchema.safeParse({ name, type, reviewPolicy: policy });
   async function loadMembers(space: SpaceSummary) {
     setManagedSpace(space);
     setSpaceMembers(await client.spaceMembers(space.id));
   }
   async function create() {
+    if (createOperationPending.current || !createInput.success) return;
+    createOperationPending.current = true;
+    setCreatePending(true);
+    setError('');
     try {
-      await client.createSpace({ name, slug, type, reviewPolicy: policy });
+      const { name: validName, type: validType, reviewPolicy } = createInput.data;
+      await client.createSpace({ name: validName, type: validType, reviewPolicy });
       setCreating(false);
       setName('');
-      setSlug('');
       await onRefresh();
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : '空间创建失败');
+    } finally {
+      createOperationPending.current = false;
+      setCreatePending(false);
     }
   }
   return (
@@ -61,14 +75,6 @@ export function SpacesPage({
             <input aria-label="空间名称" value={name} onChange={(event) => setName(event.target.value)} />
           </label>
           <label>
-            英文标识
-            <input
-              aria-label="英文标识"
-              value={slug}
-              onChange={(event) => setSlug(event.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '-'))}
-            />
-          </label>
-          <label>
             类型
             <select aria-label="空间类型" value={type} onChange={(event) => setType(event.target.value as typeof type)}>
               <option value="team">团队</option>
@@ -86,7 +92,7 @@ export function SpacesPage({
               <option value="direct">直接发布</option>
             </select>
           </label>
-          <Button disabled={name.length < 2 || slug.length < 2} onClick={() => void create()}>
+          <Button disabled={!createInput.success || createPending} onClick={() => void create()}>
             创建
           </Button>
         </Panel>

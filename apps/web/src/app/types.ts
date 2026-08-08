@@ -120,7 +120,7 @@ export interface WebClient {
   createSpace(input: {
     type: 'team' | 'project';
     name: string;
-    slug: string;
+    slug?: string;
     reviewPolicy: SpaceReviewPolicy;
   }): Promise<SpaceSummary>;
   updateSpacePolicy(spaceId: string, reviewPolicy: SpaceReviewPolicy): Promise<void>;

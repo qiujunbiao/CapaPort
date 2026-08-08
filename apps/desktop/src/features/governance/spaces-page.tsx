@@ -5,7 +5,7 @@ import {
   type SpaceSummary,
 } from '@capaport/contracts';
 import { Building2 } from 'lucide-react';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import type { OrganizationMember, SpaceMember } from '../../app/types';
 import { Button, EmptyState, ErrorNotice, PageHeader, Panel, Status } from '../../components/ui';
 
@@ -41,9 +41,12 @@ export function SpacesGovernancePage({
   const [newRole, setNewRole] = useState<SpaceRole>('viewer');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+  const operationPending = useRef(false);
   const createSpaceInput = createSpaceRequestSchema.safeParse({ type, name, reviewPolicy });
 
   async function run(operation: () => Promise<void>) {
+    if (operationPending.current) return;
+    operationPending.current = true;
     setBusy(true);
     setError('');
     try {
@@ -51,6 +54,7 @@ export function SpacesGovernancePage({
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : '空间操作失败');
     } finally {
+      operationPending.current = false;
       setBusy(false);
     }
   }

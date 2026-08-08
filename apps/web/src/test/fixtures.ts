@@ -154,7 +154,13 @@ export function webFixture(
           ]
         : []),
     ],
-    createSpace: async (input) => ({ id: 'space-new', organizationId: 'org-a', status: 'active', ...input }),
+    createSpace: async (input) => ({
+      id: 'space-new',
+      organizationId: 'org-a',
+      status: 'active',
+      ...input,
+      slug: input.slug ?? 'space-generated',
+    }),
     updateSpacePolicy: async () => undefined,
     archiveSpace: async () => undefined,
     spaceMembers: async () => teamMembers,

@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { SpacesGovernancePage } from './spaces-page';
 
@@ -82,5 +82,92 @@ describe('SpacesGovernancePage', () => {
     await waitFor(() => expect(onPolicy).toHaveBeenCalledWith('space-a', 'direct'));
     fireEvent.click(screen.getByRole('button', { name: '添加空间成员' }));
     await waitFor(() => expect(onAddMember).toHaveBeenCalledWith('space-a', 'user-a', 'viewer'));
+  });
+
+  it('creates a project with a trimmed name and direct publishing', async () => {
+    const onCreate = vi.fn(async () => undefined);
+    render(
+      <SpacesGovernancePage
+        online
+        spaces={[]}
+        organizationMembers={[]}
+        loadMembers={async () => []}
+        onCreate={onCreate}
+        onPolicy={vi.fn()}
+        onArchive={vi.fn()}
+        onAddMember={vi.fn()}
+        onChangeMemberRole={vi.fn()}
+        onRemoveMember={vi.fn()}
+      />,
+    );
+
+    fireEvent.change(screen.getByLabelText('空间类型'), { target: { value: 'project' } });
+    fireEvent.change(screen.getByLabelText('空间名称'), { target: { value: '  rocky1  ' } });
+    fireEvent.change(screen.getByLabelText('创建空间审核策略'), { target: { value: 'direct' } });
+    fireEvent.click(screen.getByRole('button', { name: '创建空间' }));
+
+    await waitFor(() =>
+      expect(onCreate).toHaveBeenCalledWith({ type: 'project', name: 'rocky1', reviewPolicy: 'direct' }),
+    );
+  });
+
+  it('shows a create error and permits retrying after the request finishes', async () => {
+    const onCreate = vi.fn().mockRejectedValueOnce(new Error('创建空间失败')).mockResolvedValueOnce(undefined);
+    render(
+      <SpacesGovernancePage
+        online
+        spaces={[]}
+        organizationMembers={[]}
+        loadMembers={async () => []}
+        onCreate={onCreate}
+        onPolicy={vi.fn()}
+        onArchive={vi.fn()}
+        onAddMember={vi.fn()}
+        onChangeMemberRole={vi.fn()}
+        onRemoveMember={vi.fn()}
+      />,
+    );
+
+    fireEvent.change(screen.getByLabelText('空间名称'), { target: { value: '团队一' } });
+    fireEvent.click(screen.getByRole('button', { name: '创建空间' }));
+    expect(await screen.findByText('创建空间失败')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: '创建空间' }));
+
+    await waitFor(() => expect(onCreate).toHaveBeenCalledTimes(2));
+  });
+
+  it('prevents duplicate create requests before the busy state is rendered', async () => {
+    let finishCreate: (() => void) | undefined;
+    const onCreate = vi.fn(
+      () =>
+        new Promise<void>((resolve) => {
+          finishCreate = resolve;
+        }),
+    );
+    render(
+      <SpacesGovernancePage
+        online
+        spaces={[]}
+        organizationMembers={[]}
+        loadMembers={async () => []}
+        onCreate={onCreate}
+        onPolicy={vi.fn()}
+        onArchive={vi.fn()}
+        onAddMember={vi.fn()}
+        onChangeMemberRole={vi.fn()}
+        onRemoveMember={vi.fn()}
+      />,
+    );
+
+    fireEvent.change(screen.getByLabelText('空间名称'), { target: { value: '项目一' } });
+    const createButton = screen.getByRole('button', { name: '创建空间' });
+    await act(async () => {
+      createButton.click();
+      createButton.click();
+    });
+
+    expect(onCreate).toHaveBeenCalledTimes(1);
+    finishCreate?.();
+    await waitFor(() => expect(createButton).not.toBeDisabled());
   });
 });

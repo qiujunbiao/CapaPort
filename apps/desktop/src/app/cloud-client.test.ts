@@ -108,6 +108,39 @@ describe('desktop cloud client session lifecycle', () => {
     );
   });
 
+  it('creates a project without requiring a client supplied technical slug', async () => {
+    const session = { accessToken: 'token', refreshToken: 'refresh' };
+    const fetcher = vi.fn().mockResolvedValue(
+      Response.json({
+        id: 'space-a',
+        organizationId: 'org-a',
+        type: 'project',
+        name: 'rocky1',
+        slug: 'space-generated',
+        reviewPolicy: 'direct',
+        status: 'active',
+      }),
+    );
+    vi.stubGlobal('fetch', fetcher);
+    const client = createCloudClient('https://api.example.test/api/v1');
+
+    await client.createSpace(session, 'org-a', {
+      type: 'project',
+      name: 'rocky1',
+      reviewPolicy: 'direct',
+    });
+
+    expect(fetcher).toHaveBeenCalledWith(
+      'https://api.example.test/api/v1/spaces',
+      expect.objectContaining({
+        method: 'POST',
+        body: JSON.stringify({ type: 'project', name: 'rocky1', reviewPolicy: 'direct' }),
+      }),
+    );
+    const request = fetcher.mock.calls[0]?.[1] as RequestInit;
+    expect(new Headers(request.headers).get('x-organization-id')).toBe('org-a');
+  });
+
   it('exposes the organization governance endpoints required by the Web console', async () => {
     const session = { accessToken: 'token', refreshToken: 'refresh' };
     const fetcher = vi.fn().mockImplementation(async () => Response.json({}));

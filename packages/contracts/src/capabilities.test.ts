@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { createCapabilityRequestSchema, requestArtifactUploadSchema } from './capabilities.js';
+import {
+  createCapabilityRequestSchema,
+  requestArtifactUploadSchema,
+  updateCapabilityRequestSchema,
+} from './capabilities.js';
 
 describe('capability contracts', () => {
   it('normalizes metadata and requires explicit Agent compatibility', () => {
@@ -31,5 +35,10 @@ describe('capability contracts', () => {
         sha256: 'a'.repeat(64),
       }).success,
     ).toBe(false);
+  });
+
+  it('rejects an empty capability metadata update without injecting create defaults', () => {
+    expect(updateCapabilityRequestSchema.safeParse({}).success).toBe(false);
+    expect(updateCapabilityRequestSchema.parse({ description: '', tags: [] })).toEqual({ description: '', tags: [] });
   });
 });
