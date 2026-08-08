@@ -171,6 +171,32 @@ describe('desktop application safety workflows', () => {
     expect(await screen.findByText('已提交到审核流程')).toBeInTheDocument();
   });
 
+  it('never requests a cloud upload when authoring content contains a blocking secret', async () => {
+    const cloud = cloudFixture();
+    const createCapabilityDraft = vi.fn(cloud.createCapabilityDraft);
+    cloud.createCapabilityDraft = createCapabilityDraft;
+    render(
+      <DesktopApp
+        cloud={cloud}
+        local={localFixture()}
+        sessionStore={createMemorySessionStore({
+          accessToken: 'token',
+          refreshToken: 'refresh',
+          organizationId: 'org-a',
+        })}
+      />,
+    );
+    fireEvent.click(await screen.findByRole('button', { name: '创作' }));
+    fireEvent.change(screen.getByLabelText('能力标识'), { target: { value: 'unsafe-skill' } });
+    fireEvent.change(screen.getByLabelText('能力名称'), { target: { value: '不安全能力' } });
+    fireEvent.change(screen.getByLabelText('Skill 内容'), {
+      target: { value: '-----BEGIN PRIVATE KEY-----\nsecret' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: '保存草稿' }));
+    expect(await screen.findByText('本地安全扫描发现阻断风险，能力包未上传')).toBeInTheDocument();
+    expect(createCapabilityDraft).not.toHaveBeenCalled();
+  });
+
   it('reopens a changes-requested draft, saves an immutable revision, and resubmits it', async () => {
     render(
       <DesktopApp

@@ -266,8 +266,11 @@ export function localFixture(
     scanLocalPackage: async () => ({
       files: 3,
       bytes: 420,
-      findings: options.blockedScan ? [{ rule: 'potential-secret', severity: 'high', relativePath: '.env' }] : [],
+      findings: options.blockedScan
+        ? [{ rule: 'potential-secret', severity: 'high', relativePath: '.env', evidenceDigest: 'a'.repeat(64) }]
+        : [],
       blocked: Boolean(options.blockedScan),
+      requiresConfirmation: false,
     }),
     readManagedFile: async () => ({
       contentBase64: btoa('# Local managed content'),

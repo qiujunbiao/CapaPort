@@ -1,11 +1,18 @@
 import type { AgentId, SpaceSummary } from '@agentdoor/contracts';
+import type { ScanReport } from '@agentdoor/security-scan';
 import { ArrowLeft, CheckCircle2, FileSearch, LoaderCircle, Radar, ShieldAlert, UploadCloud, X } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import type { CloudClient, LocalClient, Session } from '../../app/types';
 import { Button, ErrorNotice, Status } from '../../components/ui';
 import type { AgentDescriptor, LocalCapabilitySummary, LocalScanReport } from '../../generated/commands';
+import { scanArchiveBeforeUpload } from '../../security/client-scan';
 
 type Selected = { agent: AgentDescriptor; capability: LocalCapabilitySummary };
+
+function archiveBytes(value: string): Uint8Array {
+  const decoded = atob(value);
+  return Uint8Array.from(decoded, (character) => character.charCodeAt(0));
+}
 
 export function DiscoveryModal({
   cloud,
@@ -41,6 +48,7 @@ export function DiscoveryModal({
   }>();
   const [riskAccepted, setRiskAccepted] = useState(false);
   const [riskReason, setRiskReason] = useState('');
+  const [preUploadScan, setPreUploadScan] = useState<ScanReport>();
   const availableSpaces = useMemo(() => spaces.filter((space) => space.status === 'active'), [spaces]);
 
   useEffect(() => {
@@ -102,6 +110,13 @@ export function DiscoveryModal({
         componentType: selected.capability.componentType,
         slug: selected.capability.slug,
       });
+      const localPolicyReport = await scanArchiveBeforeUpload(archiveBytes(archive.archiveBase64));
+      setPreUploadScan(localPolicyReport);
+      if (localPolicyReport.blocked) {
+        setError('上传前安全扫描发现阻断风险，能力包未上传');
+        return;
+      }
+      if (localPolicyReport.requiresConfirmation && (!riskAccepted || riskReason.trim().length < 3)) return;
       const draft =
         pendingDraft ??
         (await cloud.createCapabilityDraft({
@@ -226,7 +241,22 @@ export function DiscoveryModal({
                 候选版本
                 <input value={version} onChange={(event) => setVersion(event.target.value)} />
               </label>
-              {pendingDraft?.riskFindingDigests.length ? (
+              {preUploadScan?.findings.length ? (
+                <div className={`scan-report ${preUploadScan.blocked ? 'scan-report--blocked' : ''}`}>
+                  <strong>
+                    上传前策略检查 ·{' '}
+                    {preUploadScan.blocked ? '已阻断' : preUploadScan.requiresConfirmation ? '需确认' : '通过'}
+                  </strong>
+                  {preUploadScan.findings.map((finding) => (
+                    <div className="finding-row" key={`${finding.ruleId}-${finding.path}-${finding.line ?? 0}`}>
+                      <Status tone={finding.blocking ? 'danger' : 'warn'}>{finding.severity}</Status>
+                      <strong>{finding.ruleId}</strong>
+                      <span>{finding.path}</span>
+                    </div>
+                  ))}
+                </div>
+              ) : null}
+              {pendingDraft?.riskFindingDigests.length || preUploadScan?.requiresConfirmation ? (
                 <>
                   <label>
                     <input
@@ -234,7 +264,10 @@ export function DiscoveryModal({
                       checked={riskAccepted}
                       onChange={(event) => setRiskAccepted(event.target.checked)}
                     />
-                    我已确认 {pendingDraft.riskFindingDigests.length} 项可确认风险
+                    我已确认{' '}
+                    {(pendingDraft?.riskFindingDigests.length ?? 0) +
+                      (preUploadScan?.findings.filter((finding) => !finding.blocking).length ?? 0)}{' '}
+                    项可确认风险
                   </label>
                   <label>
                     确认原因
@@ -261,7 +294,8 @@ export function DiscoveryModal({
                   !spaceId ||
                   !targetSpaceId ||
                   !local.exportLocalPackage ||
-                  Boolean(pendingDraft?.riskFindingDigests.length && (!riskAccepted || riskReason.trim().length < 3))
+                  Boolean(pendingDraft?.riskFindingDigests.length && (!riskAccepted || riskReason.trim().length < 3)) ||
+                  Boolean(preUploadScan?.requiresConfirmation && (!riskAccepted || riskReason.trim().length < 3))
                 }
                 onClick={publish}
               >

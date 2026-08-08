@@ -14,14 +14,21 @@ export type ScanFinding = {
 
 export type ScanPolicy = {
   blockedSeverities: readonly ScanSeverity[];
-  customTerms: readonly string[];
+  confirmationSeverities: readonly ScanSeverity[];
+  blockedTerms: readonly string[];
   allowedExecutablePaths: readonly string[];
+  allowedNetworkHosts: readonly string[];
+  executablePolicy: 'deny' | 'confirm' | 'allow-listed';
   highEntropyMinimumLength: number;
   highEntropyThreshold: number;
+  maxFileBytes: number;
+  maxPackageBytes: number;
+  sourceTreePatterns: readonly string[];
 };
 
 export type ScanReport = {
   blocked: boolean;
+  requiresConfirmation: boolean;
   findings: ScanFinding[];
   scannedFiles: number;
   scannedBytes: number;
@@ -31,8 +38,14 @@ export type ScanInput = readonly PackageFile[];
 
 export const defaultScanPolicy: ScanPolicy = {
   blockedSeverities: ['high', 'critical'],
-  customTerms: [],
+  confirmationSeverities: ['medium'],
+  blockedTerms: [],
   allowedExecutablePaths: [],
+  allowedNetworkHosts: [],
+  executablePolicy: 'confirm',
   highEntropyMinimumLength: 32,
   highEntropyThreshold: 4.2,
+  maxFileBytes: 2_000_000,
+  maxPackageBytes: 50_000_000,
+  sourceTreePatterns: ['.git/', 'node_modules/', 'src/', 'app/'],
 };

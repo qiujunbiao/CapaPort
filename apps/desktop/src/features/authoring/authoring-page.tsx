@@ -8,10 +8,12 @@ import {
   validateEditablePackage,
 } from '@agentdoor/capability-kit';
 import type { CapabilitySummary, PublicationSummary, SpaceSummary } from '@agentdoor/contracts';
+import type { ScanReport } from '@agentdoor/security-scan';
 import { FileClock, Save, Send } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import type { CloudClient, LocalPackageExport, Session } from '../../app/types';
 import { Button, ErrorNotice, PageHeader, Panel, Status } from '../../components/ui';
+import { scanArchiveBeforeUpload } from '../../security/client-scan';
 import { PackageEditor } from './package-editor';
 
 type SavedDraft = { capabilityId: string; draftId: string; digest: string; sequence: number; findings: string[] };
@@ -67,6 +69,7 @@ export function AuthoringPage({
   const [error, setError] = useState('');
   const [riskAccepted, setRiskAccepted] = useState(false);
   const [riskReason, setRiskReason] = useState('');
+  const [clientScan, setClientScan] = useState<ScanReport>();
   const errors = useMemo(() => validateEditablePackage(editable), [editable]);
   const returnedPublications = publications.filter(
     (publication) => publication.status === 'changes_requested' && publication.sourceRevisionId,
@@ -119,6 +122,12 @@ export function AuthoringPage({
   async function persistRevision(): Promise<SavedDraft> {
     if (!sourceSpaceId) throw new Error('请选择草稿空间');
     const exported = await exportEditablePackage(editable);
+    const report = await scanArchiveBeforeUpload(exported.archive);
+    setClientScan(report);
+    if (report.blocked) throw new Error('本地安全扫描发现阻断风险，能力包未上传');
+    if (report.requiresConfirmation && (!riskAccepted || riskReason.trim().length < 3)) {
+      throw new Error('本地安全扫描发现需确认内容，请检查并填写确认理由后重试');
+    }
     if (saved?.digest === exported.digest) return saved;
     const archive = localExport(editable.slug, exported.archive, exported.digest);
     if (!saved) {
@@ -336,7 +345,21 @@ export function AuthoringPage({
               版本号
               <input value={version} onChange={(event) => setVersion(event.target.value)} />
             </label>
-            {saved?.findings.length ? (
+            {clientScan?.findings.length ? (
+              <div className={`scan-report ${clientScan.blocked ? 'scan-report--blocked' : ''}`}>
+                <strong>
+                  本地上传前检查 · {clientScan.blocked ? '已阻断' : clientScan.requiresConfirmation ? '需确认' : '通过'}
+                </strong>
+                <ul>
+                  {clientScan.findings.map((finding) => (
+                    <li key={`${finding.ruleId}-${finding.path}-${finding.line ?? 0}`}>
+                      {finding.ruleId} · {finding.path}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ) : null}
+            {saved?.findings.length || clientScan?.requiresConfirmation ? (
               <div className="risk-acceptance">
                 <label>
                   <input

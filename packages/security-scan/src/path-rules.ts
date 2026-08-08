@@ -24,10 +24,20 @@ export function scanPath(pathInput: string, policy: ScanPolicy): PendingFinding[
 
   const extensionIndex = name.lastIndexOf('.');
   const extension = extensionIndex >= 0 ? name.slice(extensionIndex) : '';
+  if (policy.sourceTreePatterns.some((pattern) => lowerPath.startsWith(pattern) || lowerPath.includes(`/${pattern}`))) {
+    findings.push({
+      ruleId: 'SEC_SOURCE_TREE',
+      severity: 'high',
+      path,
+      evidence: path,
+      message: 'Project source-tree content is not allowed in a capability package.',
+    });
+  }
+
   if (executableExtensions.has(extension) && !policy.allowedExecutablePaths.includes(path)) {
     findings.push({
       ruleId: 'SEC_EXECUTABLE_FILE',
-      severity: 'medium',
+      severity: policy.executablePolicy === 'confirm' ? 'medium' : 'high',
       path,
       evidence: path,
       message: 'An executable file must be declared and explicitly allowed.',

@@ -1,7 +1,18 @@
 export type AgentDescriptor = { adapterId: string; displayName: string; scope: 'user' | 'workspace'; rootPath: string };
 export type LocalCapabilitySummary = { slug: string; componentType: string; relativePath: string; digest: string };
-export type ScanFinding = { rule: string; severity: 'high' | 'medium' | 'low'; relativePath: string };
-export type LocalScanReport = { files: number; bytes: number; findings: ScanFinding[]; blocked: boolean };
+export type ScanFinding = {
+  rule: string;
+  severity: 'critical' | 'high' | 'medium' | 'low';
+  relativePath: string;
+  evidenceDigest: string;
+};
+export type LocalScanReport = {
+  files: number;
+  bytes: number;
+  findings: ScanFinding[];
+  blocked: boolean;
+  requiresConfirmation: boolean;
+};
 export type LocalPackageExport = { fileName: string; sizeBytes: number; sha256: string; archiveBase64: string };
 export type ManagedFileContent = { contentBase64: string; digest: string };
 export type SecureSession = { accessToken: string; refreshToken: string; expiresIn?: number; organizationId?: string };

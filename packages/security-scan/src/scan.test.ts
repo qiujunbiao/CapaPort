@@ -16,7 +16,7 @@ describe('security scanner', () => {
   ])('detects %s without returning secret evidence', async (ruleId, path, content) => {
     const report = await scanPackage([file(path, content)], {
       ...defaultScanPolicy,
-      customTerms: ['Project Moonstone'],
+      blockedTerms: ['Project Moonstone'],
     });
     const finding = report.findings.find((item) => item.ruleId === ruleId);
     expect(finding).toBeDefined();
@@ -57,6 +57,38 @@ describe('security scanner', () => {
         allowedExecutablePaths: ['scripts/verified.sh'],
       },
     );
-    expect(report).toEqual({ blocked: false, findings: [], scannedFiles: 2, scannedBytes: 24 });
+    expect(report).toEqual({
+      blocked: false,
+      requiresConfirmation: false,
+      findings: [],
+      scannedFiles: 2,
+      scannedBytes: 24,
+    });
+  });
+
+  it.each([
+    ['SEC_PERSONAL_DATA', 'context/contact.md', 'owner: developer@example.com'],
+    ['SEC_INTERNAL_ADDRESS', 'context/network.md', 'service: api.corp.internal'],
+    ['SEC_NETWORK_HOST', 'agentdoor.yaml', 'endpoint: https://unapproved.example/api'],
+    ['SEC_SOURCE_TREE', 'src/payment.ts', 'export const payment = true'],
+    ['SEC_OVERSIZED_FILE', 'context/large.md', 'x'.repeat(101)],
+  ])('applies organization policy category %s', async (ruleId, path, content) => {
+    const report = await scanPackage([file(path, content)], {
+      ...defaultScanPolicy,
+      maxFileBytes: 100,
+      allowedNetworkHosts: ['approved.example'],
+    });
+    expect(report.findings.some((finding) => finding.ruleId === ruleId)).toBe(true);
+  });
+
+  it('turns medium findings into an explicit confirmation requirement', async () => {
+    const report = await scanPackage([file('scripts/run.sh', '#!/bin/sh\necho safe')]);
+    expect(report.blocked).toBe(false);
+    expect(report.requiresConfirmation).toBe(true);
+  });
+
+  it('returns a redacted path-escape finding instead of throwing', async () => {
+    const report = await scanPackage([file('../private.env', 'safe')]);
+    expect(report).toMatchObject({ blocked: true, findings: [{ ruleId: 'SEC_PATH_ESCAPE' }] });
   });
 });

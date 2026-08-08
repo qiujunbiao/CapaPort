@@ -1,13 +1,14 @@
 use crate::credentials::CredentialStore;
 use crate::database::{Database, SyncQueueStatus};
 use crate::files::{
-    validate_identifier, ApplyResult, FileEngine, InstallPlan, InstallPreview, PlannedRemoval,
-    UninstallPlan,
+    ApplyResult, FileEngine, InstallPlan, InstallPreview, PlannedRemoval, UninstallPlan,
+    validate_identifier,
 };
 use crate::paths::PathPolicy;
 use crate::projects::{
     BindProjectInput, ContextPackageExport, ContextPackageInput, LocalProjectBinding,
-    ProjectBindingInput, ProjectEngine, ProjectInventory, ProjectProjectionInput, ProjectSpaceInput,
+    ProjectBindingInput, ProjectEngine, ProjectInventory, ProjectProjectionInput,
+    ProjectSpaceInput,
 };
 use crate::{RuntimeError, RuntimeResult};
 use base64::Engine;
@@ -17,8 +18,8 @@ use sha2::{Digest, Sha256};
 use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
-use walkdir::WalkDir;
 use uuid::Uuid;
+use walkdir::WalkDir;
 
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -44,6 +45,7 @@ pub struct ScanFinding {
     pub rule: String,
     pub severity: String,
     pub relative_path: String,
+    pub evidence_digest: String,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -53,6 +55,21 @@ pub struct LocalScanReport {
     pub bytes: u64,
     pub findings: Vec<ScanFinding>,
     pub blocked: bool,
+    pub requires_confirmation: bool,
+}
+
+fn redacted_finding(
+    rule: &str,
+    severity: &str,
+    relative_path: &str,
+    evidence: &[u8],
+) -> ScanFinding {
+    ScanFinding {
+        rule: rule.into(),
+        severity: severity.into(),
+        relative_path: relative_path.into(),
+        evidence_digest: hex::encode(Sha256::digest(evidence)),
+    }
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -299,11 +316,20 @@ impl Runtime {
             self.engine.policy().resolve(&root, relative)?
         };
         let secret = Regex::new(r"(?i)(-----BEGIN [A-Z ]*PRIVATE KEY-----|AKIA[0-9A-Z]{16}|(?:api[_-]?key|token|secret)\s*[:=]\s*[^\s]{8,})").map_err(|_| RuntimeError::InvalidInput)?;
+        let personal = Regex::new(
+            r"(?i)([A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}|(?:\+?86[- ]?)?1[3-9][0-9]{9})",
+        )
+        .map_err(|_| RuntimeError::InvalidInput)?;
+        let internal = Regex::new(r"(?i)(10(?:\.[0-9]{1,3}){3}|192\.168(?:\.[0-9]{1,3}){2}|172\.(?:1[6-9]|2[0-9]|3[01])(?:\.[0-9]{1,3}){2}|[a-z0-9.-]+\.internal)")
+            .map_err(|_| RuntimeError::InvalidInput)?;
+        let network = Regex::new(r"(?i)https?://[a-z0-9.-]+(?::[0-9]+)?")
+            .map_err(|_| RuntimeError::InvalidInput)?;
         let mut report = LocalScanReport {
             files: 0,
             bytes: 0,
             findings: Vec::new(),
             blocked: false,
+            requires_confirmation: false,
         };
         for entry in WalkDir::new(&selected)
             .follow_links(false)
@@ -320,32 +346,113 @@ impl Runtime {
             let metadata = entry
                 .metadata()
                 .map_err(|_| RuntimeError::TransactionFailed)?;
+            let relative_path = entry
+                .path()
+                .strip_prefix(&selected)
+                .unwrap_or(entry.path())
+                .to_string_lossy()
+                .replace('\\', "/");
+            let lower_path = relative_path.to_ascii_lowercase();
+            let file_name = entry
+                .path()
+                .file_name()
+                .and_then(|name| name.to_str())
+                .unwrap_or("")
+                .to_ascii_lowercase();
+            if [
+                ".env",
+                ".env.local",
+                "id_rsa",
+                "id_ed25519",
+                "credentials",
+                "credentials.json",
+            ]
+            .contains(&file_name.as_str())
+                || file_name.ends_with(".pem")
+                || file_name.ends_with(".key")
+            {
+                report.findings.push(redacted_finding(
+                    "SEC_SENSITIVE_FILE",
+                    "high",
+                    &relative_path,
+                    relative_path.as_bytes(),
+                ));
+            }
+            if [".bat", ".cmd", ".com", ".exe", ".msi", ".ps1", ".sh"]
+                .iter()
+                .any(|extension| file_name.ends_with(extension))
+            {
+                report.findings.push(redacted_finding(
+                    "SEC_EXECUTABLE_FILE",
+                    "medium",
+                    &relative_path,
+                    relative_path.as_bytes(),
+                ));
+            }
+            if lower_path.starts_with("src/")
+                || lower_path.starts_with("app/")
+                || lower_path.starts_with("node_modules/")
+                || lower_path.starts_with(".git/")
+            {
+                report.findings.push(redacted_finding(
+                    "SEC_SOURCE_TREE",
+                    "high",
+                    &relative_path,
+                    relative_path.as_bytes(),
+                ));
+            }
             if metadata.len() > 2_000_000 {
+                report.findings.push(redacted_finding(
+                    "SEC_OVERSIZED_FILE",
+                    "high",
+                    &relative_path,
+                    format!("{relative_path}:{}", metadata.len()).as_bytes(),
+                ));
+                report.files += 1;
+                report.bytes += metadata.len();
                 continue;
             }
             report.files += 1;
             report.bytes += metadata.len();
             let content =
                 std::fs::read(entry.path()).map_err(|_| RuntimeError::TransactionFailed)?;
-            if let Ok(text) = std::str::from_utf8(&content)
-                && secret.is_match(text)
-            {
-                report.findings.push(ScanFinding {
-                    rule: "potential-secret".into(),
-                    severity: "high".into(),
-                    relative_path: entry
-                        .path()
-                        .strip_prefix(&selected)
-                        .unwrap_or(entry.path())
-                        .to_string_lossy()
-                        .into(),
-                });
+            if let Ok(text) = std::str::from_utf8(&content) {
+                for (rule, severity, matcher) in [
+                    ("potential-secret", "high", &secret),
+                    ("SEC_PERSONAL_DATA", "medium", &personal),
+                    ("SEC_INTERNAL_ADDRESS", "high", &internal),
+                    ("SEC_NETWORK_HOST", "medium", &network),
+                ] {
+                    if let Some(found) = matcher.find(text) {
+                        report.findings.push(redacted_finding(
+                            rule,
+                            severity,
+                            &relative_path,
+                            found.as_str().as_bytes(),
+                        ));
+                    }
+                }
             }
+        }
+        if report.bytes > 50_000_000 {
+            report.findings.push(redacted_finding(
+                "SEC_OVERSIZED_PACKAGE",
+                "high",
+                "[package]",
+                report.bytes.to_string().as_bytes(),
+            ));
         }
         report
             .findings
             .sort_by(|left, right| left.relative_path.cmp(&right.relative_path));
-        report.blocked = !report.findings.is_empty();
+        report.blocked = report
+            .findings
+            .iter()
+            .any(|finding| finding.severity == "high" || finding.severity == "critical");
+        report.requires_confirmation = report
+            .findings
+            .iter()
+            .any(|finding| finding.severity == "medium");
         Ok(report)
     }
 
@@ -353,10 +460,19 @@ impl Runtime {
         let root = Path::new(&input.root_path)
             .canonicalize()
             .map_err(|_| RuntimeError::PathNotAllowed)?;
-        if !self.engine.policy().roots().iter().any(|allowed| allowed == &root) {
+        if !self
+            .engine
+            .policy()
+            .roots()
+            .iter()
+            .any(|allowed| allowed == &root)
+        {
             return Err(RuntimeError::PathNotAllowed);
         }
-        let path = self.engine.policy().resolve(&root, Path::new(&input.relative_path))?;
+        let path = self
+            .engine
+            .policy()
+            .resolve(&root, Path::new(&input.relative_path))?;
         let metadata = path.metadata().map_err(|_| RuntimeError::NotFound)?;
         if !metadata.is_file() || metadata.len() > 2_000_000 {
             return Err(RuntimeError::InvalidInput);
@@ -471,7 +587,13 @@ impl Runtime {
         let root = Path::new(&input.root_path)
             .canonicalize()
             .map_err(|_| RuntimeError::PathNotAllowed)?;
-        if !self.engine.policy().roots().iter().any(|allowed| allowed == &root) {
+        if !self
+            .engine
+            .policy()
+            .roots()
+            .iter()
+            .any(|allowed| allowed == &root)
+        {
             return Err(RuntimeError::PathNotAllowed);
         }
         self.database
@@ -482,8 +604,18 @@ impl Runtime {
     pub fn uninstall(&self, input: &UninstallInput) -> RuntimeResult<ApplyResult> {
         validate_identifier(&input.adapter_id)?;
         validate_slug(&input.capability_slug)?;
-        let root = Path::new(&input.root_path).canonicalize().map_err(|_| RuntimeError::PathNotAllowed)?;
-        if !self.engine.policy().roots().iter().any(|allowed| allowed == &root) { return Err(RuntimeError::PathNotAllowed); }
+        let root = Path::new(&input.root_path)
+            .canonicalize()
+            .map_err(|_| RuntimeError::PathNotAllowed)?;
+        if !self
+            .engine
+            .policy()
+            .roots()
+            .iter()
+            .any(|allowed| allowed == &root)
+        {
+            return Err(RuntimeError::PathNotAllowed);
+        }
         let lock = self
             .load_install_lock(input)?
             .ok_or(RuntimeError::NotFound)?;
@@ -505,22 +637,39 @@ impl Runtime {
             &self.database,
         )
     }
-    pub fn bind_project_directory(&self, input: &BindProjectInput) -> RuntimeResult<LocalProjectBinding> {
+    pub fn bind_project_directory(
+        &self,
+        input: &BindProjectInput,
+    ) -> RuntimeResult<LocalProjectBinding> {
         self.projects.bind(&self.database, input)
     }
-    pub fn list_project_bindings(&self, input: &ProjectSpaceInput) -> RuntimeResult<Vec<LocalProjectBinding>> {
+    pub fn list_project_bindings(
+        &self,
+        input: &ProjectSpaceInput,
+    ) -> RuntimeResult<Vec<LocalProjectBinding>> {
         self.projects.list(&self.database, Some(&input.space_id))
     }
     pub fn remove_project_binding(&self, input: &ProjectBindingInput) -> RuntimeResult<()> {
-        self.projects.remove(&self.database, &input.local_binding_id)
+        self.projects
+            .remove(&self.database, &input.local_binding_id)
     }
-    pub fn inventory_project_context(&self, input: &ProjectBindingInput) -> RuntimeResult<ProjectInventory> {
-        self.projects.inventory(&self.database, &input.local_binding_id)
+    pub fn inventory_project_context(
+        &self,
+        input: &ProjectBindingInput,
+    ) -> RuntimeResult<ProjectInventory> {
+        self.projects
+            .inventory(&self.database, &input.local_binding_id)
     }
-    pub fn export_project_context(&self, input: &ContextPackageInput) -> RuntimeResult<ContextPackageExport> {
+    pub fn export_project_context(
+        &self,
+        input: &ContextPackageInput,
+    ) -> RuntimeResult<ContextPackageExport> {
         self.projects.package(&self.database, input)
     }
-    pub fn project_context_plan(&self, input: &ProjectProjectionInput) -> RuntimeResult<InstallPlan> {
+    pub fn project_context_plan(
+        &self,
+        input: &ProjectProjectionInput,
+    ) -> RuntimeResult<InstallPlan> {
         self.projects.projection(&self.database, input)
     }
     pub fn sync_queue_status(&self) -> RuntimeResult<SyncQueueStatus> {
@@ -732,7 +881,8 @@ mod tests {
                     path: project.to_string_lossy().into(),
                     agents: Some(vec!["codex".into()]),
                 })
-                .unwrap().space_id,
+                .unwrap()
+                .space_id,
             "space-1"
         );
         assert_eq!(runtime.sync_queue_status().unwrap().pending, 0);
@@ -753,6 +903,47 @@ mod tests {
             !serde_json::to_string(&report)
                 .unwrap()
                 .contains("very-private-token")
+        );
+    }
+
+    #[test]
+    fn scanner_requires_confirmation_for_executables_without_blocking_clean_content() {
+        let (root, runtime) = runtime();
+        let directory = root.path().join(".agents/skills/release");
+        std::fs::write(directory.join("run.sh"), "#!/bin/sh\necho safe").unwrap();
+        let report = runtime
+            .scan_local_package(&PathInput {
+                path: directory.to_string_lossy().into(),
+            })
+            .unwrap();
+        assert!(!report.blocked);
+        assert!(report.requires_confirmation);
+        assert!(report.findings.iter().any(|finding| {
+            finding.rule == "SEC_EXECUTABLE_FILE" && finding.evidence_digest.len() == 64
+        }));
+    }
+
+    #[test]
+    fn scanner_blocks_project_source_trees_before_export() {
+        let (root, runtime) = runtime();
+        let directory = root.path().join(".agents/skills/release");
+        std::fs::create_dir(directory.join("src")).unwrap();
+        std::fs::write(
+            directory.join("src/customer.ts"),
+            "export const customer = true",
+        )
+        .unwrap();
+        let report = runtime
+            .scan_local_package(&PathInput {
+                path: directory.to_string_lossy().into(),
+            })
+            .unwrap();
+        assert!(report.blocked);
+        assert!(
+            report
+                .findings
+                .iter()
+                .any(|finding| finding.rule == "SEC_SOURCE_TREE")
         );
     }
 
@@ -786,7 +977,10 @@ mod tests {
 
         assert_eq!(lock.transaction_id, "tx-lock-read");
         assert_eq!(lock.files[0].relative_path, "skills/release/SKILL.md");
-        assert_eq!(lock.files[0].after_digest, hex::encode(Sha256::digest(b"# Release v2")));
+        assert_eq!(
+            lock.files[0].after_digest,
+            hex::encode(Sha256::digest(b"# Release v2"))
+        );
         assert!(root.path().join(".agents/skills/release/SKILL.md").exists());
     }
 

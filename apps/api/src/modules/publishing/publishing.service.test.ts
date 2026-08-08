@@ -17,7 +17,7 @@ const candidate: FrozenPublicationCandidate = {
   artifactId: 'artifact-1',
   contentDigest: 'a'.repeat(64),
   manifest,
-  scanReport: { blocked: false, findings: [], scannedFiles: 2, scannedBytes: 1_024 },
+  scanReport: { blocked: false, requiresConfirmation: false, findings: [], scannedFiles: 2, scannedBytes: 1_024 },
 };
 
 function setup(space: { type: 'personal' | 'team' | 'project' | 'organization'; reviewPolicy: 'direct' | 'required' }) {
