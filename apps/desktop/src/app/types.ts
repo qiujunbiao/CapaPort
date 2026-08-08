@@ -22,6 +22,7 @@ import type {
   LocalCapabilitySummary,
   LocalProjectBinding,
   LocalScanReport,
+  ManagedFileContent,
   ProjectInventory,
   SyncQueueStatus,
 } from '../generated/commands';
@@ -162,6 +163,7 @@ export interface LocalClient {
   detectAgents(): Promise<AgentDescriptor[]>;
   inventoryAgent(input: { adapterId: string; rootPath: string }): Promise<LocalCapabilitySummary[]>;
   scanLocalPackage(path: string): Promise<LocalScanReport>;
+  readManagedFile(input: { rootPath: string; relativePath: string }): Promise<ManagedFileContent>;
   exportLocalPackage?(input: {
     adapterId: string;
     rootPath: string;

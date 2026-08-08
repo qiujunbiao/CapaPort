@@ -238,6 +238,7 @@ test('search → install preview → resolve local update conflict', async ({ pa
   await page.screenshot({ path: '/tmp/agentdoor-install-conflict.png', fullPage: true });
   await page.getByLabel('保留本地版本').click();
   await page.getByRole('button', { name: '确认安装' }).click();
+  await page.getByRole('button', { name: '完成' }).click();
   await expect(page.getByRole('dialog')).toBeHidden();
 });
 

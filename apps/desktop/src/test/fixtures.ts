@@ -171,6 +171,10 @@ export function localFixture(
       findings: options.blockedScan ? [{ rule: 'potential-secret', severity: 'high', relativePath: '.env' }] : [],
       blocked: Boolean(options.blockedScan),
     }),
+    readManagedFile: async () => ({
+      contentBase64: btoa('# Local managed content'),
+      digest: 'e'.repeat(64),
+    }),
     exportLocalPackage: async ({ slug }) => ({
       fileName: `${slug}.zip`,
       sizeBytes: 8,

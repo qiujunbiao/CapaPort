@@ -42,6 +42,14 @@ fn scan_local_package(
 }
 #[cfg(feature = "tauri-app")]
 #[tauri::command]
+fn read_managed_file(
+    input: agentdoor_runtime::commands::ManagedFileInput,
+    state: tauri::State<'_, AppState>,
+) -> Result<agentdoor_runtime::commands::ManagedFileContent, CommandError> {
+    state.runtime.read_managed_file(&input).map_err(Into::into)
+}
+#[cfg(feature = "tauri-app")]
+#[tauri::command]
 fn export_local_package(
     input: ExportPackageInput,
     state: tauri::State<'_, AppState>,
@@ -194,6 +202,7 @@ fn main() {
             detect_agents,
             inventory_agent,
             scan_local_package,
+            read_managed_file,
             export_local_package,
             preview_install,
             apply_install,

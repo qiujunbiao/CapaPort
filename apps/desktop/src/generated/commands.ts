@@ -3,6 +3,7 @@ export type LocalCapabilitySummary = { slug: string; componentType: string; rela
 export type ScanFinding = { rule: string; severity: 'high' | 'medium' | 'low'; relativePath: string };
 export type LocalScanReport = { files: number; bytes: number; findings: ScanFinding[]; blocked: boolean };
 export type LocalPackageExport = { fileName: string; sizeBytes: number; sha256: string; archiveBase64: string };
+export type ManagedFileContent = { contentBase64: string; digest: string };
 export type SecureSession = { accessToken: string; refreshToken: string; expiresIn?: number; organizationId?: string };
 export type PlannedWrite = {
   relativePath: string;
@@ -73,6 +74,7 @@ export const localCommandNames = [
   'detect_agents',
   'inventory_agent',
   'scan_local_package',
+  'read_managed_file',
   'export_local_package',
   'preview_install',
   'apply_install',

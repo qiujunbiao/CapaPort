@@ -88,6 +88,20 @@ pub struct PathInput {
 
 #[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
+pub struct ManagedFileInput {
+    pub root_path: String,
+    pub relative_path: String,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ManagedFileContent {
+    pub content_base64: String,
+    pub digest: String,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct ExportPackageInput {
     pub adapter_id: String,
     pub root_path: String,
@@ -333,6 +347,25 @@ impl Runtime {
             .sort_by(|left, right| left.relative_path.cmp(&right.relative_path));
         report.blocked = !report.findings.is_empty();
         Ok(report)
+    }
+
+    pub fn read_managed_file(&self, input: &ManagedFileInput) -> RuntimeResult<ManagedFileContent> {
+        let root = Path::new(&input.root_path)
+            .canonicalize()
+            .map_err(|_| RuntimeError::PathNotAllowed)?;
+        if !self.engine.policy().roots().iter().any(|allowed| allowed == &root) {
+            return Err(RuntimeError::PathNotAllowed);
+        }
+        let path = self.engine.policy().resolve(&root, Path::new(&input.relative_path))?;
+        let metadata = path.metadata().map_err(|_| RuntimeError::NotFound)?;
+        if !metadata.is_file() || metadata.len() > 2_000_000 {
+            return Err(RuntimeError::InvalidInput);
+        }
+        let content = std::fs::read(path).map_err(|_| RuntimeError::TransactionFailed)?;
+        Ok(ManagedFileContent {
+            content_base64: base64::engine::general_purpose::STANDARD.encode(&content),
+            digest: hex::encode(Sha256::digest(&content)),
+        })
     }
 
     pub fn export_local_package(
@@ -755,6 +788,32 @@ mod tests {
         assert_eq!(lock.files[0].relative_path, "skills/release/SKILL.md");
         assert_eq!(lock.files[0].after_digest, hex::encode(Sha256::digest(b"# Release v2")));
         assert!(root.path().join(".agents/skills/release/SKILL.md").exists());
+    }
+
+    #[test]
+    fn reads_only_an_allowlisted_managed_file_for_conflict_diffing() {
+        let (root, runtime) = runtime();
+        let agent = runtime.detect_agents().unwrap().remove(0);
+        let file = runtime
+            .read_managed_file(&ManagedFileInput {
+                root_path: agent.root_path,
+                relative_path: "skills/release/SKILL.md".into(),
+            })
+            .unwrap();
+        assert_eq!(
+            base64::engine::general_purpose::STANDARD
+                .decode(file.content_base64)
+                .unwrap(),
+            b"# Release"
+        );
+        assert_eq!(file.digest, hex::encode(Sha256::digest(b"# Release")));
+        assert!(matches!(
+            runtime.read_managed_file(&ManagedFileInput {
+                root_path: root.path().join(".agents").to_string_lossy().into(),
+                relative_path: "../private.txt".into(),
+            }),
+            Err(RuntimeError::PathNotAllowed)
+        ));
     }
 
     #[test]

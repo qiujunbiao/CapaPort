@@ -7,6 +7,7 @@ export function createLocalClient(): LocalClient {
     detectAgents: () => invoke('detect_agents'),
     inventoryAgent: (input) => invoke('inventory_agent', { input }),
     scanLocalPackage: (path) => invoke('scan_local_package', { input: { path } }),
+    readManagedFile: (input) => invoke('read_managed_file', { input }),
     exportLocalPackage: (input) => invoke<LocalPackageExport>('export_local_package', { input }),
     previewInstall: (plan: InstallPlan) => invoke('preview_install', { plan }),
     applyInstall: (plan: InstallPlan) => invoke('apply_install', { plan }),

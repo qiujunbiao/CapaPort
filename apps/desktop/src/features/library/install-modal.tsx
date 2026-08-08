@@ -1,13 +1,19 @@
 import type { AgentId, CapabilitySummary, UpdateCheck } from '@agentdoor/contracts';
-import { AlertTriangle, Check, FileDiff, RotateCcw, X } from 'lucide-react';
+import { AlertTriangle, Check, FileDiff, RotateCcw, Undo2, X } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { buildLocalInstallPlan, selectInstallVersion } from '../../app/install-plan';
 import type { CloudClient, LocalClient, Session } from '../../app/types';
 import { Button, ErrorNotice, Status } from '../../components/ui';
-import type { AgentDescriptor, InstallPlan, InstallPreview } from '../../generated/commands';
+import type { AgentDescriptor, ApplyResult, InstallPlan, InstallPreview } from '../../generated/commands';
+import { type ConflictDiffLine, componentTypeForPath, createConflictDiff } from './conflict-resolution';
 
 type Choice = 'keep' | 'overwrite';
 type InstallMetadata = { deviceId: string; versionId: string; agent: AgentId };
+
+function decodeBase64Text(value: string): string {
+  const binary = atob(value);
+  return new TextDecoder().decode(Uint8Array.from(binary, (character) => character.charCodeAt(0)));
+}
 
 function testPlan(capability: CapabilitySummary, agent: AgentDescriptor): InstallPlan {
   const bytes = new TextEncoder().encode('# managed by Agentdoor');
@@ -39,6 +45,7 @@ export function InstallModal({
   agents,
   online,
   updateCheck,
+  personalSpaceId,
   onClose,
   onInstalled,
 }: {
@@ -50,6 +57,7 @@ export function InstallModal({
   agents: AgentDescriptor[];
   online: boolean;
   updateCheck?: UpdateCheck;
+  personalSpaceId?: string;
   onClose: () => void;
   onInstalled: () => void;
 }) {
@@ -63,6 +71,11 @@ export function InstallModal({
   const [choices, setChoices] = useState<Record<string, Choice>>({});
   const [installMetadata, setInstallMetadata] = useState<InstallMetadata>();
   const [installationApplied, setInstallationApplied] = useState(false);
+  const [installationReported, setInstallationReported] = useState(false);
+  const [applyResult, setApplyResult] = useState<ApplyResult>();
+  const [restored, setRestored] = useState(false);
+  const [diffs, setDiffs] = useState<Record<string, ConflictDiffLine[]>>({});
+  const [draftMessage, setDraftMessage] = useState('');
   const [busy, setBusy] = useState(true);
   const [error, setError] = useState('');
 
@@ -79,6 +92,11 @@ export function InstallModal({
       setChoices({});
       setInstallMetadata(undefined);
       setInstallationApplied(false);
+      setInstallationReported(false);
+      setApplyResult(undefined);
+      setRestored(false);
+      setDiffs({});
+      setDraftMessage('');
       try {
         let localPlan: InstallPlan;
         if (cloud.versions && cloud.devices && cloud.registerDevice) {
@@ -158,7 +176,7 @@ export function InstallModal({
           ...installMetadata,
           outcome: 'installed',
         });
-        onInstalled();
+        setInstallationReported(true);
       } catch (caught) {
         setError(caught instanceof Error ? caught.message : '云端状态上报失败，请稍后重试');
       } finally {
@@ -174,9 +192,10 @@ export function InstallModal({
           const { expectedDigest: _expectedDigest, ...overwrite } = write;
           return overwrite;
         });
-      await local.applyInstall({ ...plan, writes });
+      const result = await local.applyInstall({ ...plan, writes });
       appliedLocally = true;
       setInstallationApplied(true);
+      setApplyResult(result);
       if (installMetadata) {
         await cloud.reportInstallation({
           session,
@@ -186,7 +205,7 @@ export function InstallModal({
           outcome: 'installed',
         });
       }
-      onInstalled();
+      setInstallationReported(true);
     } catch (caught) {
       if (!appliedLocally && installMetadata) {
         await cloud
@@ -212,6 +231,86 @@ export function InstallModal({
     }
   }
 
+  async function showDiff(relativePath: string) {
+    if (!plan) return;
+    const write = plan.writes.find((item) => item.relativePath === relativePath);
+    if (!write) return;
+    setBusy(true);
+    setError('');
+    try {
+      const localFile = await local.readManagedFile({ rootPath: plan.rootPath, relativePath });
+      setDiffs((current) => ({
+        ...current,
+        [relativePath]: createConflictDiff(
+          decodeBase64Text(localFile.contentBase64),
+          decodeBase64Text(write.contentBase64),
+        ),
+      }));
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : '无法读取本地文件差异');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function importLocalDraft(relativePath: string) {
+    if (!agent || !personalSpaceId || !local.exportLocalPackage) {
+      setError('需要个人空间才能保存本地草稿');
+      return;
+    }
+    const componentType = componentTypeForPath(relativePath);
+    if (!componentType) {
+      setError('该文件类型暂不支持导入草稿');
+      return;
+    }
+    setBusy(true);
+    setError('');
+    try {
+      const archive = await local.exportLocalPackage({
+        adapterId: agent.adapterId,
+        rootPath: agent.rootPath,
+        componentType,
+        slug: capability.slug,
+      });
+      await cloud.createCapabilityDraft({
+        session,
+        organizationId,
+        spaceId: personalSpaceId,
+        slug: capability.slug,
+        agent: agent.adapterId as AgentId,
+        archive,
+      });
+      setDraftMessage('本地版本已保存为个人草稿');
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : '本地版本导入草稿失败');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function restore() {
+    if (!applyResult) return;
+    setBusy(true);
+    setError('');
+    try {
+      await local.rollbackInstall(applyResult.transactionId);
+      if (installMetadata) {
+        await cloud.reportInstallation({
+          session,
+          organizationId,
+          capabilityId: capability.id,
+          ...installMetadata,
+          outcome: 'uninstalled',
+        });
+      }
+      setRestored(true);
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : '自动恢复失败，请从备份位置手动恢复');
+    } finally {
+      setBusy(false);
+    }
+  }
+
   return (
     <div className="modal-backdrop">
       <section
@@ -230,6 +329,18 @@ export function InstallModal({
           </button>
         </header>
         {error ? <ErrorNotice>{error}</ErrorNotice> : null}
+        {draftMessage ? <div className="success-notice">{draftMessage}</div> : null}
+        {applyResult && installationReported ? (
+          <div className="install-result" role="status">
+            <Check aria-hidden />
+            <div>
+              <strong>{restored ? '已恢复到更新前版本' : '本地更新已完成'}</strong>
+              <small>
+                事务 {applyResult.transactionId} · {applyResult.changedFiles} 个文件
+              </small>
+            </div>
+          </div>
+        ) : null}
         <div className="install-package">
           <span className="package-mark">
             <FileDiff />
@@ -288,27 +399,53 @@ export function InstallModal({
                   {change.kind === 'conflict' ? '本地已修改' : change.kind === 'create' ? '新增' : '更新'}
                 </Status>
                 {change.kind === 'conflict' ? (
-                  <div className="conflict-choices">
-                    <label>
-                      <input
-                        type="radio"
-                        name={`choice-${change.relativePath}`}
-                        aria-label="保留本地版本"
-                        checked={choices[change.relativePath] === 'keep'}
-                        onChange={() => setChoices((current) => ({ ...current, [change.relativePath]: 'keep' }))}
-                      />
-                      保留本地
-                    </label>
-                    <label>
-                      <input
-                        type="radio"
-                        name={`choice-${change.relativePath}`}
-                        aria-label="使用组织版本"
-                        checked={choices[change.relativePath] === 'overwrite'}
-                        onChange={() => setChoices((current) => ({ ...current, [change.relativePath]: 'overwrite' }))}
-                      />
-                      使用组织版本
-                    </label>
+                  <div className="conflict-resolution">
+                    <div className="conflict-tools">
+                      <button type="button" onClick={() => void showDiff(change.relativePath)}>
+                        查看差异
+                      </button>
+                      <button type="button" onClick={() => void importLocalDraft(change.relativePath)}>
+                        导入本地为草稿
+                      </button>
+                    </div>
+                    {diffs[change.relativePath] ? (
+                      <ol className="conflict-diff" aria-label={`${change.relativePath} 差异`}>
+                        {diffs[change.relativePath]?.map((line) => (
+                          <li
+                            className={`conflict-diff__${line.kind}`}
+                            key={`${line.kind}-${line.oldLine ?? 'x'}-${line.newLine ?? 'x'}-${line.content}`}
+                          >
+                            <span>{line.oldLine ?? ''}</span>
+                            <span>{line.newLine ?? ''}</span>
+                            <code>
+                              {line.kind === 'add' ? '+' : line.kind === 'remove' ? '-' : ' '} {line.content}
+                            </code>
+                          </li>
+                        ))}
+                      </ol>
+                    ) : null}
+                    <div className="conflict-choices">
+                      <label>
+                        <input
+                          type="radio"
+                          name={`choice-${change.relativePath}`}
+                          aria-label="保留本地版本"
+                          checked={choices[change.relativePath] === 'keep'}
+                          onChange={() => setChoices((current) => ({ ...current, [change.relativePath]: 'keep' }))}
+                        />
+                        保留本地
+                      </label>
+                      <label>
+                        <input
+                          type="radio"
+                          name={`choice-${change.relativePath}`}
+                          aria-label="使用组织版本"
+                          checked={choices[change.relativePath] === 'overwrite'}
+                          onChange={() => setChoices((current) => ({ ...current, [change.relativePath]: 'overwrite' }))}
+                        />
+                        使用组织版本
+                      </label>
+                    </div>
                   </div>
                 ) : (
                   <Check aria-hidden />
@@ -332,16 +469,28 @@ export function InstallModal({
           </span>
         </div>
         <div className="modal__actions">
-          <Button variant="quiet" onClick={onClose}>
-            取消
-          </Button>
-          <Button
-            disabled={!online || !plan || !preview || !resolved || !compatible.length}
-            busy={busy}
-            onClick={install}
-          >
-            {installationApplied ? '重试上报' : '确认安装'}
-          </Button>
+          {applyResult && installationReported ? (
+            <>
+              <Button variant="secondary" disabled={restored} busy={busy} onClick={restore}>
+                <Undo2 aria-hidden size={15} />
+                恢复更新前版本
+              </Button>
+              <Button onClick={onInstalled}>完成</Button>
+            </>
+          ) : (
+            <>
+              <Button variant="quiet" onClick={onClose}>
+                取消
+              </Button>
+              <Button
+                disabled={!online || !plan || !preview || !resolved || !compatible.length}
+                busy={busy}
+                onClick={install}
+              >
+                {installationApplied ? '重试上报' : '确认安装'}
+              </Button>
+            </>
+          )}
         </div>
       </section>
     </div>

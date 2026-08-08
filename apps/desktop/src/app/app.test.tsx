@@ -1,5 +1,5 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { cloudFixture, localFixture } from '../test/fixtures';
 import { DesktopApp } from './desktop-app';
 import { createMemorySessionStore } from './session-store';
@@ -95,6 +95,36 @@ describe('desktop application safety workflows', () => {
     expect(screen.getByRole('button', { name: '确认安装' })).toBeDisabled();
     fireEvent.click(screen.getByLabelText('保留本地版本'));
     expect(screen.getByRole('button', { name: '确认安装' })).toBeEnabled();
+  });
+
+  it('shows a content diff, imports the local variant as a draft, and can restore an applied update', async () => {
+    const local = localFixture({ installConflict: true });
+    const rollbackInstall = vi.fn(local.rollbackInstall);
+    local.rollbackInstall = rollbackInstall;
+    render(
+      <DesktopApp
+        cloud={cloudFixture()}
+        local={local}
+        sessionStore={createMemorySessionStore({
+          accessToken: 'token',
+          refreshToken: 'refresh',
+          organizationId: 'org-a',
+        })}
+      />,
+    );
+    fireEvent.click(await screen.findByRole('button', { name: '能力库' }));
+    fireEvent.click(await screen.findByRole('button', { name: '安装' }));
+    fireEvent.click(await screen.findByRole('button', { name: '查看差异' }));
+    expect(await screen.findByText(/# Local managed content/)).toBeInTheDocument();
+    expect(screen.getByText(/# managed by Agentdoor/)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: '导入本地为草稿' }));
+    expect(await screen.findByText('本地版本已保存为个人草稿')).toBeInTheDocument();
+    fireEvent.click(screen.getByLabelText('使用组织版本'));
+    fireEvent.click(screen.getByRole('button', { name: '确认安装' }));
+    expect(await screen.findByText('本地更新已完成')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: '恢复更新前版本' }));
+    await waitFor(() => expect(rollbackInstall).toHaveBeenCalledTimes(1));
+    expect(await screen.findByText('已恢复到更新前版本')).toBeInTheDocument();
   });
 
   it('shows retry queue and syncs again without exposing local paths', async () => {

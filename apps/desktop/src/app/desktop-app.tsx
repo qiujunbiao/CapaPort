@@ -327,6 +327,7 @@ function AppContent({
       />
     );
   })();
+  const personalSpaceId = spacesQuery.data?.find((space) => space.type === 'personal')?.id;
 
   return (
     <div className={`desktop-shell ${railCollapsed ? 'desktop-shell--collapsed' : ''}`}>
@@ -466,6 +467,7 @@ function AppContent({
           agents={agentsQuery.data ?? []}
           online={online}
           {...(updateChecksQuery.data?.[installing.id] ? { updateCheck: updateChecksQuery.data[installing.id] } : {})}
+          {...(personalSpaceId ? { personalSpaceId } : {})}
           onClose={() => setInstalling(undefined)}
           onInstalled={() => {
             setInstalling(undefined);
