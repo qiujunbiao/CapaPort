@@ -75,6 +75,22 @@ export type ImportLocalInput = {
   slug: string;
 };
 
+export type CapabilityDraftSummary = {
+  id: string;
+  capabilityId: string;
+  status: 'draft' | 'ready' | 'blocked' | 'submitted';
+  currentRevisionId?: string;
+};
+
+export type DraftRevisionSummary = {
+  id: string;
+  sequence: number;
+  contentDigest: string;
+  scanStatus: 'passed' | 'blocked';
+  riskFindingDigests: string[];
+  createdAt: string;
+};
+
 export interface CloudClient {
   isOnline(): boolean;
   login(input: { kind: 'email' | 'phone'; target: string; password: string; deviceName: string }): Promise<TokenPair>;
@@ -120,7 +136,44 @@ export interface CloudClient {
     slug: string;
     agent: AgentId;
     archive: LocalPackageExport;
-  }): Promise<{ capabilityId: string; draftId: string; riskFindingDigests: string[] }>;
+    name?: string;
+    description?: string;
+    tags?: string[];
+    agents?: AgentId[];
+  }): Promise<{
+    capabilityId: string;
+    draftId: string;
+    revisionId?: string;
+    sequence?: number;
+    riskFindingDigests: string[];
+  }>;
+  createCapabilityRevisionDraft(
+    session: Session,
+    organizationId: string,
+    capabilityId: string,
+  ): Promise<CapabilityDraftSummary>;
+  saveCapabilityRevision(input: {
+    session: Session;
+    organizationId: string;
+    spaceId: string;
+    capabilityId: string;
+    draftId: string;
+    archive: LocalPackageExport;
+  }): Promise<{ revisionId: string; sequence: number; blocked: boolean; riskFindingDigests: string[] }>;
+  capabilityDrafts(session: Session, organizationId: string, capabilityId: string): Promise<CapabilityDraftSummary[]>;
+  draftRevisions(
+    session: Session,
+    organizationId: string,
+    capabilityId: string,
+    draftId: string,
+  ): Promise<DraftRevisionSummary[]>;
+  downloadDraftRevision(
+    session: Session,
+    organizationId: string,
+    capabilityId: string,
+    draftId: string,
+    revisionId: string,
+  ): Promise<Uint8Array>;
   submitPublication(input: {
     session: Session;
     organizationId: string;

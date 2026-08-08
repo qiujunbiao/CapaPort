@@ -1,6 +1,7 @@
 import type {
   AuditEntry,
   CapabilitySummary,
+  CapabilityVersionDiff,
   CapabilityVersionSummary,
   OrganizationRole,
   OrganizationSummary,
@@ -119,6 +120,7 @@ export interface WebClient {
   capabilities(query?: string): Promise<CapabilitySummary[]>;
   updateCapability(capabilityId: string, input: UpdateCapabilityRequest): Promise<CapabilitySummary>;
   versions(capabilityId: string): Promise<CapabilityVersionSummary[]>;
+  versionDiff(capabilityId: string, versionId: string, againstVersionId: string): Promise<CapabilityVersionDiff>;
   transitionVersion(
     capabilityId: string,
     versionId: string,

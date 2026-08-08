@@ -81,6 +81,17 @@ export class CapabilityController {
     return this.capabilities.revisions(current.tenant, current.auth.userId, capabilityId, draftId);
   }
 
+  @Get(':capabilityId/drafts/:draftId/revisions/:revisionId/download')
+  downloadRevision(
+    @Req() request: TenantRequest,
+    @Param('capabilityId') capabilityId: string,
+    @Param('draftId') draftId: string,
+    @Param('revisionId') revisionId: string,
+  ) {
+    const current = context(request);
+    return this.capabilities.downloadRevision(current.tenant, current.auth.userId, capabilityId, draftId, revisionId);
+  }
+
   @Post(':capabilityId/drafts/:draftId/revisions')
   createRevision(
     @Req() request: TenantRequest,

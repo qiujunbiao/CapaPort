@@ -1,4 +1,36 @@
+import { buildArchive } from '@agentdoor/capability-kit';
 import type { CloudClient, LocalClient } from '../app/types';
+
+function returnedDraftArchive(): Uint8Array {
+  const encode = (content: string) => new TextEncoder().encode(content);
+  return buildArchive([
+    { path: 'README.md', content: encode('# 组织 A 能力') },
+    {
+      path: 'agentdoor.yaml',
+      content: encode(`schemaVersion: agentdoor.io/v1alpha1
+kind: CapabilityPackage
+metadata:
+  slug: release-helper
+  name: 组织 A 能力
+  description: 发布检查与变更摘要
+  tags: [release]
+spec:
+  components:
+    - type: skill
+      path: skills/release-helper
+  compatibility:
+    agents: [codex]
+  permissions:
+    filesystem: read-project
+    network: none
+  entrypoints:
+    default: skills/release-helper/SKILL.md
+  dependencies: []
+`),
+    },
+    { path: 'skills/release-helper/SKILL.md', content: encode('# Existing skill') },
+  ]);
+}
 
 export function cloudFixture(
   options: {
@@ -7,6 +39,7 @@ export function cloudFixture(
     installed?: boolean;
     updateAvailable?: boolean;
     includeClaudeOnly?: boolean;
+    changesRequested?: boolean;
   } = {},
 ): CloudClient {
   const online = options.online ?? true;
@@ -42,6 +75,15 @@ export function cloudFixture(
         reviewPolicy: 'direct',
         status: 'active',
       },
+      {
+        id: 'space-org',
+        organizationId: 'org-a',
+        type: 'organization',
+        name: '组织空间',
+        slug: 'organization',
+        reviewPolicy: 'required',
+        status: 'active',
+      },
     ],
     capabilities: async (_session, organizationId) => [
       {
@@ -73,7 +115,25 @@ export function cloudFixture(
           ]
         : []),
     ],
-    publications: async () => [],
+    publications: async () =>
+      options.changesRequested
+        ? [
+            {
+              id: 'publication-returned',
+              organizationId: 'org-a',
+              capabilityId: 'cap-org-a',
+              sourceSpaceId: 'space-a',
+              sourceRevisionId: 'revision-returned',
+              targetSpaceId: 'space-org',
+              candidateDigest: 'c'.repeat(64),
+              version: '1.0.0',
+              status: 'changes_requested' as const,
+              submittedByUserId: 'user-a',
+              createdAt: '2026-08-08T00:00:00.000Z',
+              resolvedAt: '2026-08-08T00:01:00.000Z',
+            },
+          ]
+        : [],
     installations: async () =>
       options.installed
         ? [
@@ -123,7 +183,45 @@ export function cloudFixture(
       permissions: { filesystem: 'write-project', network: 'none' },
       download: { url: 'https://example.test/artifact.zip', expiresIn: 60 },
     }),
-    createCapabilityDraft: async () => ({ capabilityId: 'cap-a', draftId: 'draft-a', riskFindingDigests: [] }),
+    createCapabilityDraft: async () => ({
+      capabilityId: 'cap-a',
+      draftId: 'draft-a',
+      revisionId: 'revision-a',
+      sequence: 1,
+      riskFindingDigests: [],
+    }),
+    createCapabilityRevisionDraft: async () => ({ id: 'draft-b', capabilityId: 'cap-a', status: 'draft' }),
+    saveCapabilityRevision: async () => ({
+      revisionId: 'revision-b',
+      sequence: 2,
+      blocked: false,
+      riskFindingDigests: [],
+    }),
+    capabilityDrafts: async () =>
+      options.changesRequested
+        ? [
+            {
+              id: 'draft-returned',
+              capabilityId: 'cap-org-a',
+              status: 'ready' as const,
+              currentRevisionId: 'revision-returned',
+            },
+          ]
+        : [],
+    draftRevisions: async () =>
+      options.changesRequested
+        ? [
+            {
+              id: 'revision-returned',
+              sequence: 1,
+              contentDigest: 'c'.repeat(64),
+              scanStatus: 'passed' as const,
+              riskFindingDigests: [],
+              createdAt: '2026-08-08T00:00:00.000Z',
+            },
+          ]
+        : [],
+    downloadDraftRevision: async () => returnedDraftArchive(),
     submitPublication: async () => ({ publicationId: 'publication-a' }),
     reportInstallation: async () => undefined,
     createProjectBinding: async (input) => ({

@@ -230,6 +230,9 @@ importers:
 
   apps/desktop:
     dependencies:
+      '@agentdoor/capability-kit':
+        specifier: workspace:*
+        version: link:../../packages/capability-kit
       '@agentdoor/contracts':
         specifier: workspace:*
         version: link:../../packages/contracts

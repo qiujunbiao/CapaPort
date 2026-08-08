@@ -1,6 +1,18 @@
 import type { AgentId, CapabilitySummary, SpaceSummary, UpdateCheck } from '@agentdoor/contracts';
 import { QueryClient, QueryClientProvider, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Bell, Box, CloudOff, FolderGit2, Home, Menu, PanelLeftClose, Send, Settings, ShieldCheck } from 'lucide-react';
+import {
+  Bell,
+  Box,
+  CloudOff,
+  FilePenLine,
+  FolderGit2,
+  Home,
+  Menu,
+  PanelLeftClose,
+  Send,
+  Settings,
+  ShieldCheck,
+} from 'lucide-react';
 import { useEffect, useMemo, useState, useSyncExternalStore } from 'react';
 import { DoorMark } from '../components/brand';
 import { Status } from '../components/ui';
@@ -8,6 +20,7 @@ import { DiscoveryModal } from '../features/agents/discovery-modal';
 import { HomePage } from '../features/agents/home-page';
 import { AuthScreen } from '../features/auth/auth-screen';
 import { OrganizationOnboarding } from '../features/auth/organization-onboarding';
+import { AuthoringPage } from '../features/authoring/authoring-page';
 import { InstallModal } from '../features/library/install-modal';
 import { LibraryPage } from '../features/library/library-page';
 import { ProjectsPage } from '../features/projects/projects-page';
@@ -15,10 +28,11 @@ import { PublishingPage } from '../features/publishing/publishing-page';
 import { SettingsPage } from '../features/settings/settings-page';
 import type { CloudClient, InstallationSummary, LocalClient, SessionStore } from './types';
 
-type Page = 'home' | 'library' | 'projects' | 'publishing' | 'settings';
+type Page = 'home' | 'library' | 'authoring' | 'projects' | 'publishing' | 'settings';
 const nav: Array<{ id: Page; label: string; icon: typeof Home }> = [
   { id: 'home', label: '首页', icon: Home },
   { id: 'library', label: '能力库', icon: Box },
+  { id: 'authoring', label: '创作', icon: FilePenLine },
   { id: 'projects', label: '项目', icon: FolderGit2 },
   { id: 'publishing', label: '发布', icon: Send },
   { id: 'settings', label: '设置', icon: Settings },
@@ -249,6 +263,22 @@ function AppContent({
               outcome: 'uninstalled',
             });
             await queryClient.invalidateQueries({ queryKey: ['installations', organizationId] });
+          }}
+        />
+      );
+    if (page === 'authoring')
+      return (
+        <AuthoringPage
+          cloud={cloud}
+          session={session}
+          organizationId={organizationId}
+          spaces={spacesQuery.data ?? []}
+          capabilities={capabilitiesQuery.data ?? []}
+          publications={publicationsQuery.data ?? []}
+          online={online}
+          onSubmitted={() => {
+            void publicationsQuery.refetch();
+            void capabilitiesQuery.refetch();
           }}
         />
       );

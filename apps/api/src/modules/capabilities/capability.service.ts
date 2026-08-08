@@ -109,6 +109,12 @@ export interface CapabilityDataStore {
   }): Promise<DraftRevisionRecord>;
   listDrafts(organizationId: string, capabilityId: string): Promise<CapabilityDraftRecord[]>;
   listRevisions(organizationId: string, capabilityId: string, draftId: string): Promise<DraftRevisionRecord[]>;
+  findRevision(
+    organizationId: string,
+    capabilityId: string,
+    draftId: string,
+    revisionId: string,
+  ): Promise<DraftRevisionRecord | undefined>;
   findVersion(organizationId: string, versionId: string): Promise<CapabilityVersionRecord | undefined>;
 }
 
@@ -116,7 +122,7 @@ export interface CapabilityDataStore {
 export class CapabilityService {
   constructor(
     @Inject('CAPABILITY_DATA_STORE') private readonly repository: CapabilityDataStore,
-    @Inject(ArtifactService) private readonly artifacts: Pick<ArtifactService, 'readArtifact'>,
+    @Inject(ArtifactService) private readonly artifacts: Pick<ArtifactService, 'readArtifact' | 'createDownload'>,
     @Inject(SpaceService) private readonly spaces: Pick<SpaceService, 'authorize' | 'list'>,
   ) {}
 
@@ -214,6 +220,23 @@ export class CapabilityService {
     await this.spaces.authorize(tenant, userId, capability.spaceId, 'content:view-private');
     if (!(await this.repository.findDraft(tenant.organizationId, capabilityId, draftId))) this.denied();
     return this.repository.listRevisions(tenant.organizationId, capabilityId, draftId);
+  }
+
+  async downloadRevision(
+    tenant: TenantContext,
+    userId: string,
+    capabilityId: string,
+    draftId: string,
+    revisionId: string,
+  ) {
+    const capability = await this.requireCapability(tenant.organizationId, capabilityId);
+    await this.spaces.authorize(tenant, userId, capability.spaceId, 'content:view-private');
+    const revision = await this.repository.findRevision(tenant.organizationId, capabilityId, draftId, revisionId);
+    if (!revision || revision.spaceId !== capability.spaceId) this.denied();
+    return {
+      revisionId: revision.id,
+      ...(await this.artifacts.createDownload(tenant.organizationId, revision.artifactId)),
+    };
   }
 
   async createRevision(

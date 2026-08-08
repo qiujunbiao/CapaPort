@@ -1,4 +1,3 @@
-import { createHash } from 'node:crypto';
 import { normalizePackagePath } from './schema.js';
 
 export type PackageFile = {
@@ -20,15 +19,22 @@ export function normalizePackageFiles(files: readonly PackageFile[]): PackageFil
 }
 
 export async function hashPackage(files: readonly PackageFile[]): Promise<string> {
-  const hash = createHash('sha256');
-  for (const file of normalizePackageFiles(files)) {
-    const pathBytes = Buffer.from(file.path, 'utf8');
-    const header = Buffer.allocUnsafe(8);
-    header.writeUInt32BE(pathBytes.byteLength, 0);
-    header.writeUInt32BE(file.content.byteLength, 4);
-    hash.update(header);
-    hash.update(pathBytes);
-    hash.update(file.content);
+  const encoder = new TextEncoder();
+  const entries = normalizePackageFiles(files).map((file) => ({ file, pathBytes: encoder.encode(file.path) }));
+  const canonical = new Uint8Array(
+    entries.reduce((size, entry) => size + 8 + entry.pathBytes.byteLength + entry.file.content.byteLength, 0),
+  );
+  const view = new DataView(canonical.buffer);
+  let offset = 0;
+  for (const { file, pathBytes } of entries) {
+    view.setUint32(offset, pathBytes.byteLength, false);
+    view.setUint32(offset + 4, file.content.byteLength, false);
+    offset += 8;
+    canonical.set(pathBytes, offset);
+    offset += pathBytes.byteLength;
+    canonical.set(file.content, offset);
+    offset += file.content.byteLength;
   }
-  return hash.digest('hex');
+  const digest = new Uint8Array(await crypto.subtle.digest('SHA-256', canonical));
+  return [...digest].map((byte) => byte.toString(16).padStart(2, '0')).join('');
 }

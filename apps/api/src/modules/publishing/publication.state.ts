@@ -28,6 +28,10 @@ export function transitionPublication(state: PublicationStatus, action: Publicat
   return next;
 }
 
+export function sourceDraftStatusAfterReview(decision: Exclude<PublicationAction, 'withdraw'>): 'ready' | undefined {
+  return decision === 'request_changes' ? 'ready' : undefined;
+}
+
 export function transitionVersion(state: VersionStatus, action: VersionAction): VersionStatus {
   const next = versionTransitions[state]?.[action];
   if (!next) throw new AppError('VERSION_TRANSITION_INVALID', 'Version transition is not allowed.', 409);

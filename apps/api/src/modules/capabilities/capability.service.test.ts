@@ -49,7 +49,7 @@ describe('CapabilityService', () => {
     authorize: vi.fn().mockResolvedValue({}),
     list: vi.fn().mockResolvedValue([{ id: 'space-a' }]),
   };
-  const artifacts = { readArtifact: vi.fn() };
+  const artifacts = { readArtifact: vi.fn(), createDownload: vi.fn() };
   const repository = {
     createCapability: vi.fn(),
     updateCapability: vi.fn(),
@@ -60,6 +60,7 @@ describe('CapabilityService', () => {
     createRevision: vi.fn(),
     listDrafts: vi.fn().mockResolvedValue([]),
     listRevisions: vi.fn().mockResolvedValue([]),
+    findRevision: vi.fn(),
     findVersion: vi.fn(),
   };
 
@@ -118,5 +119,24 @@ describe('CapabilityService', () => {
       ['space-a'],
       expect.objectContaining({ query: 'release' }),
     );
+  });
+
+  it('authorizes and returns a short-lived download for an editable draft revision', async () => {
+    repository.findRevision.mockResolvedValue({
+      id: 'revision-a',
+      organizationId: 'org-a',
+      spaceId: 'space-a',
+      draftId: 'draft-a',
+      artifactId: 'artifact-a',
+    });
+    artifacts.createDownload.mockResolvedValue({ url: 'https://download.test/revision', expiresIn: 120 });
+    const service = new CapabilityService(repository, artifacts, spaces);
+    await expect(service.downloadRevision(tenant, 'user-a', 'capability-a', 'draft-a', 'revision-a')).resolves.toEqual({
+      revisionId: 'revision-a',
+      url: 'https://download.test/revision',
+      expiresIn: 120,
+    });
+    expect(spaces.authorize).toHaveBeenCalledWith(tenant, 'user-a', 'space-a', 'content:view-private');
+    expect(artifacts.createDownload).toHaveBeenCalledWith('org-a', 'artifact-a');
   });
 });

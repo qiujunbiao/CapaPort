@@ -145,6 +145,55 @@ describe('desktop application safety workflows', () => {
     expect(document.body.textContent).not.toContain('/Users/private');
   });
 
+  it('creates a Skill, Prompt, and context package in the authoring workspace and submits it', async () => {
+    render(
+      <DesktopApp
+        cloud={cloudFixture()}
+        local={localFixture()}
+        sessionStore={createMemorySessionStore({
+          accessToken: 'token',
+          refreshToken: 'refresh',
+          organizationId: 'org-a',
+        })}
+      />,
+    );
+    fireEvent.click(await screen.findByRole('button', { name: '创作' }));
+    fireEvent.change(screen.getByLabelText('能力标识'), { target: { value: 'team-release' } });
+    fireEvent.change(screen.getByLabelText('能力名称'), { target: { value: '团队发布助手' } });
+    fireEvent.change(screen.getByLabelText('Skill 内容'), { target: { value: '# Skill' } });
+    fireEvent.click(screen.getByRole('button', { name: '添加Prompt' }));
+    fireEvent.change(screen.getByLabelText('Prompt 内容'), { target: { value: '# Prompt' } });
+    fireEvent.click(screen.getByRole('button', { name: '添加项目上下文' }));
+    fireEvent.change(screen.getByLabelText('项目上下文 内容'), { target: { value: '# Context' } });
+    fireEvent.click(screen.getByRole('button', { name: '保存草稿' }));
+    expect(await screen.findByText('草稿修订 #1 已保存')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: '提交审核' }));
+    expect(await screen.findByText('已提交到审核流程')).toBeInTheDocument();
+  });
+
+  it('reopens a changes-requested draft, saves an immutable revision, and resubmits it', async () => {
+    render(
+      <DesktopApp
+        cloud={cloudFixture({ changesRequested: true })}
+        local={localFixture()}
+        sessionStore={createMemorySessionStore({
+          accessToken: 'token',
+          refreshToken: 'refresh',
+          organizationId: 'org-a',
+        })}
+      />,
+    );
+    fireEvent.click(await screen.findByRole('button', { name: '创作' }));
+    fireEvent.click(await screen.findByRole('button', { name: /继续修改 组织 A 能力/ }));
+    expect(await screen.findByText('已载入审核退回的草稿，可修改后再次提交')).toBeInTheDocument();
+    expect(screen.getByLabelText('Skill 内容')).toHaveValue('# Existing skill');
+    fireEvent.change(screen.getByLabelText('Skill 内容'), { target: { value: '# Revised skill' } });
+    fireEvent.click(screen.getByRole('button', { name: '保存草稿' }));
+    expect(await screen.findByText('草稿修订 #2 已保存')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: '提交审核' }));
+    expect(await screen.findByText('已提交到审核流程')).toBeInTheDocument();
+  });
+
   it('filters installed capabilities and exposes an available update', async () => {
     render(
       <DesktopApp

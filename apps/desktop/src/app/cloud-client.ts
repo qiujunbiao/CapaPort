@@ -62,6 +62,10 @@ export function createCloudClient(
     slug: string;
     agent: AgentId;
     archive: LocalPackageExport;
+    name?: string;
+    description?: string;
+    tags?: string[];
+    agents?: AgentId[];
   }) {
     const created = await request<{ capability: CapabilitySummary; draft: { id: string } }>('/capabilities', {
       method: 'POST',
@@ -70,51 +74,26 @@ export function createCloudClient(
       body: JSON.stringify({
         spaceId: input.spaceId,
         slug: input.slug,
-        name: input.slug,
-        description: '',
-        tags: [],
-        compatibility: [input.agent],
+        name: input.name ?? input.slug,
+        description: input.description ?? '',
+        tags: input.tags ?? [],
+        compatibility: input.agents ?? [input.agent],
       }),
     });
-    const upload = await request<ArtifactUploadPlan>('/artifacts/uploads', {
-      method: 'POST',
+    const revision = await saveCapabilityRevision({
       session: input.session,
       organizationId: input.organizationId,
-      body: JSON.stringify({
-        spaceId: input.spaceId,
-        fileName: input.archive.fileName,
-        contentType: 'application/zip',
-        sizeBytes: input.archive.sizeBytes,
-        sha256: input.archive.sha256,
-      }),
+      spaceId: input.spaceId,
+      capabilityId: created.capability.id,
+      draftId: created.draft.id,
+      archive: input.archive,
     });
-    const uploadBytes = base64Bytes(input.archive.archiveBase64);
-    const uploadResponse = await fetch(upload.url, {
-      method: 'PUT',
-      headers: upload.headers,
-      body: uploadBytes.buffer as ArrayBuffer,
-    });
-    if (!uploadResponse.ok) throw new CloudError('ARTIFACT_UPLOAD_FAILED', '能力包上传失败，请重试');
-    const artifact = await request<{ artifactId: string }>(`/artifacts/uploads/${upload.uploadId}/confirm`, {
-      method: 'POST',
-      session: input.session,
-      organizationId: input.organizationId,
-    });
-    const revision = await request<{ scanReport: { findings: Array<{ blocking: boolean; evidenceDigest: string }> } }>(
-      `/capabilities/${created.capability.id}/drafts/${created.draft.id}/revisions`,
-      {
-        method: 'POST',
-        session: input.session,
-        organizationId: input.organizationId,
-        body: JSON.stringify({ artifactId: artifact.artifactId }),
-      },
-    );
     return {
       capabilityId: created.capability.id,
       draftId: created.draft.id,
-      riskFindingDigests: revision.scanReport.findings
-        .filter((finding) => !finding.blocking)
-        .map((finding) => finding.evidenceDigest),
+      revisionId: revision.revisionId,
+      sequence: revision.sequence,
+      riskFindingDigests: revision.riskFindingDigests,
     };
   }
 
@@ -144,6 +123,43 @@ export function createCloudClient(
       session,
       organizationId,
     });
+  }
+
+  async function saveCapabilityRevision(input: {
+    session: Session;
+    organizationId: string;
+    spaceId: string;
+    capabilityId: string;
+    draftId: string;
+    archive: LocalPackageExport;
+  }) {
+    const artifact = await uploadArchive(
+      input.session,
+      input.organizationId,
+      input.spaceId,
+      input.archive.fileName,
+      input.archive.sha256,
+      input.archive.archiveBase64,
+    );
+    const revision = await request<{
+      id: string;
+      sequence: number;
+      scanStatus: 'passed' | 'blocked';
+      scanReport: { findings: Array<{ blocking: boolean; evidenceDigest: string }> };
+    }>(`/capabilities/${input.capabilityId}/drafts/${input.draftId}/revisions`, {
+      method: 'POST',
+      session: input.session,
+      organizationId: input.organizationId,
+      body: JSON.stringify({ artifactId: artifact.artifactId }),
+    });
+    return {
+      revisionId: revision.id,
+      sequence: revision.sequence,
+      blocked: revision.scanStatus === 'blocked',
+      riskFindingDigests: revision.scanReport.findings
+        .filter((finding) => !finding.blocking)
+        .map((finding) => finding.evidenceDigest),
+    };
   }
 
   return {
@@ -204,6 +220,42 @@ export function createCloudClient(
         }),
       }),
     createCapabilityDraft,
+    createCapabilityRevisionDraft: (session, organizationId, capabilityId) =>
+      request(`/capabilities/${capabilityId}/drafts`, { method: 'POST', session, organizationId }),
+    saveCapabilityRevision,
+    capabilityDrafts: (session, organizationId, capabilityId) =>
+      request(`/capabilities/${capabilityId}/drafts`, { session, organizationId }),
+    draftRevisions: async (session, organizationId, capabilityId, draftId) => {
+      const revisions = await request<
+        Array<{
+          id: string;
+          sequence: number;
+          contentDigest: string;
+          scanStatus: 'passed' | 'blocked';
+          scanReport: { findings: Array<{ blocking: boolean; evidenceDigest: string }> };
+          createdAt: string;
+        }>
+      >(`/capabilities/${capabilityId}/drafts/${draftId}/revisions`, { session, organizationId });
+      return revisions.map((revision) => ({
+        id: revision.id,
+        sequence: revision.sequence,
+        contentDigest: revision.contentDigest,
+        scanStatus: revision.scanStatus,
+        riskFindingDigests: revision.scanReport.findings
+          .filter((finding) => !finding.blocking)
+          .map((finding) => finding.evidenceDigest),
+        createdAt: revision.createdAt,
+      }));
+    },
+    downloadDraftRevision: async (session, organizationId, capabilityId, draftId, revisionId) => {
+      const download = await request<{ url: string }>(
+        `/capabilities/${capabilityId}/drafts/${draftId}/revisions/${revisionId}/download`,
+        { session, organizationId },
+      );
+      const response = await fetch(download.url);
+      if (!response.ok) throw new CloudError('ARTIFACT_DOWNLOAD_FAILED', '草稿修订下载失败，请重试');
+      return new Uint8Array(await response.arrayBuffer());
+    },
     submitPublication: async (input) => {
       const publication = await request<{ id: string }>(`/capabilities/${input.capabilityId}/publications`, {
         method: 'POST',

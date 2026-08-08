@@ -1604,6 +1604,97 @@ p {
 .install-result small {
   display: block;
 }
+.authoring-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 300px;
+  gap: 18px;
+  align-items: start;
+}
+.authoring-form,
+.authoring-sidebar,
+.package-editor,
+.package-component,
+.authoring-actions,
+.revision-list {
+  display: grid;
+  gap: 14px;
+}
+.authoring-sidebar {
+  position: sticky;
+  top: 18px;
+}
+.form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+.form-grid__wide {
+  grid-column: 1 / -1;
+}
+.form-grid textarea,
+.package-component textarea {
+  min-height: 88px;
+  resize: vertical;
+}
+.package-editor__toolbar,
+.agent-checkboxes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.agent-checkboxes label {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 6px;
+}
+.agent-checkboxes input {
+  width: auto;
+}
+.package-component {
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 14px;
+}
+.package-component header {
+  display: flex;
+  justify-content: space-between;
+}
+.package-component header code,
+.revision-list code {
+  display: block;
+  color: var(--muted);
+}
+.package-component textarea {
+  min-height: 220px;
+  font-family: "DM Mono", monospace;
+}
+.validation-list {
+  padding-left: 18px;
+  color: var(--danger);
+}
+.revision-list {
+  list-style: none;
+  padding: 0;
+}
+.revision-list li {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+.risk-acceptance {
+  padding: 10px;
+  border: 1px solid #f59e0b;
+  background: #fffbeb;
+}
+@media (max-width: 980px) {
+  .authoring-layout {
+    grid-template-columns: 1fr;
+  }
+  .authoring-sidebar {
+    position: static;
+  }
+}
 .install-assurances {
   margin-top: 12px;
   display: flex;

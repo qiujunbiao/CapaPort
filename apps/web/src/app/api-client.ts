@@ -90,6 +90,10 @@ export function createWebClient(baseUrl: string, sessionStore: WebSessionStore):
     updateCapability: (capabilityId, input) =>
       request(`/capabilities/${capabilityId}`, { method: 'PATCH', body: input }),
     versions: (capabilityId) => request(`/capabilities/${capabilityId}/versions`),
+    versionDiff: (capabilityId, versionId, againstVersionId) =>
+      request(
+        `/capabilities/${capabilityId}/versions/${versionId}/diff?against=${encodeURIComponent(againstVersionId)}`,
+      ),
     transitionVersion: (capabilityId, versionId, action) =>
       request(`/capabilities/${capabilityId}/versions/${versionId}/${action}`, { method: 'POST' }),
     publications: (status) =>

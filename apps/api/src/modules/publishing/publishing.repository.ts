@@ -4,7 +4,7 @@ import { Inject, Injectable } from '@nestjs/common';
 import type { PoolClient } from 'pg';
 import type { DatabaseService } from '../../platform/database/database.service.js';
 import { AppError } from '../../platform/errors/app-error.js';
-import { transitionPublication } from './publication.state.js';
+import { sourceDraftStatusAfterReview, transitionPublication } from './publication.state.js';
 import type {
   FrozenPublicationCandidate,
   PublicationDataStore,
@@ -331,6 +331,15 @@ export class PublishingRepository implements PublicationDataStore {
         resolvedAt,
         publishedVersionId ?? null,
       ]);
+      const sourceDraftStatus = sourceDraftStatusAfterReview(input.decision);
+      if (sourceDraftStatus && row.source_revision_id) {
+        await client.query(
+          `UPDATE capability_drafts
+              SET status=$2,updated_at=$3
+            WHERE organization_id=$1 AND current_revision_id=$4 AND status='submitted'`,
+          [input.organizationId, sourceDraftStatus, resolvedAt, row.source_revision_id],
+        );
+      }
       await this.recordEvents(client, {
         organizationId: input.organizationId,
         actorUserId: input.reviewerUserId,

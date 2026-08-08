@@ -1,4 +1,10 @@
-import type { AgentId, CapabilitySummary, CapabilityVersionSummary, SpaceSummary } from '@agentdoor/contracts';
+import type {
+  AgentId,
+  CapabilitySummary,
+  CapabilityVersionDiff,
+  CapabilityVersionSummary,
+  SpaceSummary,
+} from '@agentdoor/contracts';
 import { Box, Search, ShieldCheck, X } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import type { WebClient } from '../../app/types';
@@ -23,6 +29,7 @@ export function MarketplacePage({
   const [spaceType, setSpaceType] = useState('all');
   const [selected, setSelected] = useState<CapabilitySummary>();
   const [versions, setVersions] = useState<CapabilityVersionSummary[]>();
+  const [versionDiff, setVersionDiff] = useState<CapabilityVersionDiff>();
   const [error, setError] = useState('');
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -54,6 +61,7 @@ export function MarketplacePage({
     setSelected(capability);
     setVersions(undefined);
     setError('');
+    setVersionDiff(undefined);
     setEditing(false);
     try {
       setVersions(await client.versions(capability.id));
@@ -119,6 +127,16 @@ export function MarketplacePage({
       onRefresh();
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : '版本状态更新失败');
+    }
+  }
+
+  async function compareVersions() {
+    if (!selected || !versions?.[0] || !versions[1]) return;
+    setError('');
+    try {
+      setVersionDiff(await client.versionDiff(selected.id, versions[0].id, versions[1].id));
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : '版本差异加载失败');
     }
   }
 
@@ -274,6 +292,27 @@ export function MarketplacePage({
             </div>
             {error ? <ErrorNotice>{error}</ErrorNotice> : null}
             <h3>版本历史</h3>
+            {versions && versions.length > 1 ? (
+              <Button variant="secondary" onClick={() => void compareVersions()}>
+                比较 v{versions[0]?.version} 与 v{versions[1]?.version}
+              </Button>
+            ) : null}
+            {versionDiff ? (
+              <div className="version-diff">
+                <strong>建议 {versionDiff.recommendedChange} 版本变更</strong>
+                <ul>
+                  {versionDiff.added.map((path) => (
+                    <li key={`added-${path}`}>新增 · {path}</li>
+                  ))}
+                  {versionDiff.modified.map((path) => (
+                    <li key={`modified-${path}`}>修改 · {path}</li>
+                  ))}
+                  {versionDiff.removed.map((path) => (
+                    <li key={`removed-${path}`}>删除 · {path}</li>
+                  ))}
+                </ul>
+              </div>
+            ) : null}
             {!versions ? (
               <LoadingBlock label="加载版本" />
             ) : versions.length ? (

@@ -43,6 +43,8 @@ export type PublicationSummary = {
   organizationId: string;
   capabilityId: string;
   sourceSpaceId: string;
+  sourceRevisionId?: string;
+  sourceVersionId?: string;
   targetSpaceId: string;
   candidateDigest: string;
   version: string;

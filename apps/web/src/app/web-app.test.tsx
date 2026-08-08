@@ -60,6 +60,25 @@ describe('organization web console', () => {
     expect(screen.getByText('release, security')).toBeInTheDocument();
   });
 
+  it('compares immutable capability versions from the marketplace', async () => {
+    render(
+      <WebApp
+        client={webFixture()}
+        sessionStore={createMemoryWebSessionStore({
+          accessToken: 'token',
+          refreshToken: 'refresh',
+          organizationId: 'org-a',
+        })}
+      />,
+    );
+    fireEvent.click(await screen.findByRole('button', { name: '能力市场' }));
+    fireEvent.click(await screen.findByRole('button', { name: /发布护航/ }));
+    fireEvent.click(await screen.findByRole('button', { name: '比较 v1.0.0 与 v0.9.0' }));
+    expect(await screen.findByText('建议 minor 版本变更')).toBeInTheDocument();
+    expect(screen.getByText(/prompts\/release-helper\.md/)).toBeInTheDocument();
+    expect(screen.getByText(/skills\/release-helper\/SKILL\.md/)).toBeInTheDocument();
+  });
+
   it('lets a non-owner leave the current organization', async () => {
     render(
       <WebApp

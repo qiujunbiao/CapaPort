@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { transitionPublication, transitionVersion } from './publication.state.js';
+import { sourceDraftStatusAfterReview, transitionPublication, transitionVersion } from './publication.state.js';
 
 describe('publication state machine', () => {
   it.each([
@@ -19,6 +19,12 @@ describe('publication state machine', () => {
     ['withdrawn', 'approve'],
   ] as const)('rejects publication transition %s --%s', (from, action) => {
     expect(() => transitionPublication(from, action)).toThrow(/transition/i);
+  });
+
+  it('reopens a submitted source draft only when changes are requested', () => {
+    expect(sourceDraftStatusAfterReview('request_changes')).toBe('ready');
+    expect(sourceDraftStatusAfterReview('approve')).toBeUndefined();
+    expect(sourceDraftStatusAfterReview('reject')).toBeUndefined();
   });
 });
 

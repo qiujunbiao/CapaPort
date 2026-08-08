@@ -368,6 +368,28 @@ export class CapabilityRepository implements CapabilityDataStore {
     return rows.map(({ revision }) => this.revision(revision));
   }
 
+  async findRevision(
+    organizationId: string,
+    capabilityId: string,
+    draftId: string,
+    revisionId: string,
+  ): Promise<DraftRevisionRecord | undefined> {
+    const [row] = await this.database.db
+      .select({ revision: draftRevisions })
+      .from(draftRevisions)
+      .innerJoin(capabilityDrafts, eq(capabilityDrafts.id, draftRevisions.draftId))
+      .where(
+        and(
+          eq(draftRevisions.organizationId, organizationId),
+          eq(draftRevisions.id, revisionId),
+          eq(draftRevisions.draftId, draftId),
+          eq(capabilityDrafts.capabilityId, capabilityId),
+        ),
+      )
+      .limit(1);
+    return row ? this.revision(row.revision) : undefined;
+  }
+
   async findVersion(organizationId: string, versionId: string): Promise<CapabilityVersionRecord | undefined> {
     const [row] = await this.database.db
       .select({
