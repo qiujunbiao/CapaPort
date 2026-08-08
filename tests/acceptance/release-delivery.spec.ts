@@ -68,4 +68,16 @@ describe('release delivery contract', () => {
       await expect(access(resolve(repositoryRoot, path))).resolves.toBeUndefined();
     }
   });
+
+  it('keeps every authenticated smoke-test mutation on the idempotent API contract', async () => {
+    for (const path of [
+      'apps/api/scripts/publication-real-e2e.mjs',
+      'apps/api/scripts/distribution-real-e2e.mjs',
+      'apps/api/scripts/operations-real-e2e.mjs',
+    ]) {
+      const script = await source(path);
+      expect(script).toContain("!['GET', 'HEAD', 'OPTIONS'].includes(method)");
+      expect(script).toContain("'idempotency-key': randomUUID()");
+    }
+  });
 });

@@ -1,4 +1,4 @@
-import { createHash } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import { buildArchive } from '../../../packages/capability-kit/dist/index.js';
 
 const api = process.env.AGENTDOOR_API_URL ?? 'http://localhost:3210/api/v1';
@@ -9,11 +9,13 @@ const ownerEmail = `owner.publish.${stamp}@example.com`;
 const reviewerEmail = `reviewer.publish.${stamp}@example.com`;
 
 async function request(path, { token, headers, expected = [200, 201, 202, 204], ...options } = {}) {
+  const method = options.method ?? 'GET';
   const response = await fetch(`${api}${path}`, {
     ...options,
     headers: {
       ...(options.body ? { 'content-type': 'application/json' } : {}),
       ...(token ? { authorization: `Bearer ${token}` } : {}),
+      ...(token && !['GET', 'HEAD', 'OPTIONS'].includes(method) ? { 'idempotency-key': randomUUID() } : {}),
       ...headers,
     },
   });
@@ -352,14 +354,42 @@ const changesRequested = (
   })
 ).body;
 if (changesRequested.status !== 'changes_requested') throw new Error('Request-changes transition failed.');
+const changedRevision = (
+  await request(`/capabilities/${capabilityId}/drafts/${changesFixture.draft.id}/revisions`, {
+    token: owner.token,
+    method: 'POST',
+    body: JSON.stringify({ artifactId: firstArtifact }),
+  })
+).body;
+if (changedRevision.sequence < 2) throw new Error('Changes-requested draft did not accept a new immutable revision.');
+const resubmission = (
+  await request(`/capabilities/${capabilityId}/publications`, {
+    token: owner.token,
+    headers: { 'idempotency-key': `changes-resubmit-${stamp}` },
+    method: 'POST',
+    body: JSON.stringify({ draftId: changesFixture.draft.id, targetSpaceId: organizationSpace.id, version: '3.0.0' }),
+  })
+).body;
+if (resubmission.status !== 'in_review' || resubmission.id === changesFixture.publication.id) {
+  throw new Error('Changes-requested draft was not resubmitted as a new review candidate.');
+}
+const resubmittedApproval = (
+  await request(`/publications/${resubmission.id}/approve`, {
+    token: reviewer.token,
+    method: 'POST',
+    body: JSON.stringify({ reason: 'Requested changes were addressed' }),
+  })
+).body;
+if (resubmittedApproval.status !== 'published') throw new Error('Resubmitted changes were not publishable.');
+
 const frozenEdit = await request(`/capabilities/${capabilityId}/drafts/${changesFixture.draft.id}/revisions`, {
   token: owner.token,
   method: 'POST',
   expected: [409],
-  body: JSON.stringify({ artifactId: firstArtifact }),
+  body: JSON.stringify({ artifactId: secondArtifact }),
 });
 if (frozenEdit.body.code !== 'CAPABILITY_DRAFT_FROZEN') {
-  throw new Error('A resolved publication allowed its frozen draft to be edited.');
+  throw new Error('A published resubmission allowed its frozen draft to be edited.');
 }
 
 const rejectFixture = await submitAdditionalDraft('4.0.0', 'reject');
@@ -394,5 +424,6 @@ console.log(
   `publication-e2e=passed publication=${submission.id} concurrent_versions=${versionIds.size} ` +
     `org_review=true self_review=403 search_visible=true direct_team=true diff=${packageDiff.recommendedChange} ` +
     `promotion=true lifecycle=${deprecated.status}->${withdrawn.status}->${archived.status} ` +
-    `review_outcomes=${changesRequested.status},${rejected.status},${publicationWithdrawn.status} frozen_draft=409`,
+    `review_outcomes=${changesRequested.status},${rejected.status},${publicationWithdrawn.status} ` +
+    `changes_resubmitted=${resubmittedApproval.status} frozen_draft=409`,
 );

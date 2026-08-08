@@ -1,3 +1,5 @@
+import { randomUUID } from 'node:crypto';
+
 const api = process.env.AGENTDOOR_API_URL ?? 'http://localhost:3210/api/v1';
 const stamp = process.env.AGENTDOOR_E2E_STAMP;
 if (!stamp) throw new Error('AGENTDOOR_E2E_STAMP is required and must match a publication E2E fixture.');
@@ -6,13 +8,16 @@ const password = `V7!qZ2#${stamp}Lm9@Xr4`;
 const ownerEmail = `owner.publish.${stamp}@example.com`;
 const reviewerEmail = `reviewer.publish.${stamp}@example.com`;
 
-async function request(path, { token, organizationId, expected = [200, 201, 202, 204], ...options } = {}) {
+async function request(path, { token, organizationId, headers, expected = [200, 201, 202, 204], ...options } = {}) {
+  const method = options.method ?? 'GET';
   const response = await fetch(`${api}${path}`, {
     ...options,
     headers: {
       ...(options.body ? { 'content-type': 'application/json' } : {}),
       ...(token ? { authorization: `Bearer ${token}` } : {}),
       ...(organizationId ? { 'x-organization-id': organizationId } : {}),
+      ...(token && !['GET', 'HEAD', 'OPTIONS'].includes(method) ? { 'idempotency-key': randomUUID() } : {}),
+      ...headers,
     },
   });
   const text = await response.text();

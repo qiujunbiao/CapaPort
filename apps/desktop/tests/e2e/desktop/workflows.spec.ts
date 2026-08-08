@@ -83,7 +83,12 @@ async function injectClients(page: Page, options: { conflict?: boolean } = {}) {
         permissions: { filesystem: 'read-project', network: 'none' },
         download: { url: '', expiresIn: 60 },
       }),
-      createCapabilityDraft: async () => ({ capabilityId: capability.id, draftId: 'draft-a' }),
+      createCapabilityDraft: async () => ({
+        capabilityId: capability.id,
+        draftId: 'draft-a',
+        revisionId: 'revision-a',
+        riskFindingDigests: [],
+      }),
       submitPublication: async () => {
         publications.push({
           id: 'publication-a',
@@ -211,6 +216,11 @@ async function injectClients(page: Page, options: { conflict?: boolean } = {}) {
       }),
       projectContextPlan: async () => ({ writes: [] }),
       syncQueueStatus: async () => ({ pending: 0, failed: 0 }),
+      enqueueWrite: async () => undefined,
+      claimReadyWrites: async () => [],
+      completeWrite: async () => undefined,
+      rescheduleWrite: async () => undefined,
+      retryFailedWrites: async () => undefined,
     };
     Object.defineProperty(window, '__AGENTDOOR_E2E__', { value: { cloud, local, sessionStore: store } });
   }, options);

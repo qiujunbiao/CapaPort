@@ -124,6 +124,13 @@ async function injectConsole(page: Page) {
       publications: async () => [publication],
       publication: async () => ({ ...publication, reviews: [] }),
       scanReport: async () => ({ status: 'passed', findings: [] }),
+      publicationDiff: async () => ({
+        againstVersionId: null,
+        added: ['skills/release/SKILL.md'],
+        modified: [],
+        removed: [],
+        recommendedChange: 'minor',
+      }),
       review: async (_id: string, decision: string) => {
         publication.status =
           decision === 'approve' ? 'published' : decision === 'request-changes' ? 'changes_requested' : 'rejected';

@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import { extractArchive, hashPackage } from '../../../packages/capability-kit/dist/index.js';
 
 const api = process.env.AGENTDOOR_API_URL ?? 'http://localhost:3210/api/v1';
@@ -6,11 +7,13 @@ if (!stamp) throw new Error('AGENTDOOR_E2E_STAMP must match a publication E2E fi
 const password = `V7!qZ2#${stamp}Lm9@Xr4`;
 
 async function request(path, { token, headers, expected = [200, 201, 202, 204], ...options } = {}) {
+  const method = options.method ?? 'GET';
   const response = await fetch(`${api}${path}`, {
     ...options,
     headers: {
       ...(options.body ? { 'content-type': 'application/json' } : {}),
       ...(token ? { authorization: `Bearer ${token}` } : {}),
+      ...(token && !['GET', 'HEAD', 'OPTIONS'].includes(method) ? { 'idempotency-key': randomUUID() } : {}),
       ...headers,
     },
   });
@@ -156,12 +159,24 @@ const reports = await Promise.all(
       token: owner.token,
       headers: { 'idempotency-key': `install-${stamp}` },
       method: 'POST',
+      expected: [200, 201, 409],
       body: JSON.stringify(reportBody),
     }),
   ),
 );
-const installation = reports[0].body;
-if (new Set(reports.map((report) => report.body.id)).size !== 1) {
+const successfulReports = reports.filter((report) => report.status !== 409);
+if (successfulReports.length === 0) throw new Error('Concurrent installation idempotency did not commit a request.');
+if (reports.some((report) => report.status === 409 && !['IDEMPOTENCY_IN_PROGRESS'].includes(report.body.code))) {
+  throw new Error('Concurrent installation idempotency returned an unexpected conflict.');
+}
+const replayed = await request('/installations', {
+  token: owner.token,
+  headers: { 'idempotency-key': `install-${stamp}` },
+  method: 'POST',
+  body: JSON.stringify(reportBody),
+});
+const installation = replayed.body;
+if (!successfulReports.every((report) => report.body.id === installation.id)) {
   throw new Error('Concurrent installation idempotency created a duplicate.');
 }
 const conflict = await request('/installations', {
