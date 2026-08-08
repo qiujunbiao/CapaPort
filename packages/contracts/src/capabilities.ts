@@ -60,6 +60,7 @@ export type CapabilitySummary = {
   compatibility: AgentId[];
   ownerUserId: string;
   status: 'active' | 'archived';
+  hasPublishedVersion?: boolean;
 };
 
 export type ArtifactUploadPlan = {

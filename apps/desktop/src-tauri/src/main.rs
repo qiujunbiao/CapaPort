@@ -16,6 +16,77 @@ use capaport_runtime::error::CommandError;
 use capaport_runtime::files::InstallPlan;
 
 #[cfg(feature = "tauri-app")]
+#[derive(serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct ApiRequest {
+    url: String,
+    method: String,
+    headers: std::collections::HashMap<String, String>,
+    body: Option<String>,
+}
+
+#[cfg(feature = "tauri-app")]
+#[derive(serde::Serialize)]
+struct ApiResponse {
+    status: u16,
+    headers: std::collections::HashMap<String, String>,
+    body: String,
+}
+
+#[cfg(feature = "tauri-app")]
+fn validate_api_url(url: &reqwest::Url) -> Result<(), String> {
+    let is_local_api = url.scheme() == "http"
+        && url.host_str() == Some("127.0.0.1")
+        && url.port() == Some(3210)
+        && (url.path() == "/api/v1" || url.path().starts_with("/api/v1/"));
+    if url.scheme() == "https" || is_local_api {
+        Ok(())
+    } else {
+        Err("API request destination is not allowed".to_string())
+    }
+}
+
+#[cfg(feature = "tauri-app")]
+#[tauri::command]
+async fn api_request(request: ApiRequest) -> Result<ApiResponse, String> {
+    let url = reqwest::Url::parse(&request.url).map_err(|_| "API request URL is invalid".to_string())?;
+    validate_api_url(&url)?;
+    let method = reqwest::Method::from_bytes(request.method.as_bytes())
+        .map_err(|_| "API request method is invalid".to_string())?;
+    let client = reqwest::Client::new();
+    let mut builder = client.request(method, url);
+    for (name, value) in request.headers {
+        builder = builder.header(name, value);
+    }
+    if let Some(body) = request.body {
+        builder = builder.body(body);
+    }
+    let response = builder.send().await.map_err(|error| error.to_string())?;
+    let status = response.status().as_u16();
+    let headers = response
+        .headers()
+        .iter()
+        .filter_map(|(name, value)| value.to_str().ok().map(|value| (name.to_string(), value.to_string())))
+        .collect();
+    let body = response.text().await.map_err(|error| error.to_string())?;
+    Ok(ApiResponse { status, headers, body })
+}
+
+#[cfg(all(test, feature = "tauri-app"))]
+mod api_request_tests {
+    use super::validate_api_url;
+
+    #[test]
+    fn limits_plain_http_to_the_local_capaport_api() {
+        assert!(validate_api_url(&reqwest::Url::parse("http://127.0.0.1:3210/api/v1/auth/register").unwrap()).is_ok());
+        assert!(validate_api_url(&reqwest::Url::parse("https://api.capaport.example/api/v1/auth/register").unwrap()).is_ok());
+        assert!(validate_api_url(&reqwest::Url::parse("http://127.0.0.1:3210/private").unwrap()).is_err());
+        assert!(validate_api_url(&reqwest::Url::parse("http://example.com/api/v1/auth/register").unwrap()).is_err());
+    }
+
+}
+
+#[cfg(feature = "tauri-app")]
 struct AppState {
     runtime: Runtime,
 }
@@ -267,7 +338,8 @@ fn main() {
             retry_failed_writes,
             store_session,
             load_session,
-            clear_session
+            clear_session,
+            api_request
         ])
         .run(tauri::generate_context!())
         .expect("CapaPort desktop runtime failed");

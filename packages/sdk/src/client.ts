@@ -42,10 +42,12 @@ export class CapaPortClient {
   private readonly baseUrl: string;
   private readonly fetcher: typeof fetch;
   private readonly createIdempotencyKey: () => string;
+  private refreshingSession: Promise<SdkSession> | undefined;
 
   constructor(private readonly options: CapaPortClientOptions) {
     this.baseUrl = options.baseUrl.replace(/\/$/, '');
-    this.fetcher = options.fetch ?? fetch;
+    const fetcher = options.fetch ?? fetch;
+    this.fetcher = (input, init) => fetcher(input, init);
     this.createIdempotencyKey = options.idempotencyKey ?? (() => crypto.randomUUID());
   }
 
@@ -87,16 +89,7 @@ export class CapaPortClient {
       this.options.saveSession &&
       path !== '/auth/refresh'
     ) {
-      const refreshed = await this.dispatch<TokenPair>(
-        '/auth/refresh',
-        { method: 'POST', authenticated: false, body: { refreshToken: session.refreshToken } },
-        false,
-      );
-      const nextSession: SdkSession = {
-        ...refreshed,
-        ...(organizationId ? { organizationId } : {}),
-      };
-      await this.options.saveSession(nextSession);
+      const nextSession = await this.refreshSession(session, organizationId);
       return this.dispatch<T>(
         path,
         {
@@ -112,6 +105,33 @@ export class CapaPortClient {
     if (response.status === 204) return undefined as T;
     const text = await response.text();
     return (text ? JSON.parse(text) : undefined) as T;
+  }
+
+  private async refreshSession(session: SdkSession, organizationId?: string): Promise<SdkSession> {
+    const current = await this.options.session?.();
+    if (current && (current.accessToken !== session.accessToken || current.refreshToken !== session.refreshToken)) {
+      return current;
+    }
+    if (!this.refreshingSession) {
+      this.refreshingSession = this.dispatch<TokenPair>(
+        '/auth/refresh',
+        { method: 'POST', authenticated: false, body: { refreshToken: session.refreshToken } },
+        false,
+      ).then(async (refreshed) => {
+        const nextSession: SdkSession = {
+          ...refreshed,
+          ...(organizationId ? { organizationId } : {}),
+        };
+        await this.options.saveSession?.(nextSession);
+        return nextSession;
+      });
+    }
+    const refreshing = this.refreshingSession;
+    try {
+      return await refreshing;
+    } finally {
+      if (this.refreshingSession === refreshing) this.refreshingSession = undefined;
+    }
   }
 
   private serializeBody(body: unknown, headers: Headers): BodyInit | undefined {

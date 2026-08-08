@@ -9,7 +9,8 @@ export const createOrganizationRequestSchema = z.object({
     .string()
     .trim()
     .toLowerCase()
-    .regex(/^[a-z0-9][a-z0-9-]{1,62}$/),
+    .regex(/^[a-z0-9][a-z0-9-]{1,62}$/)
+    .optional(),
 });
 export const updateOrganizationRequestSchema = z.object({ name: z.string().trim().min(2).max(120) });
 export const inviteMemberRequestSchema = z.object({

@@ -3,7 +3,7 @@ import { Bell, Bug, Cloud, Download, KeyRound, LogOut, RefreshCw, ShieldCheck, U
 import { useEffect, useState } from 'react';
 import { bundledAppVersion, resolveDesktopVersion } from '../../app/app-version';
 import { createTauriUpdater, type DesktopUpdaterState } from '../../app/updater';
-import { Button, PageHeader, Panel, Status } from '../../components/ui';
+import { Button, ErrorNotice, PageHeader, Panel, Status } from '../../components/ui';
 import type { SyncQueueStatus } from '../../generated/commands';
 
 export function SettingsPage({
@@ -13,6 +13,8 @@ export function SettingsPage({
   online,
   onLogout,
   onRefreshQueue,
+  onAcceptInvitation,
+  onUpdateOrganization,
   onSyncQueue,
 }: {
   user: PublicUser | undefined;
@@ -21,16 +23,55 @@ export function SettingsPage({
   online: boolean;
   onLogout: () => void | Promise<void>;
   onRefreshQueue: () => void;
+  onAcceptInvitation: (token: string) => Promise<void>;
+  onUpdateOrganization: (name: string) => Promise<void>;
   onSyncQueue: () => void;
 }) {
   const [diagnosticStatus, setDiagnosticStatus] = useState('');
   const [clientVersion, setClientVersion] = useState(bundledAppVersion);
   const [updater] = useState(createTauriUpdater);
   const [update, setUpdate] = useState<DesktopUpdaterState>(updater.state());
+  const [organizationName, setOrganizationName] = useState(organization?.name ?? '');
+  const [organizationBusy, setOrganizationBusy] = useState(false);
+  const [organizationError, setOrganizationError] = useState('');
+  const [organizationMessage, setOrganizationMessage] = useState('');
+  const [invitationToken, setInvitationToken] = useState('');
+  const [invitationBusy, setInvitationBusy] = useState(false);
+  const [invitationError, setInvitationError] = useState('');
 
   useEffect(() => {
     void resolveDesktopVersion().then(setClientVersion);
   }, []);
+  useEffect(() => {
+    setOrganizationName(organization?.name ?? '');
+  }, [organization?.name]);
+
+  async function saveOrganizationName() {
+    setOrganizationBusy(true);
+    setOrganizationError('');
+    setOrganizationMessage('');
+    try {
+      await onUpdateOrganization(organizationName.trim());
+      setOrganizationMessage('组织名称已更新');
+    } catch (caught) {
+      setOrganizationError(caught instanceof Error ? caught.message : '组织名称更新失败');
+    } finally {
+      setOrganizationBusy(false);
+    }
+  }
+
+  async function acceptInvitation() {
+    setInvitationBusy(true);
+    setInvitationError('');
+    try {
+      await onAcceptInvitation(invitationToken.trim());
+      setInvitationToken('');
+    } catch (caught) {
+      setInvitationError(caught instanceof Error ? caught.message : '加入组织失败');
+    } finally {
+      setInvitationBusy(false);
+    }
+  }
 
   async function checkUpdate() {
     setUpdate({ status: 'checking' });
@@ -55,7 +96,7 @@ export function SettingsPage({
   return (
     <div className="page">
       <PageHeader
-        eyebrow="DESKTOP CONTROL / 05"
+        eyebrow="DESKTOP CONTROL"
         title="设置与诊断"
         description="管理账号、隐私边界、本地运行时和同步恢复。"
       />
@@ -82,6 +123,66 @@ export function SettingsPage({
               <dd>{organization?.role ?? '—'}</dd>
             </div>
           </dl>
+          <div className="organization-settings">
+            <label>
+              组织名称
+              <input
+                value={organizationName}
+                disabled={!organization || !['owner', 'admin'].includes(organization.role)}
+                onChange={(event) => setOrganizationName(event.target.value)}
+              />
+            </label>
+            <label>
+              组织标识
+              <input value={organization?.slug ?? ''} readOnly />
+            </label>
+            <label>
+              内部组织 ID
+              <input value={organization?.id ?? ''} readOnly />
+            </label>
+            <p className="quiet-copy">加入组织需要邀请令牌，组织 ID 不能直接用于加入。</p>
+            {organizationError ? <ErrorNotice>{organizationError}</ErrorNotice> : null}
+            {organizationMessage ? (
+              <p className="success-message" role="status">
+                {organizationMessage}
+              </p>
+            ) : null}
+            <Button
+              busy={organizationBusy}
+              disabled={
+                !organization ||
+                !['owner', 'admin'].includes(organization.role) ||
+                organizationName.trim().length < 2 ||
+                organizationName.trim() === organization.name
+              }
+              onClick={() => void saveOrganizationName()}
+            >
+              保存组织名称
+            </Button>
+            {organization && !['owner', 'admin'].includes(organization.role) ? (
+              <p className="quiet-copy">只有组织所有者或管理员可以修改组织名称。</p>
+            ) : null}
+            <div className="organization-invitation">
+              <strong>加入其他组织</strong>
+              <label>
+                邀请令牌
+                <input
+                  value={invitationToken}
+                  placeholder="粘贴邀请邮件或短信中的令牌"
+                  onChange={(event) => setInvitationToken(event.target.value)}
+                />
+              </label>
+              {invitationError ? <ErrorNotice>{invitationError}</ErrorNotice> : null}
+              <Button
+                variant="secondary"
+                busy={invitationBusy}
+                disabled={!online || invitationToken.trim().length < 32}
+                onClick={() => void acceptInvitation()}
+              >
+                加入组织
+              </Button>
+            </div>
+          </div>
           <Button variant="secondary" onClick={onLogout}>
             <LogOut aria-hidden size={15} />
             退出登录
@@ -115,7 +216,11 @@ export function SettingsPage({
             <progress aria-label="更新下载进度" max={100} value={update.progress ?? 0} />
           ) : null}
           {update.error ? <p className="diagnostic-status">{update.error}</p> : null}
-          <Button variant="secondary" disabled={update.status === 'checking'} onClick={() => void checkUpdate()}>
+          <Button
+            variant="secondary"
+            disabled={update.status === 'checking' || update.status === 'disabled'}
+            onClick={() => void checkUpdate()}
+          >
             <RefreshCw aria-hidden size={15} />
             {update.status === 'checking' ? '正在检查' : '检查更新'}
           </Button>
@@ -223,6 +328,7 @@ export function SettingsPage({
 
 function updateLabel(update: DesktopUpdaterState): string {
   const labels: Record<DesktopUpdaterState['status'], string> = {
+    disabled: '本地构建未启用在线更新',
     idle: '尚未检查',
     checking: '检查签名清单',
     current: '已是最新版本',

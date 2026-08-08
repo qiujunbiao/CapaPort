@@ -3,6 +3,7 @@ import { AppError } from '../../platform/errors/app-error.js';
 
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const e164Pattern = /^\+[1-9]\d{7,14}$/;
+const mainlandMobilePattern = /^1[3-9]\d{9}$/;
 
 export function normalizeIdentity(kind: IdentityKind, input: string): string {
   const value = input.trim();
@@ -16,7 +17,8 @@ export function normalizeIdentity(kind: IdentityKind, input: string): string {
     return normalized;
   }
 
-  const normalized = value.replace(/[\s()-]/g, '');
+  const compact = value.replace(/[\s()-]/g, '');
+  const normalized = mainlandMobilePattern.test(compact) ? `+86${compact}` : compact;
   if (!e164Pattern.test(normalized)) {
     throw new AppError('AUTH_PHONE_INVALID', 'Phone numbers must use E.164 format.', 400, {
       target: ['Use a country code, for example +8613800138000.'],

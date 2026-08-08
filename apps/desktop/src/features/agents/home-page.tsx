@@ -1,4 +1,4 @@
-import type { CapabilitySummary } from '@capaport/contracts';
+import { type CapabilitySummary, isInstallableCapability } from '@capaport/contracts';
 import { ArrowRight, Bot, CircleAlert, CloudOff, Download, Radar, RefreshCw, ShieldCheck } from 'lucide-react';
 import { Button, EmptyState, Metric, PageHeader, Panel, Status } from '../../components/ui';
 import type { AgentDescriptor } from '../../generated/commands';
@@ -18,10 +18,11 @@ export function HomePage({
   onDiscover: () => void;
   onNavigate: (page: string) => void;
 }) {
+  const installableCapabilities = capabilities.filter(isInstallableCapability);
   return (
     <div className="page">
       <PageHeader
-        eyebrow="WORKSPACE / 01"
+        eyebrow="WORKSPACE"
         title="今日工作台"
         description="发现本地能力，处理组织更新与冲突。"
         actions={
@@ -43,7 +44,7 @@ export function HomePage({
         <Metric value={agents.length} label="已连接 Agent" tone="green" />
         <Metric value="0" label="待更新" />
         <Metric value="0" label="冲突待处理" />
-        <Metric value={capabilities.length} label="可用能力包" tone="orange" />
+        <Metric value={installableCapabilities.length} label="可用能力包" tone="orange" />
       </div>
       <div className="home-grid">
         <Panel className="home-grid__agents">
@@ -136,7 +137,7 @@ export function HomePage({
             <ArrowRight aria-hidden size={15} />
           </Button>
         </div>
-        {capabilities.length ? (
+        {installableCapabilities.length ? (
           <div className="data-table capability-table">
             <div className="data-table__head">
               <span>能力包</span>
@@ -144,7 +145,7 @@ export function HomePage({
               <span>兼容</span>
               <span>状态</span>
             </div>
-            {capabilities.slice(0, 5).map((capability) => (
+            {installableCapabilities.slice(0, 5).map((capability) => (
               <div className="data-table__row" key={capability.id}>
                 <span>
                   <strong>{capability.name}</strong>

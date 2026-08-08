@@ -321,7 +321,7 @@ impl Runtime {
                     .file_type()
                     .map_err(|_| RuntimeError::TransactionFailed)?;
                 if file_type.is_symlink() {
-                    return Err(RuntimeError::SymlinkRejected);
+                    continue;
                 }
                 let name = entry.file_name().to_string_lossy().into_owned();
                 let (slug, source_path) = if *component_type == "skill" {
@@ -628,7 +628,19 @@ impl Runtime {
             component_type = input.component_type,
             adapter_id = input.adapter_id,
         );
-        let mut package_files = vec![("capaport.yaml".to_string(), manifest.into_bytes())];
+        let agent_name = agent_directories()
+            .iter()
+            .find(|(adapter_id, _, _)| adapter_id == &input.adapter_id)
+            .map(|(_, display_name, _)| *display_name)
+            .ok_or(RuntimeError::InvalidInput)?;
+        let readme = format!(
+            "# {slug}\n\nImported from {agent_name} by CapaPort.\n",
+            slug = input.slug,
+        );
+        let mut package_files = vec![
+            ("capaport.yaml".to_string(), manifest.into_bytes()),
+            ("README.md".to_string(), readme.into_bytes()),
+        ];
         package_files.extend(files);
         package_files.sort_by(|left, right| left.0.cmp(&right.0));
         let archive = build_zip(&package_files)?;
@@ -1281,6 +1293,39 @@ mod tests {
         assert!(matches!(result, Err(RuntimeError::PathNotAllowed)));
     }
 
+    #[cfg(unix)]
+    #[test]
+    fn inventory_skips_symlinked_entries_without_losing_regular_capabilities() {
+        use std::os::unix::fs::symlink;
+
+        let root = tempdir().unwrap();
+        let skills = root.path().join(".agents/skills");
+        std::fs::create_dir_all(skills.join("release")).unwrap();
+        std::fs::write(skills.join("release/SKILL.md"), "# Release").unwrap();
+        let linked = tempdir().unwrap();
+        std::fs::create_dir_all(linked.path().join("shared")).unwrap();
+        std::fs::write(linked.path().join("shared/SKILL.md"), "# Shared").unwrap();
+        symlink(linked.path().join("shared"), skills.join("shared")).unwrap();
+
+        let runtime = Runtime::new(
+            &root.path().join("state.db"),
+            root.path().into(),
+            None,
+            Arc::new(MemoryCredentialStore::default()),
+        )
+        .unwrap();
+        let agent = runtime.detect_agents().unwrap().remove(0);
+        let inventory = runtime
+            .inventory_agent(&InventoryInput {
+                adapter_id: "codex".into(),
+                root_path: agent.root_path,
+            })
+            .unwrap();
+
+        assert_eq!(inventory.len(), 1);
+        assert_eq!(inventory[0].slug, "release");
+    }
+
     #[test]
     fn inventory_discovers_every_component_supported_by_the_agent() {
         let root = tempdir().unwrap();
@@ -1365,6 +1410,7 @@ mod tests {
             .unwrap();
         let mut zip = zip::ZipArchive::new(std::io::Cursor::new(archive)).unwrap();
         assert!(zip.by_name("capaport.yaml").is_ok());
+        assert!(zip.by_name("README.md").is_ok());
         assert!(zip.by_name("skills/release/SKILL.md").is_ok());
     }
 

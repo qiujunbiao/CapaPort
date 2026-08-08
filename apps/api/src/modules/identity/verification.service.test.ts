@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
+import type { AppConfig } from '../../config/config.js';
 import type { AppError } from '../../platform/errors/app-error.js';
 import { type VerificationSender, VerificationService, type VerificationStore } from './verification.service.js';
 
@@ -8,6 +9,24 @@ const config = {
 };
 
 describe('VerificationService', () => {
+  it('returns the one-time code only when the API runs in development', async () => {
+    const store: VerificationStore = {
+      createChallenge: vi.fn().mockResolvedValue(undefined),
+      consumeChallenge: vi.fn(),
+      markIdentityVerified: vi.fn(),
+    };
+    const sender: VerificationSender = { send: vi.fn().mockResolvedValue(undefined) };
+    const service = new VerificationService(store, sender, {
+      nodeEnv: 'development',
+      auth: config,
+    } as AppConfig);
+
+    const result = await service.create('verify_identity', 'phone', '+8615000836993', 'user-1', 'identity-1');
+
+    expect(result).toHaveProperty('developmentCode', expect.stringMatching(/^\d{6}$/));
+    expect(result.developmentCode).toBe(vi.mocked(sender.send).mock.calls[0]?.[0].code);
+  });
+
   it('delivers a one-time code while returning only redacted challenge metadata', async () => {
     const store: VerificationStore = {
       createChallenge: vi.fn().mockResolvedValue(undefined),

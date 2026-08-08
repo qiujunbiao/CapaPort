@@ -11,6 +11,7 @@ export function AuthScreen({ cloud, sessionStore }: { cloud: CloudClient; sessio
   const [displayName, setDisplayName] = useState('');
   const [challengeId, setChallengeId] = useState('');
   const [code, setCode] = useState('');
+  const [developmentCode, setDevelopmentCode] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
@@ -25,6 +26,8 @@ export function AuthScreen({ cloud, sessionStore }: { cloud: CloudClient; sessio
         if (!cloud.startRecovery) throw new Error('当前服务未启用账号恢复');
         const challenge = await cloud.startRecovery({ kind, target });
         setChallengeId(challenge.challengeId);
+        setCode(challenge.developmentCode ?? '');
+        setDevelopmentCode(Boolean(challenge.developmentCode));
         setMode('recover-verify');
       } else if (mode === 'recover-verify') {
         if (!cloud.completeRecovery) throw new Error('当前服务未启用账号恢复');
@@ -40,6 +43,8 @@ export function AuthScreen({ cloud, sessionStore }: { cloud: CloudClient; sessio
         if (!cloud.register) throw new Error('当前服务未启用注册');
         const challenge = await cloud.register({ kind, target, password, displayName });
         setChallengeId(challenge.challengeId);
+        setCode(challenge.developmentCode ?? '');
+        setDevelopmentCode(Boolean(challenge.developmentCode));
         setMode('verify');
       } else {
         if (!cloud.verify) throw new Error('当前服务未启用验证');
@@ -103,6 +108,9 @@ export function AuthScreen({ cloud, sessionStore }: { cloud: CloudClient; sessio
             <p className="success-message" role="status">
               {success}
             </p>
+          ) : null}
+          {(mode === 'verify' || mode === 'recover-verify') && developmentCode ? (
+            <p className="success-message">仅本地开发：验证码已自动填入。</p>
           ) : null}
           {mode === 'register' ? (
             <label>

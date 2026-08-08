@@ -41,6 +41,7 @@ export function webFixture(
     compatibility: ['codex', 'claude-code'] as Array<'codex' | 'claude-code' | 'cursor' | 'gemini-cli'>,
     ownerUserId: 'user-a',
     status: 'active' as const,
+    hasPublishedVersion: true,
   };
   return {
     login: async () => ({ accessToken: 'token', refreshToken: 'refresh', expiresIn: 900 }),
@@ -54,7 +55,13 @@ export function webFixture(
     logout: async () => undefined,
     me: async () => ({ id: 'user-a', displayName: '林默', identities: [] }),
     organizations: async () => [{ id: 'org-a', name: '平台研发', slug: 'platform', role, status: 'active' }],
-    createOrganization: async (input) => ({ id: 'org-new', ...input, role: 'owner', status: 'active' }),
+    createOrganization: async (input) => ({
+      id: 'org-new',
+      ...input,
+      slug: input.slug ?? 'org-generated',
+      role: 'owner',
+      status: 'active',
+    }),
     switchOrganization: async () => undefined,
     acceptInvitation: async () => ({ status: 'accepted', organizationId: 'org-a' }),
     updateOrganization: async () => undefined,

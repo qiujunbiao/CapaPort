@@ -2,6 +2,23 @@ import { describe, expect, it, vi } from 'vitest';
 import { CapaPortClient, type CapaPortSdkError, type SdkSession } from './client.js';
 
 describe('CapaPortClient', () => {
+  it('invokes fetch without binding the SDK client as its receiver', async () => {
+    let receiver: unknown;
+    const fetcher = vi.fn(function (this: unknown) {
+      receiver = this;
+      return Promise.resolve(Response.json({ accepted: true }));
+    });
+    const client = new CapaPortClient({
+      baseUrl: '/api/v1',
+      fetch: fetcher as typeof fetch,
+    });
+
+    await expect(client.request('/auth/register', { method: 'POST', authenticated: false, body: {} })).resolves.toEqual(
+      { accepted: true },
+    );
+    expect(receiver).toBeUndefined();
+  });
+
   it('shares auth, tenant, refresh, and one stable idempotency key across retry', async () => {
     let session: SdkSession = {
       accessToken: 'expired-access',
@@ -38,6 +55,42 @@ describe('CapaPortClient', () => {
     expect(new Headers(writes[1]?.init?.headers).get('idempotency-key')).toBe('stable-key-123');
     expect(new Headers(writes[1]?.init?.headers).get('authorization')).toBe('Bearer fresh-access');
     expect(new Headers(writes[1]?.init?.headers).get('x-organization-id')).toBe('org-1');
+  });
+
+  it('uses one refresh request when concurrent authenticated requests receive 401', async () => {
+    let session: SdkSession = {
+      accessToken: 'expired-access',
+      refreshToken: 'refresh-token',
+      organizationId: 'org-1',
+    };
+    let refreshCalls = 0;
+    const fetcher = vi.fn(async (url: string | URL | Request, init?: RequestInit) => {
+      if (String(url).endsWith('/auth/refresh')) {
+        refreshCalls += 1;
+        if (refreshCalls > 1) {
+          return Response.json({ code: 'AUTH_REFRESH_REPLAY', message: 'Refresh token replayed' }, { status: 401 });
+        }
+        return Response.json({ accessToken: 'fresh-access', refreshToken: 'fresh-refresh', expiresIn: 900 });
+      }
+      if (new Headers(init?.headers).get('authorization') === 'Bearer expired-access') {
+        return Response.json({ code: 'AUTH_ACCESS_INVALID', message: 'Expired' }, { status: 401 });
+      }
+      return Response.json({ accepted: true });
+    });
+    const client = new CapaPortClient({
+      baseUrl: 'https://capaport.example/api/v1',
+      fetch: fetcher,
+      session: () => session,
+      saveSession: (next) => {
+        session = next;
+      },
+    });
+
+    await expect(Promise.all([client.request('/organizations'), client.request('/auth/me')])).resolves.toEqual([
+      { accepted: true },
+      { accepted: true },
+    ]);
+    expect(refreshCalls).toBe(1);
   });
 
   it('returns structured API errors without leaking response internals', async () => {

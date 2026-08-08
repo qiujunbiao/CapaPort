@@ -42,4 +42,25 @@ describe('container release contract', () => {
     expect(dockerfile).toContain('pnpm turbo run build --filter=@capaport/web');
     expect(dockerfile).not.toContain('pnpm --filter @capaport/web build');
   });
+
+  it('allows the macOS desktop WebView to connect to the local API', async () => {
+    const infoPlist = await source('apps/desktop/src-tauri/Info.plist');
+    expect(infoPlist).toContain('<key>NSAllowsLocalNetworking</key>');
+    expect(infoPlist).toMatch(/<key>NSAllowsLocalNetworking<\/key>\s*<true\s*\/>/);
+  });
+
+  it('proxies Web API requests through the same origin', async () => {
+    const nginx = await source('infra/docker/nginx.conf');
+    expect(nginx).toContain('location /api/');
+    expect(nginx).toContain('proxy_pass http://api:3100;');
+  });
+
+  it('uses the same-origin API path in Web development and container builds', async () => {
+    const main = await source('apps/web/src/main.tsx');
+    const vite = await source('apps/web/vite.config.ts');
+    const dockerfile = await source('infra/docker/web.Dockerfile');
+    expect(main).toContain("'/api/v1'");
+    expect(vite).toContain("target: 'http://127.0.0.1:3210'");
+    expect(dockerfile).toContain('ARG VITE_API_URL=/api/v1');
+  });
 });

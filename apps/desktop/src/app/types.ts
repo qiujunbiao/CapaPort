@@ -1,16 +1,23 @@
 import type {
   AgentId,
+  AuditEntry,
   CapabilitySummary,
+  CapabilityVersionDiff,
   CapabilityVersionSummary,
   InstallPlan as CloudInstallPlan,
+  OrganizationRole,
   OrganizationSecurityPolicy,
   OrganizationSummary,
   ProductEvent,
+  PublicationCandidateDiff,
   PublicationSummary,
   PublicUser,
+  SpaceReviewPolicy,
+  SpaceRole,
   SpaceSummary,
   TenantContext,
   TokenPair,
+  UpdateCapabilityRequest,
   UpdateCheck,
 } from '@capaport/contracts';
 import type { ProjectBindingSummary, ProjectContextSummary } from '@capaport/contracts/projects';
@@ -61,6 +68,53 @@ export type NotificationItem = {
 };
 export type NotificationPage = { notifications: NotificationItem[]; unreadCount: number; nextCursor?: string };
 
+export type OrganizationMember = {
+  id: string;
+  userId: string;
+  displayName: string;
+  role: OrganizationRole;
+  status: 'active' | 'disabled' | 'left';
+  joinedAt: string;
+};
+
+export type OrganizationInvitation = {
+  id: string;
+  kind: 'email' | 'phone';
+  target: string;
+  role: Exclude<OrganizationRole, 'owner'>;
+  expiresAt: string;
+  acceptedAt: string | null;
+  revokedAt: string | null;
+  createdAt: string;
+};
+
+export type SpaceMember = {
+  id: string;
+  userId: string;
+  displayName: string;
+  role: SpaceRole;
+  status: 'active' | 'disabled';
+  createdAt: string;
+};
+
+export type SessionSummary = {
+  id: string;
+  deviceName: string;
+  current: boolean;
+  createdAt: string;
+  lastSeenAt: string;
+};
+
+export type AuditPage = { entries: AuditEntry[]; nextCursor?: string };
+export type AnalyticsMetrics = {
+  range: { from: string; to: string };
+  productEvents: Record<string, number>;
+  publicationFunnel: Record<string, number>;
+  installationOutcomes: Record<string, number>;
+  activeDevices: number;
+  daily?: Array<{ day: string; metrics: Record<string, number> }>;
+};
+
 export type LocalPackageExport = {
   fileName: string;
   sizeBytes: number;
@@ -103,16 +157,17 @@ export interface CloudClient {
     target: string;
     password: string;
     displayName: string;
-  }): Promise<{ challengeId: string; maskedTarget: string }>;
+  }): Promise<{ challengeId: string; maskedTarget: string; developmentCode?: string }>;
   verify?(input: { challengeId: string; code: string }): Promise<{ verified: true }>;
   startRecovery?(input: {
     kind: 'email' | 'phone';
     target: string;
-  }): Promise<{ challengeId: string; maskedTarget: string }>;
+  }): Promise<{ challengeId: string; maskedTarget: string; developmentCode?: string }>;
   completeRecovery?(input: { challengeId: string; code: string; newPassword: string }): Promise<{ recovered: true }>;
   me(session: Session): Promise<PublicUser>;
   organizations(session: Session): Promise<OrganizationSummary[]>;
-  createOrganization?(session: Session, input: { name: string; slug: string }): Promise<OrganizationSummary>;
+  createOrganization?(session: Session, input: { name: string; slug?: string }): Promise<OrganizationSummary>;
+  updateOrganization?(session: Session, organizationId: string, input: { name: string }): Promise<void>;
   acceptInvitation?(session: Session, token: string): Promise<{ status: string; organizationId?: string }>;
   switchOrganization(session: Session, organizationId: string): Promise<TenantContext>;
   spaces(session: Session, organizationId: string): Promise<SpaceSummary[]>;
@@ -120,6 +175,109 @@ export interface CloudClient {
   recordAnalyticsEvent(session: Session, organizationId: string, event: ProductEvent): Promise<void>;
   capabilities(session: Session, organizationId: string, query?: string): Promise<CapabilitySummary[]>;
   publications(session: Session, organizationId: string): Promise<PublicationSummary[]>;
+  reviewPublication(
+    session: Session,
+    organizationId: string,
+    publicationId: string,
+    decision: 'approve' | 'request-changes' | 'reject',
+    reason: string,
+  ): Promise<PublicationSummary>;
+  publicationDetails(
+    session: Session,
+    organizationId: string,
+    publicationId: string,
+  ): Promise<PublicationSummary & { reviews?: Array<Record<string, unknown>> }>;
+  scanReport(session: Session, organizationId: string, publicationId: string): Promise<Record<string, unknown>>;
+  publicationDiff(session: Session, organizationId: string, publicationId: string): Promise<PublicationCandidateDiff>;
+  withdrawPublication(session: Session, organizationId: string, publicationId: string): Promise<void>;
+  updateCapability(
+    session: Session,
+    organizationId: string,
+    capabilityId: string,
+    input: UpdateCapabilityRequest,
+  ): Promise<CapabilitySummary>;
+  versionDiff(
+    session: Session,
+    organizationId: string,
+    capabilityId: string,
+    versionId: string,
+    againstVersionId: string,
+  ): Promise<CapabilityVersionDiff>;
+  transitionVersion(
+    session: Session,
+    organizationId: string,
+    capabilityId: string,
+    versionId: string,
+    action: 'deprecate' | 'withdraw' | 'archive',
+  ): Promise<void>;
+  members(session: Session, organizationId: string): Promise<OrganizationMember[]>;
+  invitations(session: Session, organizationId: string): Promise<OrganizationInvitation[]>;
+  invite(
+    session: Session,
+    organizationId: string,
+    input: { kind: 'email' | 'phone'; target: string; role: 'admin' | 'auditor' | 'member' },
+  ): Promise<void>;
+  revokeInvitation(session: Session, organizationId: string, invitationId: string): Promise<void>;
+  changeMemberRole(
+    session: Session,
+    organizationId: string,
+    membershipId: string,
+    role: 'admin' | 'auditor' | 'member',
+  ): Promise<void>;
+  removeMember(session: Session, organizationId: string, membershipId: string): Promise<void>;
+  createSpace(
+    session: Session,
+    organizationId: string,
+    input: { type: 'team' | 'project'; name: string; slug: string; reviewPolicy: SpaceReviewPolicy },
+  ): Promise<SpaceSummary>;
+  updateSpacePolicy(
+    session: Session,
+    organizationId: string,
+    spaceId: string,
+    reviewPolicy: SpaceReviewPolicy,
+  ): Promise<void>;
+  archiveSpace(session: Session, organizationId: string, spaceId: string): Promise<void>;
+  spaceMembers(session: Session, organizationId: string, spaceId: string): Promise<SpaceMember[]>;
+  addSpaceMember(
+    session: Session,
+    organizationId: string,
+    spaceId: string,
+    userId: string,
+    role: SpaceRole,
+  ): Promise<void>;
+  changeSpaceMemberRole(
+    session: Session,
+    organizationId: string,
+    spaceId: string,
+    membershipId: string,
+    role: SpaceRole,
+  ): Promise<void>;
+  removeSpaceMember(session: Session, organizationId: string, spaceId: string, membershipId: string): Promise<void>;
+  updateSecurityPolicy(
+    session: Session,
+    organizationId: string,
+    policy: OrganizationSecurityPolicy,
+  ): Promise<OrganizationSecurityPolicy>;
+  audit(session: Session, organizationId: string, query?: { action?: string; cursor?: string }): Promise<AuditPage>;
+  metrics(session: Session, organizationId: string): Promise<AnalyticsMetrics>;
+  sessions(session: Session): Promise<SessionSummary[]>;
+  revokeSession(session: Session, sessionId: string): Promise<void>;
+  deadLetters(session: Session, organizationId: string): Promise<Array<Record<string, unknown>>>;
+  retryDeadLetter(
+    session: Session,
+    organizationId: string,
+    kind: 'operation' | 'outbox' | 'delivery',
+    jobId: string,
+  ): Promise<void>;
+  exportOrganization(session: Session, organizationId: string): Promise<Record<string, unknown>>;
+  closeOrganization(session: Session, organizationId: string, confirmation: string): Promise<OrganizationSummary>;
+  cancelOrganizationClosure(session: Session, organizationId: string): Promise<OrganizationSummary>;
+  transferOwnership(session: Session, organizationId: string, membershipId: string): Promise<void>;
+  leaveOrganization(session: Session, organizationId: string): Promise<void>;
+  exportAccount(session: Session): Promise<Record<string, unknown>>;
+  requestAccountDeletion(session: Session): Promise<{ deletionScheduledAt: string }>;
+  cancelAccountDeletion(session: Session): Promise<{ cancelled: true }>;
+  accountDeletionStatus(session: Session): Promise<{ status: string; deletionScheduledAt?: string }>;
   installations(session: Session, organizationId: string): Promise<InstallationSummary[]>;
   updateCheck(session: Session, organizationId: string, installationId: string): Promise<UpdateCheck>;
   devices?(session: Session, organizationId: string): Promise<DeviceSummary[]>;

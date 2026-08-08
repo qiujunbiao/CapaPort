@@ -104,7 +104,7 @@ export function ProjectsPage({
   return (
     <div className="page">
       <PageHeader
-        eyebrow="PROJECT CONTEXT / 03"
+        eyebrow="PROJECT CONTEXT"
         title="项目空间"
         description="一个项目可绑定多个本地目录，只同步你明确选择的规则与上下文。"
       />

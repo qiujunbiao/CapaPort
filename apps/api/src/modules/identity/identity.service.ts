@@ -14,7 +14,7 @@ import { AppError } from '../../platform/errors/app-error.js';
 import { maskIdentity, normalizeIdentity, validatePasswordStrength } from './identity.policy.js';
 import type { IdentityRecord } from './identity.repository.js';
 import type { SessionClient } from './session.service.js';
-import type { PreparedChallenge } from './verification.service.js';
+import type { ChallengeMetadata, PreparedChallenge } from './verification.service.js';
 
 const DUMMY_PASSWORD_HASH =
   '$argon2id$v=19$m=19456,t=2,p=1$uAjvCOyjPvCVkOYGkPZHXA$WJ59KOjIYs9bkuEbBL0aXOoZzpfhf5p8IgNRMdQAZ3k';
@@ -61,6 +61,7 @@ export interface IdentityVerification {
     identityId?: string,
   ): PreparedChallenge;
   deliver(challenge: PreparedChallenge): Promise<void>;
+  publicMetadata(challenge: PreparedChallenge): ChallengeMetadata;
   verifyIdentity(challengeId: string, code: string): Promise<{ verified: true }>;
   create(
     purpose: 'verify_identity' | 'recover_password',
@@ -68,7 +69,7 @@ export interface IdentityVerification {
     target: string,
     userId: string,
     identityId?: string,
-  ): Promise<{ challengeId: string; maskedTarget: string; expiresIn: number }>;
+  ): Promise<ChallengeMetadata>;
   consumeRecovery(challengeId: string, code: string): Promise<{ status: 'consumed'; userId: string }>;
 }
 
@@ -101,7 +102,7 @@ export class IdentityService {
     @Inject('LOGIN_RATE_LIMITER') private readonly rateLimiter: RateLimiter,
   ) {}
 
-  async register(input: RegisterRequest): Promise<{ challengeId: string; maskedTarget: string; expiresIn: number }> {
+  async register(input: RegisterRequest): Promise<ChallengeMetadata> {
     const normalizedValue = normalizeIdentity(input.kind, input.target);
     validatePasswordStrength(input.password);
     if (await this.repository.findIdentity(input.kind, normalizedValue)) {
@@ -130,11 +131,7 @@ export class IdentityService {
       throw error;
     }
     await this.verification.deliver(challenge);
-    return {
-      challengeId: challenge.id,
-      maskedTarget: maskIdentity(input.kind, normalizedValue),
-      expiresIn: Math.max(0, Math.round((challenge.expiresAt.getTime() - Date.now()) / 1000)),
-    };
+    return this.verification.publicMetadata(challenge);
   }
 
   verify(challengeId: string, code: string): Promise<{ verified: true }> {
@@ -159,7 +156,7 @@ export class IdentityService {
 
   async startRecovery(
     input: RecoveryStartRequest,
-  ): Promise<{ accepted: true; challengeId: string; maskedTarget: string }> {
+  ): Promise<{ accepted: true; challengeId: string; maskedTarget: string; developmentCode?: string }> {
     const normalizedValue = normalizeIdentity(input.kind, input.target);
     const identity = await this.repository.findIdentity(input.kind, normalizedValue);
     if (!identity?.verifiedAt) {
@@ -172,7 +169,12 @@ export class IdentityService {
       identity.userId,
       identity.identityId,
     );
-    return { accepted: true, challengeId: challenge.challengeId, maskedTarget: challenge.maskedTarget };
+    return {
+      accepted: true,
+      challengeId: challenge.challengeId,
+      maskedTarget: challenge.maskedTarget,
+      ...(challenge.developmentCode ? { developmentCode: challenge.developmentCode } : {}),
+    };
   }
 
   async completeRecovery(input: RecoveryCompleteRequest): Promise<{ recovered: true }> {

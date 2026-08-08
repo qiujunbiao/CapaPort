@@ -266,7 +266,7 @@ export function AuthoringPage({
   return (
     <div className="page">
       <PageHeader
-        eyebrow="CAPABILITY AUTHORING / 03"
+        eyebrow="CAPABILITY AUTHORING"
         title="能力创作"
         description="创建、编辑并版本化 Skill、Prompt 与项目上下文，经过本地检查后提交到受控空间。"
       />

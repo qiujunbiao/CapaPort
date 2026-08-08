@@ -2,41 +2,75 @@ import type {
   AgentId,
   CapabilitySummary,
   OrganizationSecurityPolicy,
+  OrganizationSummary,
   SpaceSummary,
   UpdateCheck,
 } from '@capaport/contracts';
 import { QueryClient, QueryClientProvider, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
+  Activity,
   Bell,
   Box,
+  Boxes,
+  Building2,
+  ClipboardCheck,
   CloudOff,
+  FileClock,
   FilePenLine,
   FolderGit2,
   Home,
+  LayoutDashboard,
   Menu,
   PanelLeftClose,
   Send,
   Settings,
+  ShieldAlert,
   ShieldCheck,
+  Users,
 } from 'lucide-react';
 import { useEffect, useMemo, useState, useSyncExternalStore } from 'react';
 import { BrandLockup } from '../components/brand';
-import { Status } from '../components/ui';
+import { ErrorNotice, Status } from '../components/ui';
 import { DiscoveryModal } from '../features/agents/discovery-modal';
 import { HomePage } from '../features/agents/home-page';
 import { AuthScreen } from '../features/auth/auth-screen';
 import { OrganizationOnboarding } from '../features/auth/organization-onboarding';
 import { AuthoringPage } from '../features/authoring/authoring-page';
+import { AnalyticsPage } from '../features/governance/analytics-page';
+import { AuditPage } from '../features/governance/audit-page';
+import { CapabilityAssetsPage } from '../features/governance/capability-assets-page';
+import { MembersPage } from '../features/governance/members-page';
+import { OrganizationOverviewPage } from '../features/governance/organization-overview-page';
+import { OrganizationSettingsPage } from '../features/governance/organization-settings-page';
+import { SecurityCenterPage } from '../features/governance/security-center-page';
+import { SpacesGovernancePage } from '../features/governance/spaces-page';
 import { InstallModal } from '../features/library/install-modal';
 import { LibraryPage } from '../features/library/library-page';
 import { ProjectsPage } from '../features/projects/projects-page';
 import { PublishingPage } from '../features/publishing/publishing-page';
 import { SettingsPage } from '../features/settings/settings-page';
+import { CloudError } from './cloud-client';
 import { createQueuedCloudClient, OfflineWriteQueue, queuedCloudHandlers } from './offline-queue';
-import type { CloudClient, InstallationSummary, LocalClient, SessionStore } from './types';
+import type { AuditPage as AuditPageData, CloudClient, InstallationSummary, LocalClient, SessionStore } from './types';
 
-type Page = 'home' | 'library' | 'authoring' | 'projects' | 'publishing' | 'settings';
-const nav: Array<{ id: Page; label: string; icon: typeof Home }> = [
+type Page =
+  | 'home'
+  | 'library'
+  | 'authoring'
+  | 'projects'
+  | 'publishing'
+  | 'settings'
+  | 'overview'
+  | 'assets'
+  | 'reviews'
+  | 'members'
+  | 'spaces-admin'
+  | 'security'
+  | 'audit'
+  | 'analytics'
+  | 'org-settings';
+type NavItem = { id: Page; label: string; icon: typeof Home; observe?: boolean; manage?: boolean };
+const workspaceNav: NavItem[] = [
   { id: 'home', label: '首页', icon: Home },
   { id: 'library', label: '能力库', icon: Box },
   { id: 'authoring', label: '创作', icon: FilePenLine },
@@ -44,6 +78,26 @@ const nav: Array<{ id: Page; label: string; icon: typeof Home }> = [
   { id: 'publishing', label: '发布', icon: Send },
   { id: 'settings', label: '设置', icon: Settings },
 ];
+const governanceNav: NavItem[] = [
+  { id: 'overview', label: '组织概览', icon: LayoutDashboard },
+  { id: 'assets', label: '能力资产', icon: Boxes },
+  { id: 'reviews', label: '审核中心', icon: ClipboardCheck, manage: true },
+  { id: 'members', label: '成员与邀请', icon: Users, manage: true },
+  { id: 'spaces-admin', label: '空间与策略', icon: Building2, manage: true },
+  { id: 'security', label: '安全中心', icon: ShieldAlert, observe: true },
+  { id: 'audit', label: '审计日志', icon: FileClock, observe: true },
+  { id: 'analytics', label: '采用分析', icon: Activity, observe: true },
+  { id: 'org-settings', label: '组织设置', icon: Settings },
+];
+
+function downloadJson(fileName: string, value: unknown) {
+  const url = URL.createObjectURL(new Blob([JSON.stringify(value, null, 2)], { type: 'application/json' }));
+  const anchor = document.createElement('a');
+  anchor.href = url;
+  anchor.download = fileName;
+  anchor.click();
+  URL.revokeObjectURL(url);
+}
 
 function cacheKey(organizationId: string, kind: string) {
   return `capaport:cache:${organizationId}:${kind}`;
@@ -109,11 +163,26 @@ function AppContent({
   const organizations = organizationsQuery.data ?? [];
   const organizationId = session?.organizationId ?? organizations[0]?.id;
   const organization = organizations.find((item) => item.id === organizationId);
+  const canManage = organization?.role === 'owner' || organization?.role === 'admin';
+  const canObserve = canManage || organization?.role === 'auditor';
+  const organizationAuthenticationFailed =
+    organizationsQuery.error instanceof CloudError && organizationsQuery.error.code.startsWith('AUTH_');
+
+  useEffect(() => {
+    if (!organizationAuthenticationFailed) return;
+    sessionStore.clear();
+    queryClient.clear();
+  }, [organizationAuthenticationFailed, queryClient, sessionStore]);
 
   useEffect(() => {
     if (session && !session.organizationId && organizations[0])
       sessionStore.set({ ...session, organizationId: organizations[0].id });
   }, [organizations, session, sessionStore]);
+
+  useEffect(() => {
+    const item = governanceNav.find((entry) => entry.id === page);
+    if (item && ((item.manage && !canManage) || (item.observe && !canObserve))) setPage('home');
+  }, [canManage, canObserve, page]);
 
   const userQuery = useQuery({
     queryKey: ['me', session?.accessToken],
@@ -190,6 +259,97 @@ function AppContent({
     enabled: Boolean(session && organizationId && online),
     retry: false,
   });
+  const membersQuery = useQuery({
+    queryKey: ['members', organizationId],
+    queryFn: () => {
+      if (!session || !organizationId) throw new Error('Select an organization');
+      return cloud.members(session, organizationId);
+    },
+    enabled: Boolean(session && organizationId && online && canObserve),
+    retry: false,
+  });
+  const invitationsQuery = useQuery({
+    queryKey: ['invitations', organizationId],
+    queryFn: () => {
+      if (!session || !organizationId) throw new Error('Select an organization');
+      return cloud.invitations(session, organizationId);
+    },
+    enabled: Boolean(session && organizationId && online && canManage),
+    retry: false,
+  });
+  const metricsQuery = useQuery({
+    queryKey: ['metrics', organizationId],
+    queryFn: () => {
+      if (!session || !organizationId) throw new Error('Select an organization');
+      return cloud.metrics(session, organizationId);
+    },
+    enabled: Boolean(session && organizationId && online && canObserve),
+    retry: false,
+  });
+  const sessionsQuery = useQuery({
+    queryKey: ['sessions', session?.accessToken],
+    queryFn: () => {
+      if (!session) throw new Error('Authentication is required');
+      return cloud.sessions(session);
+    },
+    enabled: Boolean(session && online && canObserve),
+    retry: false,
+  });
+  const deadLettersQuery = useQuery({
+    queryKey: ['dead-letters', organizationId],
+    queryFn: () => {
+      if (!session || !organizationId) throw new Error('Select an organization');
+      return cloud.deadLetters(session, organizationId);
+    },
+    enabled: Boolean(session && organizationId && online && canObserve),
+    retry: false,
+  });
+  const auditQuery = useQuery({
+    queryKey: ['audit', organizationId],
+    queryFn: () => {
+      if (!session || !organizationId) throw new Error('Select an organization');
+      return cloud.audit(session, organizationId);
+    },
+    enabled: Boolean(session && organizationId && online && canObserve),
+    retry: false,
+  });
+  const publicationRisksQuery = useQuery({
+    queryKey: ['publication-risks', organizationId],
+    queryFn: async () => {
+      if (!session || !organizationId) throw new Error('Select an organization');
+      const publications = publicationsQuery.data ?? (await cloud.publications(session, organizationId));
+      const risks = await Promise.all(
+        publications.map(async (publication) => {
+          const report = await cloud.scanReport(session, organizationId, publication.id);
+          return {
+            publicationId: publication.id,
+            version: publication.version,
+            findings: Array.isArray(report.findings)
+              ? (report.findings as Array<{
+                  ruleId?: string;
+                  path?: string;
+                  message?: string;
+                  severity?: string;
+                  blocking?: boolean;
+                }>)
+              : [],
+          };
+        }),
+      );
+      return risks.filter((risk) => risk.findings.length > 0);
+    },
+    enabled: Boolean(session && organizationId && online && canObserve && page === 'security'),
+    retry: false,
+  });
+  const accountDeletionQuery = useQuery({
+    queryKey: ['account-deletion', session?.accessToken],
+    queryFn: () => {
+      if (!session) throw new Error('Authentication is required');
+      return cloud.accountDeletionStatus(session);
+    },
+    enabled: Boolean(session && online),
+    retry: false,
+  });
   const installationsQuery = useQuery({
     queryKey: ['installations', organizationId],
     queryFn: async () => {
@@ -247,7 +407,16 @@ function AppContent({
   }
 
   if (!session) return <AuthScreen cloud={cloud} sessionStore={sessionStore} />;
-  if (!organizationsQuery.isLoading && organizations.length === 0)
+  if (organizationsQuery.isError)
+    return (
+      <div className="app-loading">
+        <BrandLockup tone="light" />
+        <ErrorNotice onRetry={() => void organizationsQuery.refetch()}>
+          {organizationAuthenticationFailed ? '登录状态已失效，正在返回登录页' : '无法加载组织，请检查连接后重试'}
+        </ErrorNotice>
+      </div>
+    );
+  if (organizationsQuery.isSuccess && organizations.length === 0)
     return (
       <OrganizationOnboarding
         cloud={cloud}
@@ -413,9 +582,219 @@ function AppContent({
           }}
         />
       );
-    if (page === 'publishing') return <PublishingPage publications={publicationsQuery.data ?? []} />;
+    if (page === 'overview')
+      return (
+        <OrganizationOverviewPage
+          capabilities={capabilitiesQuery.data ?? []}
+          publications={publicationsQuery.data ?? []}
+          spaces={spacesQuery.data ?? []}
+          members={membersQuery.data ?? []}
+          {...(metricsQuery.data ? { metrics: metricsQuery.data } : {})}
+          canManage={Boolean(canManage)}
+          onNavigate={(next) => setPage(next as Page)}
+        />
+      );
+    if (page === 'assets')
+      return (
+        <CapabilityAssetsPage
+          capabilities={capabilitiesQuery.data ?? []}
+          spaces={spacesQuery.data ?? []}
+          online={online}
+          canManage={Boolean(canManage)}
+          {...(userQuery.data?.id ? { currentUserId: userQuery.data.id } : {})}
+          loadVersions={async (capabilityId) => {
+            if (!session || !organizationId || !cloud.versions) throw new Error('当前服务不支持版本管理');
+            return cloud.versions(session, organizationId, capabilityId);
+          }}
+          loadDiff={(capabilityId, versionId, againstVersionId) =>
+            cloud.versionDiff(session, organizationId, capabilityId, versionId, againstVersionId)
+          }
+          onUpdate={async (capabilityId, input) => {
+            await cloud.updateCapability(session, organizationId, capabilityId, input);
+            await queryClient.invalidateQueries({ queryKey: ['capabilities', organizationId] });
+          }}
+          onTransition={async (capabilityId, versionId, action) => {
+            await cloud.transitionVersion(session, organizationId, capabilityId, versionId, action);
+            await queryClient.invalidateQueries({ queryKey: ['capabilities', organizationId] });
+          }}
+        />
+      );
+    if (page === 'publishing' || page === 'reviews')
+      return (
+        <PublishingPage
+          publications={publicationsQuery.data ?? []}
+          capabilities={capabilitiesQuery.data ?? []}
+          spaces={spacesQuery.data ?? []}
+          canReview={Boolean(canManage)}
+          online={online}
+          loadReviewContext={async (publicationId) => {
+            if (!session || !organizationId) throw new Error('请选择组织');
+            const [details, scan, diff] = await Promise.all([
+              cloud.publicationDetails(session, organizationId, publicationId),
+              cloud.scanReport(session, organizationId, publicationId),
+              cloud.publicationDiff(session, organizationId, publicationId),
+            ]);
+            return { details, scan, diff };
+          }}
+          onReview={async (publicationId, decision, reason) => {
+            if (!session || !organizationId) throw new Error('请选择组织');
+            await cloud.reviewPublication(session, organizationId, publicationId, decision, reason);
+            await Promise.all([
+              queryClient.invalidateQueries({ queryKey: ['publications', organizationId] }),
+              queryClient.invalidateQueries({ queryKey: ['capabilities', organizationId] }),
+            ]);
+          }}
+        />
+      );
+    if (page === 'members')
+      return (
+        <MembersPage
+          online={online}
+          members={membersQuery.data ?? []}
+          invitations={invitationsQuery.data ?? []}
+          onInvite={async (input) => {
+            await cloud.invite(session, organizationId, input);
+            await invitationsQuery.refetch();
+          }}
+          onRevokeInvitation={async (invitationId) => {
+            await cloud.revokeInvitation(session, organizationId, invitationId);
+            await invitationsQuery.refetch();
+          }}
+          onChangeRole={async (membershipId, role) => {
+            await cloud.changeMemberRole(session, organizationId, membershipId, role);
+            await Promise.all([membersQuery.refetch(), organizationsQuery.refetch()]);
+          }}
+          onRemove={async (membershipId) => {
+            await cloud.removeMember(session, organizationId, membershipId);
+            await membersQuery.refetch();
+          }}
+        />
+      );
+    if (page === 'spaces-admin')
+      return (
+        <SpacesGovernancePage
+          online={online}
+          spaces={spacesQuery.data ?? []}
+          organizationMembers={membersQuery.data ?? []}
+          loadMembers={(spaceId) => cloud.spaceMembers(session, organizationId, spaceId)}
+          onCreate={async (input) => {
+            await cloud.createSpace(session, organizationId, input);
+            await spacesQuery.refetch();
+          }}
+          onPolicy={async (spaceId, reviewPolicy) => {
+            await cloud.updateSpacePolicy(session, organizationId, spaceId, reviewPolicy);
+            await spacesQuery.refetch();
+          }}
+          onArchive={async (spaceId) => {
+            await cloud.archiveSpace(session, organizationId, spaceId);
+            await spacesQuery.refetch();
+          }}
+          onAddMember={(spaceId, userId, role) => cloud.addSpaceMember(session, organizationId, spaceId, userId, role)}
+          onChangeMemberRole={(spaceId, membershipId, role) =>
+            cloud.changeSpaceMemberRole(session, organizationId, spaceId, membershipId, role)
+          }
+          onRemoveMember={(spaceId, membershipId) =>
+            cloud.removeSpaceMember(session, organizationId, spaceId, membershipId)
+          }
+        />
+      );
+    if (page === 'security' && securityPolicyQuery.data)
+      return (
+        <SecurityCenterPage
+          online={online}
+          canManage={Boolean(canManage)}
+          policy={securityPolicyQuery.data}
+          sessions={sessionsQuery.data ?? []}
+          deadLetters={deadLettersQuery.data ?? []}
+          publicationRisks={publicationRisksQuery.data ?? []}
+          onSavePolicy={async (policy) => {
+            await cloud.updateSecurityPolicy(session, organizationId, policy);
+            await securityPolicyQuery.refetch();
+          }}
+          onRevokeSession={async (sessionId) => {
+            await cloud.revokeSession(session, sessionId);
+            await sessionsQuery.refetch();
+          }}
+          onRetryDeadLetter={async (kind, jobId) => {
+            await cloud.retryDeadLetter(session, organizationId, kind, jobId);
+            await deadLettersQuery.refetch();
+          }}
+        />
+      );
+    if (page === 'audit')
+      return (
+        <AuditPage
+          entries={auditQuery.data?.entries ?? []}
+          hasMore={Boolean(auditQuery.data?.nextCursor)}
+          onFilter={async (action) => {
+            const result = await cloud.audit(session, organizationId, action.trim() ? { action: action.trim() } : {});
+            queryClient.setQueryData<AuditPageData>(['audit', organizationId], result);
+          }}
+          onLoadMore={async (action) => {
+            const current = auditQuery.data;
+            if (!current?.nextCursor) return;
+            const next = await cloud.audit(session, organizationId, {
+              ...(action ? { action } : {}),
+              cursor: current.nextCursor,
+            });
+            queryClient.setQueryData<AuditPageData>(['audit', organizationId], {
+              entries: [...current.entries, ...next.entries],
+              ...(next.nextCursor ? { nextCursor: next.nextCursor } : {}),
+            });
+          }}
+        />
+      );
+    if (page === 'analytics') return <AnalyticsPage {...(metricsQuery.data ? { metrics: metricsQuery.data } : {})} />;
+    if (page === 'org-settings' && organization)
+      return (
+        <OrganizationSettingsPage
+          online={online}
+          canManage={Boolean(canManage)}
+          organization={organization}
+          {...(userQuery.data ? { user: userQuery.data } : {})}
+          members={membersQuery.data ?? []}
+          accountDeletionStatus={accountDeletionQuery.data ?? { status: 'none' }}
+          onRename={async (name) => {
+            if (!cloud.updateOrganization) throw new Error('当前服务不支持修改组织信息');
+            await cloud.updateOrganization(session, organizationId, { name });
+            await organizationsQuery.refetch();
+          }}
+          onExportOrganization={async () =>
+            downloadJson(`${organization.slug}-export.json`, await cloud.exportOrganization(session, organizationId))
+          }
+          onExportAccount={async () => downloadJson('capaport-account-export.json', await cloud.exportAccount(session))}
+          onTransferOwnership={async (membershipId) => {
+            await cloud.transferOwnership(session, organizationId, membershipId);
+            await Promise.all([organizationsQuery.refetch(), membersQuery.refetch()]);
+          }}
+          onLeave={async () => {
+            await cloud.leaveOrganization(session, organizationId);
+            const { organizationId: _organizationId, ...sessionWithoutOrganization } = session;
+            sessionStore.set(sessionWithoutOrganization);
+            await organizationsQuery.refetch();
+            setPage('home');
+          }}
+          onCloseOrganization={async (confirmation) => {
+            await cloud.closeOrganization(session, organizationId, confirmation);
+            await organizationsQuery.refetch();
+          }}
+          onCancelClosure={async () => {
+            await cloud.cancelOrganizationClosure(session, organizationId);
+            await organizationsQuery.refetch();
+          }}
+          onRequestAccountDeletion={async () => {
+            await cloud.requestAccountDeletion(session);
+            await accountDeletionQuery.refetch();
+          }}
+          onCancelAccountDeletion={async () => {
+            await cloud.cancelAccountDeletion(session);
+            await accountDeletionQuery.refetch();
+          }}
+        />
+      );
     return (
       <SettingsPage
+        key={organization?.id}
         user={userQuery.data}
         organization={organization}
         queue={queueQuery.data}
@@ -429,6 +808,21 @@ function AppContent({
           }
         }}
         onRefreshQueue={() => void queueQuery.refetch()}
+        onAcceptInvitation={async (token) => {
+          if (!session || !cloud.acceptInvitation) throw new Error('当前客户端不支持接受组织邀请');
+          const result = await cloud.acceptInvitation(session, token);
+          if (result.status !== 'accepted' || !result.organizationId) throw new Error('邀请已失效或不匹配当前账号');
+          sessionStore.set({ ...session, organizationId: result.organizationId });
+          await organizationsQuery.refetch();
+          setPage('home');
+        }}
+        onUpdateOrganization={async (name) => {
+          if (!session || !organizationId || !cloud.updateOrganization) throw new Error('当前客户端不支持修改组织信息');
+          await cloud.updateOrganization(session, organizationId, { name });
+          queryClient.setQueryData<OrganizationSummary[]>(['organizations', session.accessToken], (current) =>
+            current?.map((item) => (item.id === organizationId ? { ...item, name } : item)),
+          );
+        }}
         onSyncQueue={() => {
           if (!session) return;
           void offlineQueue
@@ -455,12 +849,15 @@ function AppContent({
           </button>
         </div>
         <nav aria-label="主导航">
-          {nav.map((item) => {
+          <span className="side-rail__section-label">工作区</span>
+          {workspaceNav.map((item) => {
             const Icon = item.icon;
             return (
               <button
                 type="button"
                 key={item.id}
+                aria-label={item.label}
+                title={item.label}
                 aria-current={page === item.id ? 'page' : undefined}
                 onClick={() => setPage(item.id)}
               >
@@ -469,6 +866,25 @@ function AppContent({
               </button>
             );
           })}
+          <span className="side-rail__section-label">组织治理</span>
+          {governanceNav
+            .filter((item) => (!item.manage || canManage) && (!item.observe || canObserve))
+            .map((item) => {
+              const Icon = item.icon;
+              return (
+                <button
+                  type="button"
+                  key={item.id}
+                  aria-label={item.label}
+                  title={item.label}
+                  aria-current={page === item.id ? 'page' : undefined}
+                  onClick={() => setPage(item.id)}
+                >
+                  <Icon aria-hidden />
+                  <span>{item.label}</span>
+                </button>
+              );
+            })}
         </nav>
         <div className="side-rail__security">
           <ShieldCheck aria-hidden />
@@ -508,39 +924,41 @@ function AppContent({
                 离线
               </Status>
             )}
-            <button type="button" aria-label="通知" onClick={() => setNotificationsOpen((value) => !value)}>
-              <Bell />
-            </button>
-            {notificationsOpen ? (
-              <section className="notification-popover" aria-label="通知列表">
-                <h2>通知</h2>
-                {notificationsQuery.data?.notifications.length ? (
-                  notificationsQuery.data.notifications.map((item) => (
-                    <article key={item.id}>
-                      <strong>{item.title}</strong>
-                      <p>{item.body}</p>
-                      {!item.readAt ? (
-                        <button
-                          type="button"
-                          className="text-button"
-                          onClick={async () => {
-                            if (!session || !organizationId || !cloud.markNotificationRead) return;
-                            await cloud.markNotificationRead(session, organizationId, item.id);
-                            await notificationsQuery.refetch();
-                          }}
-                        >
-                          标为已读
-                        </button>
-                      ) : (
-                        <small>已读</small>
-                      )}
-                    </article>
-                  ))
-                ) : (
-                  <p>{notificationsQuery.isLoading ? '正在加载…' : '暂无通知'}</p>
-                )}
-              </section>
-            ) : null}
+            <div className="notification-menu">
+              <button type="button" aria-label="通知" onClick={() => setNotificationsOpen((value) => !value)}>
+                <Bell />
+              </button>
+              {notificationsOpen ? (
+                <section className="notification-popover" aria-label="通知列表">
+                  <h2>通知</h2>
+                  {notificationsQuery.data?.notifications.length ? (
+                    notificationsQuery.data.notifications.map((item) => (
+                      <article key={item.id}>
+                        <strong>{item.title}</strong>
+                        <p>{item.body}</p>
+                        {!item.readAt ? (
+                          <button
+                            type="button"
+                            className="text-button"
+                            onClick={async () => {
+                              if (!session || !organizationId || !cloud.markNotificationRead) return;
+                              await cloud.markNotificationRead(session, organizationId, item.id);
+                              await notificationsQuery.refetch();
+                            }}
+                          >
+                            标为已读
+                          </button>
+                        ) : (
+                          <small>已读</small>
+                        )}
+                      </article>
+                    ))
+                  ) : (
+                    <p>{notificationsQuery.isLoading ? '正在加载…' : '暂无通知'}</p>
+                  )}
+                </section>
+              ) : null}
+            </div>
             <span className="avatar">{userQuery.data?.displayName.slice(0, 1) ?? 'A'}</span>
           </div>
         </header>

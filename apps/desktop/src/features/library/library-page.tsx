@@ -1,4 +1,10 @@
-import type { AgentId, CapabilitySummary, SpaceSummary, UpdateCheck } from '@capaport/contracts';
+import {
+  type AgentId,
+  type CapabilitySummary,
+  isInstallableCapability,
+  type SpaceSummary,
+  type UpdateCheck,
+} from '@capaport/contracts';
 import { Box, Download, Search } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import type { InstallationSummary } from '../../app/types';
@@ -45,6 +51,7 @@ export function LibraryPage({
     const normalizedQuery = query.trim().toLowerCase();
     const type = scopeTypes[scope];
     return capabilities.filter((item) => {
+      if (!isInstallableCapability(item)) return false;
       const matchesSearch = `${item.name} ${item.slug} ${item.tags.join(' ')}`.toLowerCase().includes(normalizedQuery);
       const matchesScope =
         scope === '全部'
@@ -59,7 +66,7 @@ export function LibraryPage({
   return (
     <div className="page">
       <PageHeader
-        eyebrow="CAPABILITY REGISTRY / 02"
+        eyebrow="CAPABILITY REGISTRY"
         title="能力库"
         description="跨个人、团队、项目与组织空间复用可执行能力、提示词和上下文包。"
       />

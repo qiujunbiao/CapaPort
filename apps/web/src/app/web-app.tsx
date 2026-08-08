@@ -55,14 +55,13 @@ const navigation: Array<{ id: Page; label: string; icon: typeof LayoutDashboard;
 function OrganizationSetup({ client, onReady }: { client: WebClient; onReady: (organizationId: string) => void }) {
   const [mode, setMode] = useState<'create' | 'join'>('create');
   const [name, setName] = useState('');
-  const [slug, setSlug] = useState('');
   const [token, setToken] = useState('');
   const [error, setError] = useState('');
   async function submit() {
     setError('');
     try {
       if (mode === 'create') {
-        const organization = await client.createOrganization({ name, slug });
+        const organization = await client.createOrganization({ name });
         onReady(organization.id);
       } else {
         const result = await client.acceptInvitation(token);
@@ -90,19 +89,10 @@ function OrganizationSetup({ client, onReady }: { client: WebClient; onReady: (o
         </div>
         {error ? <ErrorNotice>{error}</ErrorNotice> : null}
         {mode === 'create' ? (
-          <>
-            <label>
-              组织名称
-              <input value={name} onChange={(event) => setName(event.target.value)} />
-            </label>
-            <label>
-              组织标识
-              <input
-                value={slug}
-                onChange={(event) => setSlug(event.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '-'))}
-              />
-            </label>
-          </>
+          <label>
+            组织名称
+            <input value={name} onChange={(event) => setName(event.target.value)} />
+          </label>
         ) : (
           <label>
             邀请令牌
@@ -112,7 +102,7 @@ function OrganizationSetup({ client, onReady }: { client: WebClient; onReady: (o
         <button
           type="button"
           className="button button--primary"
-          disabled={mode === 'create' ? name.length < 2 || slug.length < 2 : token.length < 32}
+          disabled={mode === 'create' ? name.trim().length < 2 : token.length < 32}
           onClick={() => void submit()}
         >
           {mode === 'create' ? '创建并进入' : '接受并进入'}

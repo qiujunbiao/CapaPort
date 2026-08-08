@@ -94,6 +94,7 @@ export interface PublicationDataStore {
     organizationId: string;
     publicationId: string;
     reviewerUserId: string;
+    allowSelfReview?: boolean;
     decision: 'approve' | 'request_changes' | 'reject';
     reason: string;
     expectedDigest: string;
@@ -204,7 +205,8 @@ export class PublishingService {
     reason: string,
   ): Promise<PublicationRecord> {
     const publication = await this.requirePublication(tenant.organizationId, publicationId);
-    if (publication.submittedByUserId === userId) {
+    const managerSelfReview = tenant.organizationRole === 'owner' || tenant.organizationRole === 'admin';
+    if (publication.submittedByUserId === userId && !managerSelfReview) {
       throw new AppError('PUBLICATION_SELF_REVIEW', 'Submitters cannot review their own publication.', 403);
     }
     await this.spaces.authorize(tenant, userId, publication.targetSpaceId, 'content:review');
@@ -214,6 +216,7 @@ export class PublishingService {
       organizationId: tenant.organizationId,
       publicationId,
       reviewerUserId: userId,
+      allowSelfReview: managerSelfReview,
       decision,
       reason,
       expectedDigest: publication.candidateDigest,

@@ -14,8 +14,7 @@ declare global {
 
 const sessionStore = window.__CAPAPORT_WEB_E2E__?.sessionStore ?? createBrowserSessionStore();
 const client =
-  window.__CAPAPORT_WEB_E2E__?.client ??
-  createWebClient(import.meta.env.VITE_API_URL ?? 'http://127.0.0.1:3210/api/v1', sessionStore);
+  window.__CAPAPORT_WEB_E2E__?.client ?? createWebClient(import.meta.env.VITE_API_URL ?? '/api/v1', sessionStore);
 const root = document.getElementById('root');
 if (!root) throw new Error('Application root is missing.');
 createRoot(root).render(

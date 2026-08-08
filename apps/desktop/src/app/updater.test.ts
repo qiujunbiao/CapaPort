@@ -17,6 +17,15 @@ function updateFixture(overrides: Partial<DesktopUpdate> = {}): DesktopUpdate {
 }
 
 describe('desktop updater', () => {
+  it('does not contact the release endpoint when online updates are disabled', async () => {
+    const check = vi.fn(async () => null);
+    const updater = createDesktopUpdater({ check, relaunch: vi.fn() }, { enabled: false });
+
+    expect(updater.state()).toEqual({ status: 'disabled' });
+    await expect(updater.check()).resolves.toEqual({ status: 'disabled' });
+    expect(check).not.toHaveBeenCalled();
+  });
+
   it('checks, downloads a signed update, reports progress, and relaunches only after install', async () => {
     const update = updateFixture();
     const relaunch = vi.fn(async () => undefined);

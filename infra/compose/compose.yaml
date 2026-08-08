@@ -153,7 +153,7 @@ services:
       context: ../..
       dockerfile: infra/docker/web.Dockerfile
       args:
-        VITE_API_URL: ${WEB_API_URL:-http://127.0.0.1:3210/api/v1}
+        VITE_API_URL: ${WEB_API_URL:-/api/v1}
     user: 101:101
     read_only: true
     tmpfs:

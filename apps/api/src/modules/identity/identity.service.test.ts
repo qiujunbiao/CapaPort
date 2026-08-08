@@ -30,6 +30,11 @@ function dependencies() {
       identityId: 'identity-1',
     }),
     deliver: vi.fn().mockResolvedValue(undefined),
+    publicMetadata: vi.fn().mockReturnValue({
+      challengeId: 'challenge-1',
+      maskedTarget: 'pe***@example.com',
+      expiresIn: 600,
+    }),
     verifyIdentity: vi.fn(),
     create: vi.fn(),
     consumeRecovery: vi.fn(),
@@ -42,6 +47,31 @@ function dependencies() {
 }
 
 describe('IdentityService', () => {
+  it('preserves development challenge metadata returned by the verification service', async () => {
+    const deps = dependencies();
+    vi.mocked(deps.verification.publicMetadata).mockReturnValueOnce({
+      challengeId: 'challenge-1',
+      maskedTarget: 'pe***@example.com',
+      expiresIn: 600,
+      developmentCode: '123456',
+    });
+
+    const result = await new IdentityService(
+      deps.repository,
+      deps.password,
+      deps.verification,
+      deps.sessions,
+      deps.rateLimiter,
+    ).register({
+      kind: 'email',
+      target: 'person@example.com',
+      password: 'Correct-Horse9-Battery!',
+      displayName: 'Person',
+    });
+
+    expect(result).toMatchObject({ challengeId: 'challenge-1', developmentCode: '123456' });
+  });
+
   it('registers email identities without exposing secrets or password hashes', async () => {
     const deps = dependencies();
     const result = await new IdentityService(

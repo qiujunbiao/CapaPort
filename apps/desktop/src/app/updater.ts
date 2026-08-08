@@ -17,7 +17,7 @@ export type DesktopUpdaterBridge = {
 };
 
 export type DesktopUpdaterState = {
-  status: 'idle' | 'checking' | 'current' | 'available' | 'downloading' | 'ready' | 'error';
+  status: 'disabled' | 'idle' | 'checking' | 'current' | 'available' | 'downloading' | 'ready' | 'error';
   currentVersion?: string;
   version?: string;
   date?: string;
@@ -39,13 +39,18 @@ function message(error: unknown): string {
   return '桌面更新操作失败';
 }
 
-export function createDesktopUpdater(bridge: DesktopUpdaterBridge): DesktopUpdater {
-  let current: DesktopUpdaterState = { status: 'idle' };
+export function createDesktopUpdater(
+  bridge: DesktopUpdaterBridge,
+  options: { enabled?: boolean } = {},
+): DesktopUpdater {
+  const enabled = options.enabled !== false;
+  let current: DesktopUpdaterState = { status: enabled ? 'idle' : 'disabled' };
   let update: DesktopUpdate | undefined;
 
   return {
     state: () => current,
     async check() {
+      if (!enabled) return current;
       current = { status: 'checking' };
       try {
         update = (await bridge.check()) ?? undefined;
@@ -110,14 +115,17 @@ export function createDesktopUpdater(bridge: DesktopUpdaterBridge): DesktopUpdat
 }
 
 export function createTauriUpdater(): DesktopUpdater {
-  return createDesktopUpdater({
-    check: async () => {
-      const { check } = await import('@tauri-apps/plugin-updater');
-      return check({ timeout: 30_000 });
+  return createDesktopUpdater(
+    {
+      check: async () => {
+        const { check } = await import('@tauri-apps/plugin-updater');
+        return check({ timeout: 30_000 });
+      },
+      relaunch: async () => {
+        const { relaunch } = await import('@tauri-apps/plugin-process');
+        await relaunch();
+      },
     },
-    relaunch: async () => {
-      const { relaunch } = await import('@tauri-apps/plugin-process');
-      await relaunch();
-    },
-  });
+    { enabled: import.meta.env.VITE_UPDATER_ENABLED === 'true' },
+  );
 }

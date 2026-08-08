@@ -6,7 +6,7 @@ WORKDIR /workspace
 COPY . .
 RUN --mount=type=cache,id=capaport-web-pnpm,target=/root/.local/share/pnpm/store \
     pnpm install --frozen-lockfile
-ARG VITE_API_URL=http://127.0.0.1:3210/api/v1
+ARG VITE_API_URL=/api/v1
 ENV VITE_API_URL=$VITE_API_URL
 RUN pnpm turbo run build --filter=@capaport/web
 

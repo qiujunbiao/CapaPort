@@ -15,7 +15,6 @@ export function OrganizationOnboarding({
 }) {
   const [mode, setMode] = useState<'create' | 'join'>('create');
   const [name, setName] = useState('');
-  const [slug, setSlug] = useState('');
   const [token, setToken] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
@@ -26,7 +25,7 @@ export function OrganizationOnboarding({
     try {
       if (mode === 'create') {
         if (!cloud.createOrganization) throw new Error('当前服务未启用组织创建');
-        const organization = await cloud.createOrganization(session, { name, slug });
+        const organization = await cloud.createOrganization(session, { name });
         onReady(organization.id);
       } else {
         if (!cloud.acceptInvitation) throw new Error('当前服务未启用邀请加入');
@@ -60,34 +59,10 @@ export function OrganizationOnboarding({
         {error ? <ErrorNotice>{error}</ErrorNotice> : null}
         <form onSubmit={submit}>
           {mode === 'create' ? (
-            <>
-              <label>
-                组织名称
-                <input
-                  value={name}
-                  onChange={(event) => {
-                    setName(event.target.value);
-                    setSlug(
-                      event.target.value
-                        .toLowerCase()
-                        .replace(/[^a-z0-9]+/g, '-')
-                        .replace(/^-|-$/g, ''),
-                    );
-                  }}
-                  required
-                />
-              </label>
-              <label>
-                组织标识
-                <input
-                  value={slug}
-                  onChange={(event) => setSlug(event.target.value.toLowerCase())}
-                  pattern="[a-z0-9][a-z0-9-]{1,62}"
-                  required
-                />
-                <small>仅支持小写字母、数字和连字符</small>
-              </label>
-            </>
+            <label>
+              组织名称
+              <input value={name} onChange={(event) => setName(event.target.value)} required />
+            </label>
           ) : (
             <label>
               邀请令牌

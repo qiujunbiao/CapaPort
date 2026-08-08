@@ -287,7 +287,7 @@ export class PublishingRepository implements PublicationDataStore {
       if (row.status !== 'in_review') {
         throw new AppError('PUBLICATION_TRANSITION_INVALID', 'Publication is no longer awaiting review.', 409);
       }
-      if (row.submitted_by_user_id === input.reviewerUserId) {
+      if (row.submitted_by_user_id === input.reviewerUserId && !input.allowSelfReview) {
         throw new AppError('PUBLICATION_SELF_REVIEW', 'Submitters cannot review their own publication.', 403);
       }
       if (row.candidate_digest !== input.expectedDigest) {

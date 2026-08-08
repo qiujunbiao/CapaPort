@@ -157,6 +157,18 @@ describe('PublishingService', () => {
     expect(repository.review).not.toHaveBeenCalled();
   });
 
+  it('lets an organization owner approve their own submission in a single-manager organization', async () => {
+    const { service, repository } = setup({ type: 'organization', reviewPolicy: 'required' });
+    const ownerTenant = { ...tenant, organizationRole: 'owner' as const };
+
+    const result = await service.review(ownerTenant, 'user-1', 'publication-1', 'approve', '管理员确认发布');
+
+    expect(result.status).toBe('published');
+    expect(repository.review).toHaveBeenCalledWith(
+      expect.objectContaining({ publicationId: 'publication-1', reviewerUserId: 'user-1', allowSelfReview: true }),
+    );
+  });
+
   it('delegates approval atomically using the frozen candidate digest', async () => {
     const { service, repository } = setup({ type: 'organization', reviewPolicy: 'required' });
     const result = await service.review(tenant, 'reviewer-1', 'publication-1', 'approve', 'Looks good');

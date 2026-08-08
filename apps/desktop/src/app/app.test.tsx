@@ -1,10 +1,48 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { cloudFixture, localFixture } from '../test/fixtures';
+import { CloudError } from './cloud-client';
 import { DesktopApp } from './desktop-app';
 import { createMemorySessionStore } from './session-store';
+import type { Session } from './types';
 
 describe('desktop application safety workflows', () => {
+  it('uses meaningful page labels without decorative sequence numbers', async () => {
+    render(
+      <DesktopApp
+        cloud={cloudFixture()}
+        local={localFixture()}
+        sessionStore={createMemorySessionStore({
+          accessToken: 'token',
+          refreshToken: 'refresh',
+          organizationId: 'org-a',
+        })}
+      />,
+    );
+
+    await screen.findByRole('button', { name: '首页' });
+    expect(document.body).not.toHaveTextContent(/\/ 0[1-5]/);
+  });
+
+  it('prefills the verification code returned by the local development API', async () => {
+    const cloud = cloudFixture();
+    cloud.register = async () => ({
+      challengeId: 'challenge-a',
+      maskedTarget: '15*******93',
+      developmentCode: '654321',
+    });
+    cloud.verify = async () => ({ verified: true });
+    render(<DesktopApp cloud={cloud} local={localFixture()} sessionStore={createMemorySessionStore()} />);
+    fireEvent.click(screen.getByRole('button', { name: '没有账号？立即注册' }));
+    fireEvent.change(screen.getByLabelText('姓名'), { target: { value: 'Rocky' } });
+    fireEvent.change(screen.getByLabelText('邮箱或手机号'), { target: { value: '15000836993' } });
+    fireEvent.change(screen.getByLabelText('密码'), { target: { value: 'Strong-Password-1!' } });
+    fireEvent.click(screen.getByRole('button', { name: '注册并验证' }));
+
+    expect(await screen.findByLabelText('验证码')).toHaveValue('654321');
+    expect(screen.getByText('仅本地开发：验证码已自动填入。')).toBeInTheDocument();
+  });
+
   it('protects authenticated routes and exposes accessible login errors', async () => {
     const cloud = cloudFixture({ loginError: '账号或密码错误' });
     render(<DesktopApp cloud={cloud} local={localFixture()} sessionStore={createMemorySessionStore()} />);
@@ -13,6 +51,24 @@ describe('desktop application safety workflows', () => {
     fireEvent.change(screen.getByLabelText('密码'), { target: { value: 'bad-password' } });
     fireEvent.click(screen.getByRole('button', { name: '登录' }));
     expect(await screen.findByRole('alert')).toHaveTextContent('账号或密码错误');
+  });
+
+  it('returns to login when a restored session can no longer be refreshed', async () => {
+    const cloud = cloudFixture();
+    cloud.organizations = async () => {
+      throw new CloudError('AUTH_REFRESH_REPLAY', '登录状态已失效');
+    };
+    const sessionStore = createMemorySessionStore({
+      accessToken: 'expired',
+      refreshToken: 'replayed',
+      organizationId: 'org-a',
+    });
+
+    render(<DesktopApp cloud={cloud} local={localFixture()} sessionStore={sessionStore} />);
+
+    expect(await screen.findByRole('heading', { name: '进入 CapaPort' })).toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: '建立共享边界' })).not.toBeInTheDocument();
+    expect(sessionStore.get()).toBeUndefined();
   });
 
   it('lets a user recover an account from the desktop client', async () => {
@@ -74,6 +130,47 @@ describe('desktop application safety workflows', () => {
     fireEvent.click(await screen.findByRole('button', { name: '导入 release-helper' }));
     expect(await screen.findByText('发现高风险内容，已阻止上传')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: '创建云端草稿' })).toBeDisabled();
+  });
+
+  it('saves discovered capabilities to the personal space before publishing to the organization', async () => {
+    const cloud = cloudFixture();
+    cloud.spaces = async () => [
+      {
+        id: 'space-org',
+        organizationId: 'org-a',
+        type: 'organization',
+        name: '海岸小香蕉',
+        slug: 'organization',
+        reviewPolicy: 'required',
+        status: 'active',
+      },
+      {
+        id: 'space-personal',
+        organizationId: 'org-a',
+        type: 'personal',
+        name: 'Personal space',
+        slug: 'personal-user-a',
+        reviewPolicy: 'direct',
+        status: 'active',
+      },
+    ];
+    render(
+      <DesktopApp
+        cloud={cloud}
+        local={localFixture()}
+        sessionStore={createMemorySessionStore({
+          accessToken: 'token',
+          refreshToken: 'refresh',
+          organizationId: 'org-a',
+        })}
+      />,
+    );
+
+    fireEvent.click(await screen.findByRole('button', { name: '本地发现' }));
+    fireEvent.click(await screen.findByRole('button', { name: '导入 release-helper' }));
+
+    expect(await screen.findByLabelText('保存到空间')).toHaveValue('space-personal');
+    expect(screen.getByLabelText('发布到空间')).toHaveValue('space-org');
   });
 
   it('previews installation writes and requires a conflict choice', async () => {
@@ -147,6 +244,168 @@ describe('desktop application safety workflows', () => {
     expect(document.body.textContent).not.toContain('/Users/private');
     fireEvent.click(screen.getByRole('button', { name: '重试失败任务' }));
     await waitFor(() => expect(retryFailedWrites).toHaveBeenCalledTimes(1));
+  });
+
+  it('labels local builds instead of contacting an unconfigured release feed', async () => {
+    render(
+      <DesktopApp
+        cloud={cloudFixture()}
+        local={localFixture()}
+        sessionStore={createMemorySessionStore({
+          accessToken: 'token',
+          refreshToken: 'refresh',
+          organizationId: 'org-a',
+        })}
+      />,
+    );
+
+    fireEvent.click(await screen.findByRole('button', { name: '设置' }));
+    expect(await screen.findByText('本地构建未启用在线更新')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '检查更新' })).toBeDisabled();
+  });
+
+  it('keeps the audit action filter when loading the next page', async () => {
+    const cloud = cloudFixture();
+    const audit = vi.fn(
+      async (_session: Session, _organizationId: string, query?: { action?: string; cursor?: string }) => ({
+        entries: [],
+        ...(query?.action === 'publication.approved' && !query.cursor ? { nextCursor: 'next-a' } : {}),
+      }),
+    );
+    cloud.audit = audit;
+    render(
+      <DesktopApp
+        cloud={cloud}
+        local={localFixture()}
+        sessionStore={createMemorySessionStore({
+          accessToken: 'token',
+          refreshToken: 'refresh',
+          organizationId: 'org-a',
+        })}
+      />,
+    );
+
+    fireEvent.click(await screen.findByRole('button', { name: '审计日志' }));
+    fireEvent.change(await screen.findByLabelText('审计动作'), { target: { value: 'publication.approved' } });
+    fireEvent.click(await screen.findByRole('button', { name: '加载更多' }));
+
+    await waitFor(() =>
+      expect(audit).toHaveBeenLastCalledWith(
+        expect.anything(),
+        'org-a',
+        expect.objectContaining({ action: 'publication.approved', cursor: 'next-a' }),
+      ),
+    );
+  });
+
+  it('keeps accepted and revoked invitations visible in organization history', async () => {
+    const cloud = cloudFixture();
+    cloud.invitations = async () => [
+      {
+        id: 'invitation-accepted',
+        kind: 'email',
+        target: 'accepted@example.com',
+        role: 'member',
+        expiresAt: '2026-08-10T00:00:00.000Z',
+        acceptedAt: '2026-08-08T01:00:00.000Z',
+        revokedAt: null,
+        createdAt: '2026-08-08T00:00:00.000Z',
+      },
+    ];
+    render(
+      <DesktopApp
+        cloud={cloud}
+        local={localFixture()}
+        sessionStore={createMemorySessionStore({
+          accessToken: 'token',
+          refreshToken: 'refresh',
+          organizationId: 'org-a',
+        })}
+      />,
+    );
+
+    fireEvent.click(await screen.findByRole('button', { name: '成员与邀请' }));
+    expect(await screen.findByText('accepted@example.com')).toBeInTheDocument();
+    expect(screen.getByText('已接受')).toBeInTheDocument();
+  });
+
+  it('lets organization managers rename twice without issuing a stale organization-list request', async () => {
+    const cloud = cloudFixture();
+    const organizationId = '11111111-1111-4111-8111-111111111111';
+    let organizationName = '海岸小香蕉';
+    const organizationSessions: string[] = [];
+    const sessionStore = createMemorySessionStore({
+      accessToken: 'token',
+      refreshToken: 'refresh',
+      organizationId,
+    });
+    cloud.organizations = async (session) => {
+      organizationSessions.push(session.accessToken);
+      return [
+        {
+          id: organizationId,
+          name: organizationName,
+          slug: 'coastal-banana',
+          role: 'owner',
+          status: 'active',
+        },
+      ];
+    };
+    const updateOrganization = vi.fn(async (_session: Session, _organizationId: string, input: { name: string }) => {
+      organizationName = input.name;
+    });
+    cloud.updateOrganization = updateOrganization;
+    render(<DesktopApp cloud={cloud} local={localFixture()} sessionStore={sessionStore} />);
+
+    fireEvent.click(await screen.findByRole('button', { name: '设置' }));
+    expect(screen.getByDisplayValue('coastal-banana')).toBeInTheDocument();
+    expect(screen.getByDisplayValue(organizationId)).toBeInTheDocument();
+    expect(screen.getByText('加入组织需要邀请令牌，组织 ID 不能直接用于加入。')).toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText('组织名称'), { target: { value: '海岸香蕉团队' } });
+    fireEvent.click(screen.getByRole('button', { name: '保存组织名称' }));
+
+    await waitFor(() =>
+      expect(updateOrganization).toHaveBeenCalledWith(
+        expect.objectContaining({ accessToken: 'token' }),
+        organizationId,
+        {
+          name: '海岸香蕉团队',
+        },
+      ),
+    );
+    await waitFor(() => expect(screen.getByText('当前组织').nextSibling).toHaveTextContent('海岸香蕉团队'));
+
+    fireEvent.change(screen.getByLabelText('组织名称'), { target: { value: '海岸香蕉研发' } });
+    fireEvent.click(screen.getByRole('button', { name: '保存组织名称' }));
+
+    await waitFor(() =>
+      expect(updateOrganization).toHaveBeenLastCalledWith(
+        expect.objectContaining({ accessToken: 'token' }),
+        organizationId,
+        { name: '海岸香蕉研发' },
+      ),
+    );
+    expect(organizationSessions).toEqual(['token']);
+  });
+
+  it('joins another organization with an invitation token instead of an organization id', async () => {
+    const cloud = cloudFixture();
+    const token = 'invitation-token-that-is-long-enough-123456';
+    const acceptInvitation = vi.fn(async () => ({ status: 'accepted', organizationId: 'org-b' }));
+    cloud.acceptInvitation = acceptInvitation;
+    const sessionStore = createMemorySessionStore({
+      accessToken: 'token',
+      refreshToken: 'refresh',
+      organizationId: 'org-a',
+    });
+    render(<DesktopApp cloud={cloud} local={localFixture()} sessionStore={sessionStore} />);
+
+    fireEvent.click(await screen.findByRole('button', { name: '设置' }));
+    fireEvent.change(screen.getByLabelText('邀请令牌'), { target: { value: token } });
+    fireEvent.click(screen.getByRole('button', { name: '加入组织' }));
+
+    await waitFor(() => expect(acceptInvitation).toHaveBeenCalledWith(expect.anything(), token));
+    expect(sessionStore.get()?.organizationId).toBe('org-b');
   });
 
   it('creates a Skill, Prompt, and context package in the authoring workspace and submits it', async () => {
@@ -307,6 +566,8 @@ describe('desktop application safety workflows', () => {
       />,
     );
     fireEvent.click(await screen.findByRole('button', { name: '通知' }));
+    expect(await screen.findByRole('region', { name: '通知列表' })).toHaveClass('notification-popover');
+    expect(screen.getByRole('button', { name: '通知' }).parentElement).toHaveClass('notification-menu');
     expect(await screen.findByText('发布已通过')).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: '标为已读' }));
     await waitFor(() => expect(screen.queryByRole('button', { name: '标为已读' })).not.toBeInTheDocument());

@@ -52,6 +52,27 @@ export function DiscoveryModal({
   const [riskReason, setRiskReason] = useState('');
   const [preUploadScan, setPreUploadScan] = useState<ScanReport>();
   const availableSpaces = useMemo(() => spaces.filter((space) => space.status === 'active'), [spaces]);
+  const draftSpaces = useMemo(
+    () =>
+      availableSpaces.filter(
+        (space) =>
+          space.type === 'personal' ||
+          ((space.type === 'team' || space.type === 'project') &&
+            (space.role === 'manager' || space.role === 'contributor')),
+      ),
+    [availableSpaces],
+  );
+  const publicationSpaces = useMemo(
+    () =>
+      availableSpaces.filter(
+        (space) =>
+          space.type === 'organization' ||
+          space.type === 'personal' ||
+          ((space.type === 'team' || space.type === 'project') &&
+            (space.role === 'manager' || space.role === 'contributor')),
+      ),
+    [availableSpaces],
+  );
 
   useEffect(() => {
     let cancelled = false;
@@ -70,9 +91,9 @@ export function DiscoveryModal({
         if (!cancelled) {
           setAgents(detected);
           setInventory(discovered);
-          setSpaceId(availableSpaces[0]?.id ?? '');
+          setSpaceId(draftSpaces.find((space) => space.type === 'personal')?.id ?? draftSpaces[0]?.id ?? '');
           setTargetSpaceId(
-            availableSpaces.find((space) => space.type === 'organization')?.id ?? availableSpaces[0]?.id ?? '',
+            publicationSpaces.find((space) => space.type === 'organization')?.id ?? publicationSpaces[0]?.id ?? '',
           );
         }
       } catch (caught) {
@@ -84,7 +105,7 @@ export function DiscoveryModal({
     return () => {
       cancelled = true;
     };
-  }, [availableSpaces, local]);
+  }, [draftSpaces, local, publicationSpaces]);
 
   async function select(item: Selected) {
     setSelected(item);
@@ -239,7 +260,7 @@ export function DiscoveryModal({
               <label>
                 保存到空间
                 <select value={spaceId} onChange={(event) => setSpaceId(event.target.value)}>
-                  {availableSpaces.map((space) => (
+                  {draftSpaces.map((space) => (
                     <option key={space.id} value={space.id}>
                       {space.name} · {space.type}
                     </option>
@@ -249,7 +270,7 @@ export function DiscoveryModal({
               <label>
                 发布到空间
                 <select value={targetSpaceId} onChange={(event) => setTargetSpaceId(event.target.value)}>
-                  {availableSpaces.map((space) => (
+                  {publicationSpaces.map((space) => (
                     <option key={space.id} value={space.id}>
                       {space.name} · {space.reviewPolicy === 'required' ? '需审核' : '直接发布'}
                     </option>

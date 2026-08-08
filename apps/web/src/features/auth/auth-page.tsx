@@ -11,6 +11,7 @@ export function AuthPage({ client, sessionStore }: { client: WebClient; sessionS
   const [displayName, setDisplayName] = useState('');
   const [challengeId, setChallengeId] = useState('');
   const [code, setCode] = useState('');
+  const [developmentCode, setDevelopmentCode] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
@@ -23,6 +24,8 @@ export function AuthPage({ client, sessionStore }: { client: WebClient; sessionS
       if (mode === 'recover') {
         const challenge = await client.startRecovery({ kind, target });
         setChallengeId(challenge.challengeId);
+        setCode(challenge.developmentCode ?? '');
+        setDevelopmentCode(Boolean(challenge.developmentCode));
         setMode('recover-verify');
       } else if (mode === 'recover-verify') {
         await client.completeRecovery({ challengeId, code, newPassword: password });
@@ -33,6 +36,8 @@ export function AuthPage({ client, sessionStore }: { client: WebClient; sessionS
       } else if (mode === 'register') {
         const challenge = await client.register({ kind, target, password, displayName });
         setChallengeId(challenge.challengeId);
+        setCode(challenge.developmentCode ?? '');
+        setDevelopmentCode(Boolean(challenge.developmentCode));
         setMode('verify');
       } else if (mode === 'verify') {
         await client.verify({ challengeId, code });
@@ -99,6 +104,9 @@ export function AuthPage({ client, sessionStore }: { client: WebClient; sessionS
           </p>
         ) : null}
         {error ? <ErrorNotice>{error}</ErrorNotice> : null}
+        {(mode === 'verify' || mode === 'recover-verify') && developmentCode ? (
+          <p className="success-banner">仅本地开发：验证码已自动填入。</p>
+        ) : null}
         <form
           onSubmit={(event) => {
             event.preventDefault();

@@ -39,10 +39,17 @@ export interface VerificationSender {
 }
 
 type VerificationConfig = Pick<AppConfig['auth'], 'verificationPepper' | 'verificationTtlMinutes'>;
+export type ChallengeMetadata = {
+  challengeId: string;
+  maskedTarget: string;
+  expiresIn: number;
+  developmentCode?: string;
+};
 
 @Injectable()
 export class VerificationService {
   private readonly config: VerificationConfig;
+  private readonly exposeDevelopmentCode: boolean;
 
   constructor(
     @Inject('VERIFICATION_STORE') private readonly store: VerificationStore,
@@ -50,6 +57,7 @@ export class VerificationService {
     @Inject(APP_CONFIG) config: VerificationConfig | AppConfig,
   ) {
     this.config = 'auth' in config ? config.auth : config;
+    this.exposeDevelopmentCode = 'auth' in config && config.nodeEnv === 'development';
   }
 
   prepare(
@@ -80,7 +88,7 @@ export class VerificationService {
     target: string,
     userId: string,
     identityId?: string,
-  ): Promise<{ challengeId: string; maskedTarget: string; expiresIn: number }> {
+  ): Promise<ChallengeMetadata> {
     const challenge = this.prepare(purpose, kind, target, userId, identityId);
     await this.store.createChallenge(challenge);
     await this.deliver(challenge);
@@ -103,11 +111,12 @@ export class VerificationService {
     return this.consume(challengeId, code, 'recover_password');
   }
 
-  publicMetadata(challenge: PreparedChallenge): { challengeId: string; maskedTarget: string; expiresIn: number } {
+  publicMetadata(challenge: PreparedChallenge): ChallengeMetadata {
     return {
       challengeId: challenge.id,
       maskedTarget: maskIdentity(challenge.kind, challenge.target),
       expiresIn: this.config.verificationTtlMinutes * 60,
+      ...(this.exposeDevelopmentCode ? { developmentCode: challenge.code } : {}),
     };
   }
 

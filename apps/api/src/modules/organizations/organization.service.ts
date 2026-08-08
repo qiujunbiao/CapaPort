@@ -130,13 +130,14 @@ export class OrganizationService {
 
   async create(userId: string, sessionId: string, input: CreateOrganizationRequest): Promise<OrganizationSummary> {
     let organization: OrganizationRecord;
+    const organizationId = randomUUID();
     try {
       organization = await this.repository.createOrganization({
-        organizationId: randomUUID(),
+        organizationId,
         ownerMembershipId: randomUUID(),
         userId,
         name: input.name.trim(),
-        slug: input.slug,
+        slug: input.slug ?? `org-${organizationId.replaceAll('-', '').slice(0, 12)}`,
       });
     } catch (error) {
       if (this.isUniqueViolation(error)) {

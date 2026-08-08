@@ -1,9 +1,10 @@
-import type {
-  AgentId,
-  CapabilitySummary,
-  CapabilityVersionDiff,
-  CapabilityVersionSummary,
-  SpaceSummary,
+import {
+  type AgentId,
+  type CapabilitySummary,
+  type CapabilityVersionDiff,
+  type CapabilityVersionSummary,
+  isInstallableCapability,
+  type SpaceSummary,
 } from '@capaport/contracts';
 import { Box, Search, ShieldCheck, X } from 'lucide-react';
 import { useMemo, useState } from 'react';
@@ -49,6 +50,7 @@ export function MarketplacePage({
   const filtered = useMemo(
     () =>
       capabilities.filter((capability) => {
+        if (!isInstallableCapability(capability)) return false;
         const matches = `${capability.name} ${capability.slug} ${capability.tags.join(' ')}`
           .toLowerCase()
           .includes(query.toLowerCase());

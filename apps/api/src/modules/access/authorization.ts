@@ -49,6 +49,7 @@ const personalOwnerActions = new Set<AuthorizationAction>([
 const organizationMemberActions = new Set<AuthorizationAction>([
   'space:view',
   'content:view-published',
+  'content:submit',
   'content:install',
 ]);
 

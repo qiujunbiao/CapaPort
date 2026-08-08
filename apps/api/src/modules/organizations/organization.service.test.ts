@@ -57,6 +57,17 @@ describe('OrganizationService', () => {
     expect(deps.tenants.switch).toHaveBeenCalledWith('user-1', 'session-1', 'org-1');
   });
 
+  it('generates an internal slug when the user only supplies an organization name', async () => {
+    const deps = dependencies();
+    await new OrganizationService(deps.repository, deps.tenants, deps.sender, {
+      verificationPepper: 'organization-test-pepper-longer-than-thirty-two-characters',
+    }).create('user-1', 'session-1', { name: '海岸小香蕉' });
+
+    expect(deps.repository.createOrganization).toHaveBeenCalledWith(
+      expect.objectContaining({ name: '海岸小香蕉', slug: expect.stringMatching(/^org-[a-f0-9]{12}$/) }),
+    );
+  });
+
   it('delivers expiring single-use invitation tokens without exposing them in API responses', async () => {
     const deps = dependencies();
     const service = new OrganizationService(deps.repository, deps.tenants, deps.sender, {

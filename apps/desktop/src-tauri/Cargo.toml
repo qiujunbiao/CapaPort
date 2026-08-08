@@ -20,6 +20,7 @@ default = []
 tauri-app = [
   "dep:directories",
   "dep:keyring",
+  "dep:reqwest",
   "dep:tauri",
   "dep:tauri-plugin-process",
   "dep:tauri-plugin-updater",
@@ -32,6 +33,7 @@ hex = "0.4.3"
 keyring = { version = "4.1.5", optional = true }
 parking_lot = "0.12.5"
 regex = "1.11.2"
+reqwest = { version = "0.13.4", optional = true, default-features = false, features = ["rustls"] }
 rusqlite = { version = "0.37.0", features = ["bundled"] }
 serde = { version = "1.0.228", features = ["derive"] }
 serde_json = "1.0.145"

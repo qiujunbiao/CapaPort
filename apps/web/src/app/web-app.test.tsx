@@ -1,10 +1,56 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { webFixture } from '../test/fixtures';
 import { createMemoryWebSessionStore } from './session-store';
 import { WebApp } from './web-app';
 
 describe('organization web console', () => {
+  it('creates an organization from an editable name without asking for a technical identifier', async () => {
+    const client = webFixture();
+    client.organizations = async () => [];
+    const createOrganization = vi.fn(async ({ name }: { name: string }) => ({
+      id: 'org-new',
+      name,
+      slug: 'org-generated',
+      role: 'owner' as const,
+      status: 'active' as const,
+    }));
+    client.createOrganization = createOrganization;
+
+    render(
+      <WebApp
+        client={client}
+        sessionStore={createMemoryWebSessionStore({ accessToken: 'token', refreshToken: 'refresh' })}
+      />,
+    );
+
+    const name = await screen.findByLabelText('组织名称');
+    fireEvent.change(name, { target: { value: '海岸' } });
+    fireEvent.change(name, { target: { value: '海岸小香蕉' } });
+    expect(name).toHaveValue('海岸小香蕉');
+    expect(screen.queryByLabelText('组织标识')).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: '创建并进入' }));
+    await waitFor(() => expect(createOrganization).toHaveBeenCalledWith({ name: '海岸小香蕉' }));
+  });
+
+  it('prefills the verification code returned by the local development API', async () => {
+    const client = webFixture();
+    client.register = async () => ({
+      challengeId: 'challenge-a',
+      maskedTarget: '15*******93',
+      developmentCode: '654321',
+    });
+    render(<WebApp client={client} sessionStore={createMemoryWebSessionStore()} />);
+    fireEvent.click(screen.getByRole('button', { name: '没有账号？创建账号' }));
+    fireEvent.change(screen.getByLabelText('显示名称'), { target: { value: 'Rocky' } });
+    fireEvent.change(screen.getByLabelText('邮箱或手机号'), { target: { value: '15000836993' } });
+    fireEvent.change(screen.getByLabelText('密码'), { target: { value: 'Strong-Password-1!' } });
+    fireEvent.click(screen.getByRole('button', { name: '注册并验证' }));
+
+    expect(await screen.findByLabelText('验证码')).toHaveValue('654321');
+    expect(screen.getByText('仅本地开发：验证码已自动填入。')).toBeInTheDocument();
+  });
+
   it('protects administrator routes behind authentication', () => {
     render(<WebApp client={webFixture()} sessionStore={createMemoryWebSessionStore()} />);
     expect(screen.getByRole('heading', { name: '登录管理后台' })).toBeInTheDocument();

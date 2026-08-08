@@ -87,6 +87,15 @@ describe('space authorization matrix', () => {
     }
   });
 
+  it('allows organization members to submit a personal draft without editing organization content', () => {
+    const organizationSpace = { organizationId: 'org-a', type: 'organization' as const };
+
+    expect(authorize(baseSubject, 'content:submit', organizationSpace).allowed).toBe(true);
+    expect(authorize(baseSubject, 'content:create', organizationSpace).allowed).toBe(false);
+    expect(authorize(baseSubject, 'content:edit', organizationSpace).allowed).toBe(false);
+    expect(authorize(baseSubject, 'content:review', organizationSpace).allowed).toBe(false);
+  });
+
   it('denies foreign tenants and disabled memberships before role evaluation', () => {
     expect(authorize(baseSubject, 'space:view', { ...resource, organizationId: 'org-b' })).toMatchObject({
       allowed: false,

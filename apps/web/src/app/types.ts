@@ -82,17 +82,17 @@ export interface WebClient {
     target: string;
     password: string;
     displayName: string;
-  }): Promise<{ challengeId: string; maskedTarget: string }>;
+  }): Promise<{ challengeId: string; maskedTarget: string; developmentCode?: string }>;
   verify(input: { challengeId: string; code: string }): Promise<{ verified: true }>;
   startRecovery(input: {
     kind: 'email' | 'phone';
     target: string;
-  }): Promise<{ challengeId: string; maskedTarget: string }>;
+  }): Promise<{ challengeId: string; maskedTarget: string; developmentCode?: string }>;
   completeRecovery(input: { challengeId: string; code: string; newPassword: string }): Promise<{ recovered: true }>;
   logout(): Promise<void>;
   me(): Promise<PublicUser>;
   organizations(): Promise<OrganizationSummary[]>;
-  createOrganization(input: { name: string; slug: string }): Promise<OrganizationSummary>;
+  createOrganization(input: { name: string; slug?: string }): Promise<OrganizationSummary>;
   switchOrganization(organizationId: string): Promise<void>;
   acceptInvitation(token: string): Promise<{ status: string; organizationId?: string }>;
   updateOrganization(organizationId: string, name: string): Promise<void>;

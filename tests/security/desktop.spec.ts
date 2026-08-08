@@ -24,6 +24,7 @@ describe('desktop security gate', () => {
       .filter(Boolean)
       .sort();
     expect(commands).toEqual([
+      'api_request',
       'apply_install',
       'bind_project_directory',
       'claim_ready_writes',

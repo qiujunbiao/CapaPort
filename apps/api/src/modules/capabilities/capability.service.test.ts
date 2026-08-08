@@ -70,6 +70,24 @@ describe('CapabilityService', () => {
     policies.scanPolicyForOrganization.mockResolvedValue(undefined);
   });
 
+  it('reports a duplicate slug when the database unique violation is wrapped by the query driver', async () => {
+    repository.createCapability.mockRejectedValueOnce({
+      message: 'Failed query: insert into capabilities',
+      cause: { code: '23505', constraint: 'capabilities_org_slug_uidx' },
+    });
+
+    await expect(
+      new CapabilityService(repository, artifacts, spaces, policies).create(tenant, 'user-a', {
+        spaceId: 'space-a',
+        slug: 'release-helper',
+        name: 'Release helper',
+        description: '',
+        tags: [],
+        compatibility: ['codex'],
+      }),
+    ).rejects.toMatchObject({ code: 'CAPABILITY_SLUG_EXISTS', statusCode: 409 });
+  });
+
   it('validates, canonically hashes, and scans a confirmed package before making a draft ready', async () => {
     artifacts.readArtifact.mockResolvedValue({
       artifact: { id: 'artifact-a', organizationId: 'org-a', status: 'ready' },

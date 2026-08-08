@@ -14,6 +14,10 @@ describe('organization contracts', () => {
     expect(inviteMemberRequestSchema.parse({ kind: 'email', target: 'member@example.com' }).role).toBe('member');
   });
 
+  it('accepts organization creation without exposing a technical slug', () => {
+    expect(createOrganizationRequestSchema.parse({ name: ' 海岸小香蕉 ' })).toEqual({ name: '海岸小香蕉' });
+  });
+
   it('rejects invalid organization slugs and membership identifiers', () => {
     expect(createOrganizationRequestSchema.safeParse({ name: 'Platform', slug: '../platform' }).success).toBe(false);
     expect(transferOwnershipRequestSchema.safeParse({ membershipId: 'not-a-uuid' }).success).toBe(false);

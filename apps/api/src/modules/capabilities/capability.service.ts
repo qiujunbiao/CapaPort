@@ -25,7 +25,6 @@ import { SecurityPolicyService } from '../organizations/security-policy.service.
 import { ArtifactService } from './artifact.service.js';
 
 export type CapabilityRecord = CapabilitySummary & {
-  hasPublishedVersion?: boolean;
   publishedSpaceIds?: string[];
 };
 export type CapabilityDraftRecord = {
@@ -372,6 +371,13 @@ export class CapabilityService {
   }
 
   private isUniqueViolation(error: unknown): boolean {
-    return typeof error === 'object' && error !== null && 'code' in error && error.code === '23505';
+    let current = error;
+    const visited = new Set<unknown>();
+    while (typeof current === 'object' && current !== null && !visited.has(current)) {
+      if ('code' in current && current.code === '23505') return true;
+      visited.add(current);
+      current = 'cause' in current ? current.cause : undefined;
+    }
+    return false;
   }
 }
