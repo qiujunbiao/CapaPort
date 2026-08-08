@@ -175,6 +175,38 @@ describe('desktop application safety workflows', () => {
     expect(await screen.findByText('已提交到审核流程')).toBeInTheDocument();
   });
 
+  it('queues an unchanged saved draft for submission while offline', async () => {
+    let online = true;
+    const cloud = cloudFixture();
+    cloud.isOnline = () => online;
+    render(
+      <DesktopApp
+        cloud={cloud}
+        local={localFixture()}
+        sessionStore={createMemorySessionStore({
+          accessToken: 'token',
+          refreshToken: 'refresh',
+          organizationId: 'org-a',
+        })}
+      />,
+    );
+    fireEvent.click(await screen.findByRole('button', { name: '创作' }));
+    fireEvent.change(screen.getByLabelText('能力标识'), { target: { value: 'offline-release' } });
+    fireEvent.change(screen.getByLabelText('能力名称'), { target: { value: '离线发布助手' } });
+    fireEvent.change(screen.getByLabelText('Skill 内容'), { target: { value: '# Offline-safe skill' } });
+    fireEvent.click(screen.getByRole('button', { name: '保存草稿' }));
+    expect(await screen.findByText('草稿修订 #1 已保存')).toBeInTheDocument();
+
+    online = false;
+    window.dispatchEvent(new Event('offline'));
+    const submit = screen.getByRole('button', { name: '提交审核' });
+    await waitFor(() => expect(submit).toBeEnabled());
+    fireEvent.click(submit);
+    expect(await screen.findByText('已加入离线队列，联网后自动提交')).toBeInTheDocument();
+    online = true;
+    window.dispatchEvent(new Event('online'));
+  });
+
   it('never requests a cloud upload when authoring content contains a blocking secret', async () => {
     const cloud = cloudFixture();
     const createCapabilityDraft = vi.fn(cloud.createCapabilityDraft);

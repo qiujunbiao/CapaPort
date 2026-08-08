@@ -199,7 +199,22 @@ export function AuthoringPage({
     setError('');
     setMessage('');
     try {
-      const revision = await persistRevision();
+      let revision: SavedDraft;
+      if (online) {
+        revision = await persistRevision();
+      } else {
+        const exported = await exportEditablePackage(editable);
+        const report = await scanArchiveBeforeUpload(exported.archive, securityPolicy);
+        setClientScan(report);
+        if (report.blocked) throw new Error('本地安全扫描发现阻断风险，能力包未上传');
+        if (report.requiresConfirmation && (!riskAccepted || riskReason.trim().length < 3)) {
+          throw new Error('本地安全扫描发现需确认内容，请检查并填写确认理由后重试');
+        }
+        if (!saved || saved.digest !== exported.digest) {
+          throw new Error('离线时只能提交已保存且未修改的草稿，请联网保存当前修订');
+        }
+        revision = saved;
+      }
       if (revision.findings.length && (!riskAccepted || riskReason.trim().length < 3)) {
         throw new Error('请确认可接受风险并填写确认理由');
       }
@@ -214,6 +229,12 @@ export function AuthoringPage({
           ? { riskAcceptance: { findingDigests: revision.findings, reason: riskReason.trim() } }
           : {}),
       });
+      void cloud.recordAnalyticsEvent(session, organizationId, {
+        eventName: 'publication.started',
+        capabilityId: revision.capabilityId,
+        source: 'desktop',
+        outcome: 'success',
+      }).catch(() => undefined);
       setMessage(publication.queued ? '已加入离线队列，联网后自动提交' : '已提交到审核流程');
       onSubmitted();
     } catch (caught) {
@@ -389,7 +410,7 @@ export function AuthoringPage({
               <Button variant="secondary" disabled={!online || errors.length > 0} busy={busy} onClick={save}>
                 <Save aria-hidden size={15} /> 保存草稿
               </Button>
-              <Button disabled={!online || errors.length > 0} busy={busy} onClick={submit}>
+              <Button disabled={errors.length > 0 || (!online && !saved)} busy={busy} onClick={submit}>
                 <Send aria-hidden size={15} /> 提交审核
               </Button>
             </div>

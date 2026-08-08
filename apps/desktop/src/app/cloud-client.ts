@@ -8,6 +8,7 @@ import type {
   OrganizationSecurityPolicy,
   ProjectBindingSummary,
   ProjectContextSummary,
+  ProductEvent,
   PublicationSummary,
   PublicUser,
   SpaceSummary,
@@ -202,6 +203,13 @@ export function createCloudClient(
       request<OrganizationSecurityPolicy>(`/organizations/${organizationId}/security-policy`, {
         session,
         organizationId,
+      }),
+    recordAnalyticsEvent: (session, organizationId, event: ProductEvent) =>
+      request<void>('/analytics/events', {
+        method: 'POST',
+        session,
+        organizationId,
+        body: JSON.stringify(event),
       }),
     capabilities: (session, organizationId, query = '') =>
       request<CapabilitySummary[]>(`/capabilities?query=${encodeURIComponent(query)}&limit=100`, {

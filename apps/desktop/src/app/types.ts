@@ -11,6 +11,7 @@ import type {
   TenantContext,
   TokenPair,
   UpdateCheck,
+  ProductEvent,
 } from '@agentdoor/contracts';
 import type { ProjectBindingSummary, ProjectContextSummary } from '@agentdoor/contracts/projects';
 import type {
@@ -116,6 +117,7 @@ export interface CloudClient {
   switchOrganization(session: Session, organizationId: string): Promise<TenantContext>;
   spaces(session: Session, organizationId: string): Promise<SpaceSummary[]>;
   securityPolicy(session: Session, organizationId: string): Promise<OrganizationSecurityPolicy>;
+  recordAnalyticsEvent(session: Session, organizationId: string, event: ProductEvent): Promise<void>;
   capabilities(session: Session, organizationId: string, query?: string): Promise<CapabilitySummary[]>;
   publications(session: Session, organizationId: string): Promise<PublicationSummary[]>;
   installations(session: Session, organizationId: string): Promise<InstallationSummary[]>;

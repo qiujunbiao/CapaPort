@@ -94,6 +94,7 @@ export function cloudFixture(
       allowedNetworkHosts: [],
       executablePolicy: 'confirm',
     }),
+    recordAnalyticsEvent: async () => undefined,
     capabilities: async (_session, organizationId) => [
       {
         id: `cap-${organizationId}`,

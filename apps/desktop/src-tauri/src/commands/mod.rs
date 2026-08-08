@@ -261,6 +261,35 @@ impl Runtime {
                 }
             }
         }
+        for binding in self.database.project_bindings(None)? {
+            if binding.status != "active" {
+                continue;
+            }
+            let project = PathBuf::from(binding.local_path);
+            for (adapter_id, display_name, directory) in agent_directories() {
+                if !binding.agents.iter().any(|agent| agent == adapter_id) {
+                    continue;
+                }
+                let root = project.join(directory);
+                if !root.is_dir() {
+                    continue;
+                }
+                let root_path = root
+                    .canonicalize()
+                    .map_err(|_| RuntimeError::PathNotAllowed)?
+                    .to_string_lossy()
+                    .into_owned();
+                if agents.iter().any(|agent: &AgentDescriptor| agent.root_path == root_path) {
+                    continue;
+                }
+                agents.push(AgentDescriptor {
+                    adapter_id: adapter_id.into(),
+                    display_name: display_name.into(),
+                    scope: "workspace".into(),
+                    root_path,
+                });
+            }
+        }
         agents.sort_by(|left, right| {
             (&left.adapter_id, &left.scope).cmp(&(&right.adapter_id, &right.scope))
         });
@@ -989,6 +1018,37 @@ mod tests {
             "space-1"
         );
         assert_eq!(runtime.sync_queue_status().unwrap().pending, 0);
+    }
+
+    #[test]
+    fn detects_agent_directories_inside_persisted_project_bindings() {
+        let root = tempdir().unwrap();
+        let project = root.path().join("bound-project");
+        std::fs::create_dir_all(project.join(".cursor/rules")).unwrap();
+        std::fs::write(project.join(".cursor/rules/security.mdc"), "Always scan uploads").unwrap();
+        let runtime = Runtime::new(
+            &root.path().join("state.db"),
+            root.path().join("empty-home"),
+            None,
+            Arc::new(MemoryCredentialStore::default()),
+        );
+        std::fs::create_dir_all(root.path().join("empty-home")).unwrap();
+        let runtime = runtime.unwrap();
+        runtime
+            .bind_project_directory(&BindProjectInput {
+                space_id: "space-1".into(),
+                path: project.to_string_lossy().into(),
+                agents: Some(vec!["cursor".into()]),
+            })
+            .unwrap();
+
+        let agents = runtime.detect_agents().unwrap();
+
+        assert!(agents.iter().any(|agent| {
+            agent.adapter_id == "cursor"
+                && agent.scope == "workspace"
+                && agent.root_path.ends_with("bound-project/.cursor")
+        }));
     }
     #[test]
     fn scanner_blocks_likely_secrets_and_omits_the_secret_value() {

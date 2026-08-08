@@ -120,7 +120,22 @@ function AppContent({
   });
   const agentsQuery = useQuery({
     queryKey: ['local-agents'],
-    queryFn: () => local.detectAgents(),
+    queryFn: async () => {
+      const detected = await local.detectAgents();
+      if (session && organizationId && online) {
+        void Promise.all(
+          detected.map((agent) =>
+            cloud.recordAnalyticsEvent(session, organizationId, {
+              eventName: 'agent.discovered',
+              agent: agent.adapterId as AgentId,
+              source: 'desktop',
+              outcome: 'success',
+            }),
+          ),
+        ).catch(() => undefined);
+      }
+      return detected;
+    },
     enabled: Boolean(session),
     retry: false,
   });
@@ -286,6 +301,13 @@ function AppContent({
               agent: installation.agent,
               outcome: 'uninstalled',
             });
+            void cloud.recordAnalyticsEvent(session, organizationId, {
+              eventName: 'capability.uninstalled',
+              capabilityId: installation.capabilityId,
+              agent: installation.agent,
+              source: 'desktop',
+              outcome: 'success',
+            }).catch(() => undefined);
             await queryClient.invalidateQueries({ queryKey: ['installations', organizationId] });
           }}
         />

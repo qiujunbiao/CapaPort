@@ -22,4 +22,23 @@ describe('desktop cloud client session lifecycle', () => {
     expect(sessionStore.get()).toMatchObject({ accessToken: 'access-new', refreshToken: 'refresh-new' });
     expect(fetcher).toHaveBeenCalledTimes(3);
   });
+
+  it('sends minimized product events to the organization analytics endpoint', async () => {
+    const sessionStore = createMemorySessionStore({ accessToken: 'token', refreshToken: 'refresh' });
+    const fetcher = vi.fn().mockResolvedValue(Response.json({ accepted: true }, { status: 202 }));
+    vi.stubGlobal('fetch', fetcher);
+    const client = createCloudClient('https://api.example.test/api/v1', sessionStore);
+
+    await client.recordAnalyticsEvent(sessionStore.get()!, 'org-a', {
+      eventName: 'capability.imported',
+      agent: 'codex',
+      outcome: 'success',
+      source: 'desktop',
+    });
+
+    expect(fetcher).toHaveBeenCalledWith(
+      'https://api.example.test/api/v1/analytics/events',
+      expect.objectContaining({ method: 'POST', body: JSON.stringify({ eventName: 'capability.imported', agent: 'codex', outcome: 'success', source: 'desktop' }) }),
+    );
+  });
 });
