@@ -10,6 +10,9 @@ use crate::projects::{
     ProjectBindingInput, ProjectEngine, ProjectInventory, ProjectProjectionInput,
     ProjectSpaceInput,
 };
+use crate::skill_discovery::{
+    DiscoveryIssue, SkillSourceKind, TrustedSkillRoot, discover_skill_packages,
+};
 use crate::{RuntimeError, RuntimeResult};
 use base64::Engine;
 use regex::Regex;
@@ -37,6 +40,26 @@ pub struct LocalCapabilitySummary {
     pub component_type: String,
     pub relative_path: String,
     pub digest: String,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct DiscoveredLocalSkill {
+    pub adapter_id: String,
+    pub display_name: String,
+    pub scope: String,
+    pub source_kind: String,
+    pub linked: bool,
+    pub source_path: String,
+    pub slug: String,
+    pub digest: String,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct LocalSkillDiscoveryResult {
+    pub skills: Vec<DiscoveredLocalSkill>,
+    pub issues: Vec<DiscoveryIssue>,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -162,6 +185,7 @@ pub struct ExportPackageInput {
     pub root_path: String,
     pub component_type: String,
     pub slug: String,
+    pub source_path: Option<String>,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -194,6 +218,7 @@ pub struct InstallLock {
 pub struct Runtime {
     database: Database,
     engine: FileEngine,
+    discovery_policy: PathPolicy,
     projects: ProjectEngine,
     home_dir: PathBuf,
     project_root: Option<PathBuf>,
@@ -231,6 +256,7 @@ impl Runtime {
         Ok(Self {
             database,
             engine: FileEngine::new(policy.clone()),
+            discovery_policy: PathPolicy::new([])?,
             projects: ProjectEngine::new(policy),
             home_dir,
             project_root,
@@ -279,7 +305,10 @@ impl Runtime {
                     .map_err(|_| RuntimeError::PathNotAllowed)?
                     .to_string_lossy()
                     .into_owned();
-                if agents.iter().any(|agent: &AgentDescriptor| agent.root_path == root_path) {
+                if agents
+                    .iter()
+                    .any(|agent: &AgentDescriptor| agent.root_path == root_path)
+                {
                     continue;
                 }
                 agents.push(AgentDescriptor {
@@ -363,24 +392,171 @@ impl Runtime {
         Ok(capabilities)
     }
 
+    pub fn discover_local_skills(&self) -> RuntimeResult<LocalSkillDiscoveryResult> {
+        let report = discover_skill_packages(&self.trusted_skill_roots());
+        let mut issues = report.issues;
+        let mut skills = Vec::new();
+        for package in report.packages {
+            let digest = match package_digest(&package.package_root) {
+                Ok(digest) => digest,
+                Err(error) => {
+                    issues.push(DiscoveryIssue {
+                        path: package.package_root.to_string_lossy().into_owned(),
+                        reason: if matches!(error, RuntimeError::SymlinkRejected) {
+                            "package-symlink-escape".into()
+                        } else {
+                            "invalid-package".into()
+                        },
+                    });
+                    continue;
+                }
+            };
+            if self
+                .discovery_policy
+                .add_root(package.package_root.clone())
+                .is_err()
+            {
+                issues.push(DiscoveryIssue {
+                    path: package.package_root.to_string_lossy().into_owned(),
+                    reason: "path-not-allowed".into(),
+                });
+                continue;
+            }
+            skills.push(DiscoveredLocalSkill {
+                adapter_id: package.adapter_id,
+                display_name: package.display_name,
+                scope: package.scope,
+                source_kind: package.source_kind.as_str().into(),
+                linked: package.linked,
+                source_path: package.package_root.to_string_lossy().into_owned(),
+                slug: package.slug,
+                digest,
+            });
+        }
+        skills.sort_by(|left, right| {
+            (&left.adapter_id, &left.slug, &left.source_path).cmp(&(
+                &right.adapter_id,
+                &right.slug,
+                &right.source_path,
+            ))
+        });
+        issues.sort_by(|left, right| (&left.reason, &left.path).cmp(&(&right.reason, &right.path)));
+        Ok(LocalSkillDiscoveryResult { skills, issues })
+    }
+
+    fn trusted_skill_roots(&self) -> Vec<TrustedSkillRoot> {
+        let mut roots = Vec::new();
+        for (adapter_id, display_name, directory) in agent_directories() {
+            let user_skills = self.home_dir.join(directory).join("skills");
+            if user_skills.is_dir() {
+                roots.push(TrustedSkillRoot::new(
+                    adapter_id,
+                    display_name,
+                    "user",
+                    if adapter_id == "codex" {
+                        SkillSourceKind::Shared
+                    } else {
+                        SkillSourceKind::Global
+                    },
+                    user_skills,
+                ));
+            }
+            if let Some(project_root) = &self.project_root {
+                let workspace_skills = project_root.join(directory).join("skills");
+                if workspace_skills.is_dir() {
+                    roots.push(TrustedSkillRoot::new(
+                        adapter_id,
+                        display_name,
+                        "workspace",
+                        SkillSourceKind::Workspace,
+                        workspace_skills,
+                    ));
+                }
+            }
+        }
+        let codex_skills = self.home_dir.join(".codex/skills");
+        if codex_skills.is_dir() {
+            roots.push(TrustedSkillRoot::new(
+                "codex",
+                "Codex",
+                "user",
+                SkillSourceKind::Global,
+                codex_skills,
+            ));
+        }
+        let plugin_cache = self.home_dir.join(".codex/plugins/cache");
+        if plugin_cache.is_dir() {
+            for entry in WalkDir::new(&plugin_cache)
+                .follow_links(false)
+                .max_depth(8)
+                .into_iter()
+                .filter_map(Result::ok)
+            {
+                if entry.file_name() == "skills"
+                    && (entry.file_type().is_dir() || entry.file_type().is_symlink())
+                {
+                    roots.push(TrustedSkillRoot::new(
+                        "codex",
+                        "Codex",
+                        "user",
+                        SkillSourceKind::Plugin,
+                        entry.path().to_path_buf(),
+                    ));
+                }
+            }
+        }
+        if let Ok(bindings) = self.database.project_bindings(None) {
+            for binding in bindings.into_iter().filter(|binding| binding.status == "active") {
+                for (adapter_id, display_name, directory) in agent_directories() {
+                    if !binding.agents.iter().any(|agent| agent == adapter_id) {
+                        continue;
+                    }
+                    let skills = PathBuf::from(&binding.local_path).join(directory).join("skills");
+                    if skills.is_dir() {
+                        roots.push(TrustedSkillRoot::new(
+                            adapter_id,
+                            display_name,
+                            "workspace",
+                            SkillSourceKind::Workspace,
+                            skills,
+                        ));
+                    }
+                }
+            }
+        }
+        roots.sort_by(|left, right| left.path.cmp(&right.path));
+        roots.dedup_by(|left, right| left.path == right.path);
+        roots
+    }
+
     pub fn scan_local_package(&self, input: &PathInput) -> RuntimeResult<LocalScanReport> {
         let selected = Path::new(&input.path)
             .canonicalize()
             .map_err(|_| RuntimeError::PathNotAllowed)?;
-        let root = self
+        let managed_root = self
             .engine
             .policy()
             .roots()
             .into_iter()
-            .find(|root| selected.starts_with(root))
-            .ok_or(RuntimeError::PathNotAllowed)?;
-        let relative = selected
-            .strip_prefix(&root)
-            .map_err(|_| RuntimeError::PathNotAllowed)?;
-        let selected = if relative.as_os_str().is_empty() {
-            root.clone()
+            .find(|root| selected.starts_with(root));
+        let selected = if let Some(root) = managed_root {
+            let relative = selected
+                .strip_prefix(&root)
+                .map_err(|_| RuntimeError::PathNotAllowed)?;
+            if relative.as_os_str().is_empty() {
+                root
+            } else {
+                self.engine.policy().resolve(&root, relative)?
+            }
+        } else if self
+            .discovery_policy
+            .roots()
+            .iter()
+            .any(|root| root == &selected)
+        {
+            selected
         } else {
-            self.engine.policy().resolve(&root, relative)?
+            return Err(RuntimeError::PathNotAllowed);
         };
         let secret = Regex::new(r"(?i)(-----BEGIN [A-Z ]*PRIVATE KEY-----|AKIA[0-9A-Z]{16}|(?:api[_-]?key|token|secret)\s*[:=]\s*[^\s]{8,})").map_err(|_| RuntimeError::InvalidInput)?;
         let personal = Regex::new(
@@ -398,30 +574,15 @@ impl Runtime {
             blocked: false,
             requires_confirmation: false,
         };
-        for entry in WalkDir::new(&selected)
-            .follow_links(false)
-            .into_iter()
-            .filter_entry(|entry| !ignored(entry.path()))
-        {
-            let entry = entry.map_err(|_| RuntimeError::TransactionFailed)?;
-            if entry.path_is_symlink() {
-                return Err(RuntimeError::SymlinkRejected);
-            }
-            if !entry.file_type().is_file() {
-                continue;
-            }
-            let metadata = entry
+        for file in safe_package_files(&selected)? {
+            let metadata = file
+                .source_path
                 .metadata()
                 .map_err(|_| RuntimeError::TransactionFailed)?;
-            let relative_path = entry
-                .path()
-                .strip_prefix(&selected)
-                .unwrap_or(entry.path())
-                .to_string_lossy()
-                .replace('\\', "/");
+            let relative_path = normalized_relative_path(&file.relative_path);
             let lower_path = relative_path.to_ascii_lowercase();
-            let file_name = entry
-                .path()
+            let file_name = file
+                .source_path
                 .file_name()
                 .and_then(|name| name.to_str())
                 .unwrap_or("")
@@ -481,8 +642,8 @@ impl Runtime {
             }
             report.files += 1;
             report.bytes += metadata.len();
-            let content =
-                std::fs::read(entry.path()).map_err(|_| RuntimeError::TransactionFailed)?;
+            let content = std::fs::read(&file.source_path)
+                .map_err(|_| RuntimeError::TransactionFailed)?;
             if let Ok(text) = std::str::from_utf8(&content) {
                 for (rule, severity, matcher) in [
                     ("potential-secret", "high", &secret),
@@ -562,15 +723,32 @@ impl Runtime {
             .map(|(_, directory, extension)| (*directory, *extension))
             .ok_or(RuntimeError::InvalidInput)?;
         let root = Path::new(&input.root_path);
-        let source_relative = if input.component_type == "skill" {
-            format!("{component_directory}/{}", input.slug)
+        let source = if let Some(source_path) = &input.source_path {
+            if input.component_type != "skill" {
+                return Err(RuntimeError::InvalidInput);
+            }
+            let source = Path::new(source_path)
+                .canonicalize()
+                .map_err(|_| RuntimeError::PathNotAllowed)?;
+            if !self
+                .discovery_policy
+                .roots()
+                .iter()
+                .any(|allowed| allowed == &source)
+            {
+                return Err(RuntimeError::PathNotAllowed);
+            }
+            source
         } else {
-            format!("{component_directory}/{}.{native_extension}", input.slug)
+            let source_relative = if input.component_type == "skill" {
+                format!("{component_directory}/{}", input.slug)
+            } else {
+                format!("{component_directory}/{}.{native_extension}", input.slug)
+            };
+            self.engine
+                .policy()
+                .resolve(root, Path::new(&source_relative))?
         };
-        let source = self
-            .engine
-            .policy()
-            .resolve(root, Path::new(&source_relative))?;
         if (input.component_type == "skill" && !source.is_dir())
             || (input.component_type != "skill" && !source.is_file())
         {
@@ -585,31 +763,17 @@ impl Runtime {
         let mut files: Vec<(String, Vec<u8>)> = Vec::new();
         if source.is_file() {
             let native = std::fs::read(&source).map_err(|_| RuntimeError::TransactionFailed)?;
-            files.push((canonical_root.clone(), canonical_component_content(
-                &input.adapter_id,
-                &input.component_type,
-                native,
-            )?));
+            files.push((
+                canonical_root.clone(),
+                canonical_component_content(&input.adapter_id, &input.component_type, native)?,
+            ));
         } else {
-            for entry in WalkDir::new(&source).follow_links(false) {
-                let entry = entry.map_err(|_| RuntimeError::TransactionFailed)?;
-                if entry.path_is_symlink() {
-                    return Err(RuntimeError::SymlinkRejected);
-                }
-                if !entry.file_type().is_file() {
-                    continue;
-                }
-                let relative = entry
-                    .path()
-                    .strip_prefix(&source)
-                    .map_err(|_| RuntimeError::PathNotAllowed)?
-                    .components()
-                    .map(|part| part.as_os_str().to_string_lossy())
-                    .collect::<Vec<_>>()
-                    .join("/");
+            for file in safe_package_files(&source)? {
+                let relative = normalized_relative_path(&file.relative_path);
                 files.push((
                     format!("{canonical_root}/{relative}"),
-                    std::fs::read(entry.path()).map_err(|_| RuntimeError::TransactionFailed)?,
+                    std::fs::read(file.source_path)
+                        .map_err(|_| RuntimeError::TransactionFailed)?,
                 ));
             }
         }
@@ -678,16 +842,17 @@ impl Runtime {
             return Err(RuntimeError::PathNotAllowed);
         }
         let canonical_root = root.to_string_lossy().into_owned();
-        let mut lock = self
-            .database
-            .load_lock(&input.adapter_id, &input.capability_slug, &canonical_root)?;
+        let mut lock =
+            self.database
+                .load_lock(&input.adapter_id, &input.capability_slug, &canonical_root)?;
         if lock.is_none() && canonical_root != input.root_path {
-            lock = self
-                .database
-                .load_lock(&input.adapter_id, &input.capability_slug, &input.root_path)?;
+            lock = self.database.load_lock(
+                &input.adapter_id,
+                &input.capability_slug,
+                &input.root_path,
+            )?;
         }
-        lock
-            .map(|json| serde_json::from_str(&json).map_err(|_| RuntimeError::Database))
+        lock.map(|json| serde_json::from_str(&json).map_err(|_| RuntimeError::Database))
             .transpose()
     }
     pub fn uninstall(&self, input: &UninstallInput) -> RuntimeResult<ApplyResult> {
@@ -878,7 +1043,8 @@ fn canonical_component_content(
 ) -> RuntimeResult<Vec<u8>> {
     if adapter_id == "gemini-cli" && component_type == "prompt" {
         let text = std::str::from_utf8(&native).map_err(|_| RuntimeError::InvalidInput)?;
-        let document = toml::from_str::<toml::Table>(text).map_err(|_| RuntimeError::InvalidInput)?;
+        let document =
+            toml::from_str::<toml::Table>(text).map_err(|_| RuntimeError::InvalidInput)?;
         return document
             .get("prompt")
             .and_then(toml::Value::as_str)
@@ -895,42 +1061,81 @@ fn canonical_component_content(
     Ok(native)
 }
 
-fn package_digest(source: &Path) -> RuntimeResult<String> {
-    let root = if source.is_dir() {
-        source
-    } else {
-        source.parent().ok_or(RuntimeError::InvalidInput)?
-    };
-    let mut files = Vec::new();
-    if source.is_file() {
-        files.push(source.to_path_buf());
-    } else {
-        for entry in WalkDir::new(source).follow_links(false) {
-            let entry = entry.map_err(|_| RuntimeError::TransactionFailed)?;
-            if entry.path_is_symlink() {
-                return Err(RuntimeError::SymlinkRejected);
-            }
-            if entry.file_type().is_file() {
-                files.push(entry.path().to_path_buf());
-            }
-        }
+#[derive(Debug)]
+struct PackageFile {
+    relative_path: PathBuf,
+    source_path: PathBuf,
+}
+
+fn safe_package_files(source: &Path) -> RuntimeResult<Vec<PackageFile>> {
+    let canonical_source = source
+        .canonicalize()
+        .map_err(|_| RuntimeError::PathNotAllowed)?;
+    if canonical_source.is_file() {
+        return Ok(vec![PackageFile {
+            relative_path: canonical_source
+                .file_name()
+                .map(PathBuf::from)
+                .ok_or(RuntimeError::InvalidInput)?,
+            source_path: canonical_source,
+        }]);
     }
-    files.sort_by(|left, right| {
-        left.strip_prefix(root)
-            .unwrap_or(left)
-            .cmp(right.strip_prefix(root).unwrap_or(right))
-    });
+    if !canonical_source.is_dir() {
+        return Err(RuntimeError::InvalidInput);
+    }
+
+    let mut files = Vec::new();
+    for entry in WalkDir::new(&canonical_source)
+        .follow_links(true)
+        .into_iter()
+        .filter_entry(|entry| !ignored(entry.path()))
+    {
+        let entry = entry.map_err(|error| {
+            if error.loop_ancestor().is_some() || error.io_error().is_some() {
+                RuntimeError::SymlinkRejected
+            } else {
+                RuntimeError::TransactionFailed
+            }
+        })?;
+        let canonical_entry = entry
+            .path()
+            .canonicalize()
+            .map_err(|_| RuntimeError::SymlinkRejected)?;
+        if !canonical_entry.starts_with(&canonical_source) {
+            return Err(RuntimeError::SymlinkRejected);
+        }
+        if !canonical_entry.is_file() {
+            continue;
+        }
+        let relative_path = entry
+            .path()
+            .strip_prefix(&canonical_source)
+            .map_err(|_| RuntimeError::PathNotAllowed)?
+            .to_path_buf();
+        files.push(PackageFile {
+            relative_path,
+            source_path: canonical_entry,
+        });
+    }
+    files.sort_by(|left, right| left.relative_path.cmp(&right.relative_path));
+    Ok(files)
+}
+
+fn normalized_relative_path(relative: &Path) -> String {
+    relative
+        .components()
+        .map(|component| component.as_os_str().to_string_lossy())
+        .collect::<Vec<_>>()
+        .join("/")
+}
+
+fn package_digest(source: &Path) -> RuntimeResult<String> {
+    let files = safe_package_files(source)?;
     let mut hash = Sha256::new();
     for file in files {
-        let relative = file
-            .strip_prefix(root)
-            .map_err(|_| RuntimeError::PathNotAllowed)?;
-        let normalized = relative
-            .components()
-            .map(|component| component.as_os_str().to_string_lossy())
-            .collect::<Vec<_>>()
-            .join("/");
-        let content = std::fs::read(&file).map_err(|_| RuntimeError::TransactionFailed)?;
+        let normalized = normalized_relative_path(&file.relative_path);
+        let content =
+            std::fs::read(&file.source_path).map_err(|_| RuntimeError::TransactionFailed)?;
         let path_bytes = normalized.as_bytes();
         let path_length =
             u32::try_from(path_bytes.len()).map_err(|_| RuntimeError::InvalidInput)?;
@@ -1068,7 +1273,11 @@ mod tests {
         let root = tempdir().unwrap();
         let project = root.path().join("bound-project");
         std::fs::create_dir_all(project.join(".cursor/rules")).unwrap();
-        std::fs::write(project.join(".cursor/rules/security.mdc"), "Always scan uploads").unwrap();
+        std::fs::write(
+            project.join(".cursor/rules/security.mdc"),
+            "Always scan uploads",
+        )
+        .unwrap();
         let runtime = Runtime::new(
             &root.path().join("state.db"),
             root.path().join("empty-home"),
@@ -1119,24 +1328,34 @@ mod tests {
         )
         .unwrap();
         let agents = runtime.detect_agents().unwrap();
-        let cursor = agents.iter().find(|agent| agent.adapter_id == "cursor").unwrap();
-        let gemini = agents.iter().find(|agent| agent.adapter_id == "gemini-cli").unwrap();
-        assert!(runtime
-            .inventory_agent(&InventoryInput {
-                adapter_id: "cursor".into(),
-                root_path: cursor.root_path.clone(),
-            })
-            .unwrap()
+        let cursor = agents
             .iter()
-            .any(|item| item.slug == "security" && item.component_type == "context"));
-        assert!(runtime
-            .inventory_agent(&InventoryInput {
-                adapter_id: "gemini-cli".into(),
-                root_path: gemini.root_path.clone(),
-            })
-            .unwrap()
+            .find(|agent| agent.adapter_id == "cursor")
+            .unwrap();
+        let gemini = agents
             .iter()
-            .any(|item| item.slug == "review" && item.component_type == "prompt"));
+            .find(|agent| agent.adapter_id == "gemini-cli")
+            .unwrap();
+        assert!(
+            runtime
+                .inventory_agent(&InventoryInput {
+                    adapter_id: "cursor".into(),
+                    root_path: cursor.root_path.clone(),
+                })
+                .unwrap()
+                .iter()
+                .any(|item| item.slug == "security" && item.component_type == "context")
+        );
+        assert!(
+            runtime
+                .inventory_agent(&InventoryInput {
+                    adapter_id: "gemini-cli".into(),
+                    root_path: gemini.root_path.clone(),
+                })
+                .unwrap()
+                .iter()
+                .any(|item| item.slug == "review" && item.component_type == "prompt")
+        );
 
         let exported = runtime
             .export_local_package(&ExportPackageInput {
@@ -1144,6 +1363,7 @@ mod tests {
                 root_path: gemini.root_path.clone(),
                 component_type: "prompt".into(),
                 slug: "review".into(),
+                source_path: None,
             })
             .unwrap();
         let archive = base64::engine::general_purpose::STANDARD
@@ -1375,6 +1595,123 @@ mod tests {
         );
     }
 
+    #[cfg(unix)]
+    #[test]
+    fn discovers_all_trusted_skill_sources_without_authorizing_arbitrary_paths() {
+        use std::os::unix::fs::symlink;
+
+        let root = tempdir().unwrap();
+        let home = root.path().join("home");
+        let external = tempdir().unwrap();
+        let arbitrary = tempdir().unwrap();
+        for path in [
+            home.join(".agents/skills/shared"),
+            home.join(".codex/skills/global"),
+            home.join(".codex/plugins/cache/vendor/plugin/1.0.0/skills/plugin-skill"),
+            external.path().join("linked-skill"),
+            arbitrary.path().join("untrusted"),
+        ] {
+            std::fs::create_dir_all(&path).unwrap();
+            std::fs::write(path.join("SKILL.md"), format!("# {}", path.display())).unwrap();
+        }
+        symlink(
+            external.path().join("linked-skill"),
+            home.join(".agents/skills/linked-skill"),
+        )
+        .unwrap();
+        let runtime = Runtime::new(
+            &root.path().join("state.db"),
+            home,
+            None,
+            Arc::new(MemoryCredentialStore::default()),
+        )
+        .unwrap();
+
+        let report = runtime.discover_local_skills().unwrap();
+
+        assert_eq!(
+            report
+                .skills
+                .iter()
+                .map(|skill| (skill.slug.as_str(), skill.source_kind.as_str(), skill.linked))
+                .collect::<Vec<_>>(),
+            vec![
+                ("global", "global", false),
+                ("linked-skill", "shared", true),
+                ("plugin-skill", "plugin", false),
+                ("shared", "shared", false),
+            ]
+        );
+        assert!(runtime
+            .scan_local_package(&PathInput {
+                path: arbitrary
+                    .path()
+                    .join("untrusted")
+                    .to_string_lossy()
+                    .into(),
+            })
+            .is_err());
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn allows_in_package_links_and_rejects_package_link_escapes() {
+        use std::os::unix::fs::symlink;
+
+        let root = tempdir().unwrap();
+        let home = root.path().join("home");
+        let skills = home.join(".codex/skills");
+        let safe = skills.join("safe-linked-files");
+        let escaped = skills.join("escaped-files");
+        let outside = root.path().join("outside-secret.md");
+        std::fs::create_dir_all(safe.join("references")).unwrap();
+        std::fs::write(safe.join("SKILL.md"), "# Safe linked files").unwrap();
+        std::fs::write(safe.join("references/source.md"), "inside package").unwrap();
+        symlink("references/source.md", safe.join("alias.md")).unwrap();
+        std::fs::create_dir_all(&escaped).unwrap();
+        std::fs::write(escaped.join("SKILL.md"), "# Escaped files").unwrap();
+        std::fs::write(&outside, "outside package").unwrap();
+        symlink(&outside, escaped.join("secret.md")).unwrap();
+        let runtime = Runtime::new(
+            &root.path().join("state.db"),
+            home,
+            None,
+            Arc::new(MemoryCredentialStore::default()),
+        )
+        .unwrap();
+
+        let report = runtime.discover_local_skills().unwrap();
+
+        assert!(report.skills.iter().any(|skill| skill.slug == "safe-linked-files"));
+        assert!(!report.skills.iter().any(|skill| skill.slug == "escaped-files"));
+        assert!(report.issues.iter().any(|issue| {
+            issue.path.ends_with("escaped-files") && issue.reason == "package-symlink-escape"
+        }));
+        let safe_path = safe.canonicalize().unwrap();
+        let scan = runtime
+            .scan_local_package(&PathInput {
+                path: safe_path.to_string_lossy().into_owned(),
+            })
+            .unwrap();
+        assert_eq!(scan.files, 3);
+        let exported = runtime
+            .export_local_package(&ExportPackageInput {
+                adapter_id: "codex".into(),
+                root_path: String::new(),
+                component_type: "skill".into(),
+                slug: "safe-linked-files".into(),
+                source_path: Some(safe_path.to_string_lossy().into_owned()),
+            })
+            .unwrap();
+        let archive = base64::engine::general_purpose::STANDARD
+            .decode(exported.archive_base64)
+            .unwrap();
+        let mut zip = zip::ZipArchive::new(std::io::Cursor::new(archive)).unwrap();
+        assert!(zip
+            .by_name("skills/safe-linked-files/alias.md")
+            .is_ok());
+    }
+
     #[test]
     fn scanner_never_includes_local_transaction_metadata() {
         let (root, runtime) = runtime();
@@ -1400,6 +1737,7 @@ mod tests {
                 root_path: agent.root_path,
                 component_type: "skill".into(),
                 slug: "release".into(),
+                source_path: None,
             })
             .unwrap();
         assert_eq!(exported.file_name, "release.zip");

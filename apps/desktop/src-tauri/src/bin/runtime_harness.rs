@@ -1,8 +1,8 @@
+use base64::Engine;
 use capaport_runtime::RuntimeError;
 use capaport_runtime::commands::{ExportPackageInput, Runtime, UninstallInput};
 use capaport_runtime::credentials::MemoryCredentialStore;
 use capaport_runtime::files::{ChangeKind, InstallPlan, PlannedWrite};
-use base64::Engine;
 use serde::Serialize;
 use sha2::{Digest, Sha256};
 use std::path::Path;
@@ -69,8 +69,8 @@ fn run() -> Result<HarnessReport, Box<dyn std::error::Error>> {
         Some(digest(version_1)),
     );
     let update_preview = runtime.preview_install(&update)?;
-    let clean_update = update_preview.conflicts == 0
-        && update_preview.changes[0].kind == ChangeKind::Update;
+    let clean_update =
+        update_preview.conflicts == 0 && update_preview.changes[0].kind == ChangeKind::Update;
     runtime.apply_install(&update)?;
 
     std::fs::write(&target, b"# Version 2\nLocal customization.\n")?;
@@ -82,12 +82,16 @@ fn run() -> Result<HarnessReport, Box<dyn std::error::Error>> {
     );
     let conflict_preview = runtime.preview_install(&conflict)?;
     let conflict_blocked = conflict_preview.conflicts == 1
-        && matches!(runtime.apply_install(&conflict), Err(RuntimeError::LocalModificationConflict));
+        && matches!(
+            runtime.apply_install(&conflict),
+            Err(RuntimeError::LocalModificationConflict)
+        );
     let exported = runtime.export_local_package(&ExportPackageInput {
         adapter_id: "codex".into(),
         root_path: root.to_string_lossy().into(),
         component_type: "skill".into(),
         slug: "release".into(),
+        source_path: None,
     })?;
     let local_import_exported = exported.size_bytes > 0 && !exported.archive_base64.is_empty();
 
@@ -113,7 +117,8 @@ fn run() -> Result<HarnessReport, Box<dyn std::error::Error>> {
     let uninstall_rollback_recovered = std::fs::read(&target)? == version_2
         && runtime.load_install_lock(&uninstall_input)?.is_some();
     runtime.uninstall(&uninstall_input)?;
-    let final_uninstall_removed = !target.exists() && runtime.load_install_lock(&uninstall_input)?.is_none();
+    let final_uninstall_removed =
+        !target.exists() && runtime.load_install_lock(&uninstall_input)?.is_none();
 
     std::fs::remove_dir_all(&fixture)?;
     Ok(HarnessReport {
@@ -129,7 +134,10 @@ fn run() -> Result<HarnessReport, Box<dyn std::error::Error>> {
 
 fn main() {
     match run() {
-        Ok(report) => println!("{}", serde_json::to_string(&report).expect("report serialization failed")),
+        Ok(report) => println!(
+            "{}",
+            serde_json::to_string(&report).expect("report serialization failed")
+        ),
         Err(error) => {
             eprintln!("runtime-harness-error={error}");
             std::process::exit(1);
