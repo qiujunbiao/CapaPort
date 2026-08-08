@@ -1,0 +1,1187 @@
+{
+  "components": {
+    "schemas": {},
+    "securitySchemes": {
+      "bearer": {
+        "bearerFormat": "JWT",
+        "scheme": "bearer",
+        "type": "http"
+      },
+      "idempotency": {
+        "in": "header",
+        "name": "idempotency-key",
+        "type": "apiKey"
+      },
+      "organization": {
+        "in": "header",
+        "name": "x-organization-id",
+        "type": "apiKey"
+      }
+    }
+  },
+  "info": {
+    "contact": {},
+    "description": "Cloud API for governed capability discovery, publishing, installation, and organization sharing.",
+    "title": "Agentdoor API",
+    "version": "1.0.0"
+  },
+  "openapi": "3.0.0",
+  "paths": {
+    "/api/v1/analytics/events": {
+      "post": {
+        "operationId": "analytics_event",
+        "parameters": [],
+        "responses": {
+          "202": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Analytics"
+        ]
+      }
+    },
+    "/api/v1/analytics/metrics": {
+      "get": {
+        "operationId": "analytics_metrics",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Analytics"
+        ]
+      }
+    },
+    "/api/v1/artifacts/uploads": {
+      "post": {
+        "operationId": "artifact_requestUpload",
+        "parameters": [],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Artifact"
+        ]
+      }
+    },
+    "/api/v1/artifacts/uploads/{uploadId}/confirm": {
+      "post": {
+        "operationId": "artifact_confirmUpload",
+        "parameters": [],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Artifact"
+        ]
+      }
+    },
+    "/api/v1/audit": {
+      "get": {
+        "operationId": "audit_list",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Audit"
+        ]
+      }
+    },
+    "/api/v1/auth/login": {
+      "post": {
+        "operationId": "auth_login",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Auth"
+        ]
+      }
+    },
+    "/api/v1/auth/logout": {
+      "post": {
+        "operationId": "auth_logout",
+        "parameters": [],
+        "responses": {
+          "204": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Auth"
+        ]
+      }
+    },
+    "/api/v1/auth/me": {
+      "get": {
+        "operationId": "auth_me",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Auth"
+        ]
+      }
+    },
+    "/api/v1/auth/recovery/complete": {
+      "post": {
+        "operationId": "auth_completeRecovery",
+        "parameters": [],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Auth"
+        ]
+      }
+    },
+    "/api/v1/auth/recovery/start": {
+      "post": {
+        "operationId": "auth_startRecovery",
+        "parameters": [],
+        "responses": {
+          "202": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Auth"
+        ]
+      }
+    },
+    "/api/v1/auth/refresh": {
+      "post": {
+        "operationId": "auth_refresh",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Auth"
+        ]
+      }
+    },
+    "/api/v1/auth/register": {
+      "post": {
+        "operationId": "auth_register",
+        "parameters": [],
+        "responses": {
+          "202": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Auth"
+        ]
+      }
+    },
+    "/api/v1/auth/sessions": {
+      "get": {
+        "operationId": "auth_listSessions",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Auth"
+        ]
+      }
+    },
+    "/api/v1/auth/sessions/{sessionId}": {
+      "delete": {
+        "operationId": "auth_revokeSession",
+        "parameters": [],
+        "responses": {
+          "204": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Auth"
+        ]
+      }
+    },
+    "/api/v1/auth/verify": {
+      "post": {
+        "operationId": "auth_verify",
+        "parameters": [],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Auth"
+        ]
+      }
+    },
+    "/api/v1/capabilities": {
+      "get": {
+        "operationId": "capability_search",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Capability"
+        ]
+      },
+      "post": {
+        "operationId": "capability_create",
+        "parameters": [],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Capability"
+        ]
+      }
+    },
+    "/api/v1/capabilities/{capabilityId}": {
+      "get": {
+        "operationId": "capability_get",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Capability"
+        ]
+      },
+      "patch": {
+        "operationId": "capability_update",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Capability"
+        ]
+      }
+    },
+    "/api/v1/capabilities/{capabilityId}/drafts": {
+      "get": {
+        "operationId": "capability_drafts",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Capability"
+        ]
+      },
+      "post": {
+        "operationId": "capability_createDraft",
+        "parameters": [],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Capability"
+        ]
+      }
+    },
+    "/api/v1/capabilities/{capabilityId}/drafts/{draftId}/revisions": {
+      "get": {
+        "operationId": "capability_revisions",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Capability"
+        ]
+      },
+      "post": {
+        "operationId": "capability_createRevision",
+        "parameters": [],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Capability"
+        ]
+      }
+    },
+    "/api/v1/capabilities/{capabilityId}/drafts/{draftId}/revisions/{revisionId}/download": {
+      "get": {
+        "operationId": "capability_downloadRevision",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Capability"
+        ]
+      }
+    },
+    "/api/v1/capabilities/{capabilityId}/promotions": {
+      "post": {
+        "operationId": "version_promote",
+        "parameters": [],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Version"
+        ]
+      }
+    },
+    "/api/v1/capabilities/{capabilityId}/publications": {
+      "post": {
+        "operationId": "version_submit",
+        "parameters": [],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Version"
+        ]
+      }
+    },
+    "/api/v1/capabilities/{capabilityId}/versions": {
+      "get": {
+        "operationId": "version_versions",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Version"
+        ]
+      }
+    },
+    "/api/v1/capabilities/{capabilityId}/versions/{versionId}": {
+      "get": {
+        "operationId": "version_version",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Version"
+        ]
+      }
+    },
+    "/api/v1/capabilities/{capabilityId}/versions/{versionId}/archive": {
+      "post": {
+        "operationId": "version_archive",
+        "parameters": [],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Version"
+        ]
+      }
+    },
+    "/api/v1/capabilities/{capabilityId}/versions/{versionId}/deprecate": {
+      "post": {
+        "operationId": "version_deprecate",
+        "parameters": [],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Version"
+        ]
+      }
+    },
+    "/api/v1/capabilities/{capabilityId}/versions/{versionId}/diff": {
+      "get": {
+        "operationId": "version_diff",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Version"
+        ]
+      }
+    },
+    "/api/v1/capabilities/{capabilityId}/versions/{versionId}/withdraw": {
+      "post": {
+        "operationId": "version_withdrawVersion",
+        "parameters": [],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Version"
+        ]
+      }
+    },
+    "/api/v1/devices": {
+      "get": {
+        "operationId": "device_list",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Device"
+        ]
+      },
+      "post": {
+        "operationId": "device_register",
+        "parameters": [],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Device"
+        ]
+      }
+    },
+    "/api/v1/devices/{deviceId}": {
+      "delete": {
+        "operationId": "device_revoke",
+        "parameters": [],
+        "responses": {
+          "204": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Device"
+        ]
+      },
+      "patch": {
+        "operationId": "device_update",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Device"
+        ]
+      }
+    },
+    "/api/v1/distribution/install-plans": {
+      "post": {
+        "operationId": "distribution_installPlan",
+        "parameters": [],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Distribution"
+        ]
+      }
+    },
+    "/api/v1/health/live": {
+      "get": {
+        "operationId": "health_live",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Health"
+        ]
+      }
+    },
+    "/api/v1/health/ready": {
+      "get": {
+        "operationId": "health_ready",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Health"
+        ]
+      }
+    },
+    "/api/v1/installations": {
+      "get": {
+        "operationId": "installation_list",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Installation"
+        ]
+      },
+      "post": {
+        "operationId": "installation_report",
+        "parameters": [],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Installation"
+        ]
+      }
+    },
+    "/api/v1/installations/{installationId}/update-check": {
+      "get": {
+        "operationId": "installation_updateCheck",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Installation"
+        ]
+      }
+    },
+    "/api/v1/metrics": {
+      "get": {
+        "operationId": "telemetry_metrics",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Telemetry"
+        ]
+      }
+    },
+    "/api/v1/notifications": {
+      "get": {
+        "operationId": "notification_list",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Notification"
+        ]
+      }
+    },
+    "/api/v1/notifications/{notificationId}/read": {
+      "patch": {
+        "operationId": "notification_markRead",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Notification"
+        ]
+      }
+    },
+    "/api/v1/notifications/dead-letters": {
+      "get": {
+        "operationId": "notification_deadLetters",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Notification"
+        ]
+      }
+    },
+    "/api/v1/organizations": {
+      "get": {
+        "operationId": "organization_list",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Organization"
+        ]
+      },
+      "post": {
+        "operationId": "organization_create",
+        "parameters": [],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Organization"
+        ]
+      }
+    },
+    "/api/v1/organizations/{organizationId}": {
+      "delete": {
+        "operationId": "organization_archive",
+        "parameters": [],
+        "responses": {
+          "204": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Organization"
+        ]
+      },
+      "get": {
+        "operationId": "organization_get",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Organization"
+        ]
+      },
+      "patch": {
+        "operationId": "organization_update",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Organization"
+        ]
+      }
+    },
+    "/api/v1/organizations/{organizationId}/invitations": {
+      "get": {
+        "operationId": "organization_invitations",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Organization"
+        ]
+      },
+      "post": {
+        "operationId": "organization_invite",
+        "parameters": [],
+        "responses": {
+          "202": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Organization"
+        ]
+      }
+    },
+    "/api/v1/organizations/{organizationId}/invitations/{invitationId}": {
+      "delete": {
+        "operationId": "organization_revokeInvitation",
+        "parameters": [],
+        "responses": {
+          "204": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Organization"
+        ]
+      }
+    },
+    "/api/v1/organizations/{organizationId}/leave": {
+      "post": {
+        "operationId": "organization_leave",
+        "parameters": [],
+        "responses": {
+          "204": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Organization"
+        ]
+      }
+    },
+    "/api/v1/organizations/{organizationId}/members": {
+      "get": {
+        "operationId": "organization_members",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Organization"
+        ]
+      }
+    },
+    "/api/v1/organizations/{organizationId}/members/{membershipId}": {
+      "delete": {
+        "operationId": "organization_removeMember",
+        "parameters": [],
+        "responses": {
+          "204": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Organization"
+        ]
+      }
+    },
+    "/api/v1/organizations/{organizationId}/members/{membershipId}/role": {
+      "patch": {
+        "operationId": "organization_changeRole",
+        "parameters": [],
+        "responses": {
+          "204": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Organization"
+        ]
+      }
+    },
+    "/api/v1/organizations/{organizationId}/owner/transfer": {
+      "post": {
+        "operationId": "organization_transferOwnership",
+        "parameters": [],
+        "responses": {
+          "204": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Organization"
+        ]
+      }
+    },
+    "/api/v1/organizations/{organizationId}/switch": {
+      "post": {
+        "operationId": "organization_switch",
+        "parameters": [],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Organization"
+        ]
+      }
+    },
+    "/api/v1/organizations/invitations/accept": {
+      "post": {
+        "operationId": "organization_accept",
+        "parameters": [],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Organization"
+        ]
+      }
+    },
+    "/api/v1/projects/{spaceId}/bindings": {
+      "get": {
+        "operationId": "project_listBindings",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Project"
+        ]
+      },
+      "post": {
+        "operationId": "project_createBinding",
+        "parameters": [],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Project"
+        ]
+      }
+    },
+    "/api/v1/projects/{spaceId}/bindings/{bindingId}": {
+      "delete": {
+        "operationId": "project_removeBinding",
+        "parameters": [],
+        "responses": {
+          "204": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Project"
+        ]
+      }
+    },
+    "/api/v1/projects/{spaceId}/contexts": {
+      "get": {
+        "operationId": "project_listContexts",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Project"
+        ]
+      },
+      "post": {
+        "operationId": "project_registerContext",
+        "parameters": [],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Project"
+        ]
+      }
+    },
+    "/api/v1/projects/{spaceId}/contexts/{contextId}/download": {
+      "get": {
+        "operationId": "project_downloadContext",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Project"
+        ]
+      }
+    },
+    "/api/v1/publications": {
+      "get": {
+        "operationId": "publication_list",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Publication"
+        ]
+      }
+    },
+    "/api/v1/publications/{publicationId}": {
+      "get": {
+        "operationId": "publication_get",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Publication"
+        ]
+      }
+    },
+    "/api/v1/publications/{publicationId}/approve": {
+      "post": {
+        "operationId": "publication_approve",
+        "parameters": [],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Publication"
+        ]
+      }
+    },
+    "/api/v1/publications/{publicationId}/diff": {
+      "get": {
+        "operationId": "publication_candidateDiff",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Publication"
+        ]
+      }
+    },
+    "/api/v1/publications/{publicationId}/reject": {
+      "post": {
+        "operationId": "publication_reject",
+        "parameters": [],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Publication"
+        ]
+      }
+    },
+    "/api/v1/publications/{publicationId}/request-changes": {
+      "post": {
+        "operationId": "publication_requestChanges",
+        "parameters": [],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Publication"
+        ]
+      }
+    },
+    "/api/v1/publications/{publicationId}/scan-report": {
+      "get": {
+        "operationId": "publication_scanReport",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Publication"
+        ]
+      }
+    },
+    "/api/v1/publications/{publicationId}/withdraw": {
+      "post": {
+        "operationId": "publication_withdraw",
+        "parameters": [],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Publication"
+        ]
+      }
+    },
+    "/api/v1/spaces": {
+      "get": {
+        "operationId": "space_list",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Space"
+        ]
+      },
+      "post": {
+        "operationId": "space_create",
+        "parameters": [],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Space"
+        ]
+      }
+    },
+    "/api/v1/spaces/{spaceId}": {
+      "delete": {
+        "operationId": "space_archive",
+        "parameters": [],
+        "responses": {
+          "204": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Space"
+        ]
+      },
+      "get": {
+        "operationId": "space_get",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Space"
+        ]
+      },
+      "patch": {
+        "operationId": "space_update",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Space"
+        ]
+      }
+    },
+    "/api/v1/spaces/{spaceId}/members": {
+      "get": {
+        "operationId": "space_members",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Space"
+        ]
+      },
+      "post": {
+        "operationId": "space_addMember",
+        "parameters": [],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Space"
+        ]
+      }
+    },
+    "/api/v1/spaces/{spaceId}/members/{spaceMembershipId}": {
+      "delete": {
+        "operationId": "space_removeMember",
+        "parameters": [],
+        "responses": {
+          "204": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Space"
+        ]
+      },
+      "patch": {
+        "operationId": "space_changeMemberRole",
+        "parameters": [],
+        "responses": {
+          "204": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Space"
+        ]
+      }
+    },
+    "/api/v1/spaces/{spaceId}/review-policy": {
+      "patch": {
+        "operationId": "space_updateReviewPolicy",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Space"
+        ]
+      }
+    }
+  },
+  "servers": [],
+  "tags": []
+}

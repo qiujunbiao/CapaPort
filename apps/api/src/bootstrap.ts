@@ -1,4 +1,5 @@
 import type { INestApplication } from '@nestjs/common';
+import { registerOpenApi } from './openapi.js';
 import { AppExceptionFilter } from './platform/errors/app-exception.filter.js';
 
 export function configureApplication(app: INestApplication): void {
@@ -24,5 +25,6 @@ export function configureApplication(app: INestApplication): void {
     maxAge: 86_400,
   });
   app.useGlobalFilters(new AppExceptionFilter());
+  registerOpenApi(app);
   app.enableShutdownHooks();
 }

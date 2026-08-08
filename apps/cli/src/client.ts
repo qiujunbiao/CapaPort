@@ -1,13 +1,20 @@
-import { randomUUID } from 'node:crypto';
-import type { TokenPair } from '@agentdoor/contracts';
+import { AgentdoorClient, AgentdoorSdkError } from '@agentdoor/sdk';
 import type { CredentialStore } from './credentials.js';
 import { AuthError, NetworkError } from './parser.js';
 
 export class ApiClient {
+  private readonly sdk: AgentdoorClient;
+
   constructor(
-    private readonly baseUrl: string,
+    baseUrl: string,
     private readonly credentials: CredentialStore,
-  ) {}
+  ) {
+    this.sdk = new AgentdoorClient({
+      baseUrl,
+      session: () => this.credentials.load(),
+      saveSession: (session) => this.credentials.save({ ...session, expiresIn: session.expiresIn ?? 900 }),
+    });
+  }
   async session(required = true) {
     const value = await this.credentials.load();
     if (!value && required) throw new AuthError('尚未登录，请运行 agentdoor auth login');
@@ -22,49 +29,21 @@ export class ApiClient {
       authenticated?: boolean;
       headers?: Record<string, string>;
     } = {},
-    retry = true,
   ): Promise<T> {
-    const session = await this.session(init.authenticated !== false);
-    const headers = new Headers({ accept: 'application/json', ...init.headers });
-    if (init.body !== undefined) headers.set('content-type', 'application/json');
-    if (init.authenticated !== false && session) headers.set('authorization', `Bearer ${session.accessToken}`);
-    const method = (init.method ?? 'GET').toUpperCase();
-    if (init.authenticated !== false && session && !['GET', 'HEAD', 'OPTIONS'].includes(method)) {
-      if (!headers.has('idempotency-key')) headers.set('idempotency-key', randomUUID());
-    }
-    const organizationId = init.organizationId ?? session?.organizationId;
-    if (organizationId) headers.set('x-organization-id', organizationId);
-    let response: Response;
+    if (init.authenticated !== false) await this.session();
     try {
-      response = await fetch(`${this.baseUrl}${path}`, {
-        method,
-        headers,
-        ...(init.body !== undefined ? { body: JSON.stringify(init.body) } : {}),
+      return await this.sdk.request<T>(path, {
+        ...init,
+        ...(init.headers ? { headers: init.headers } : {}),
       });
-    } catch {
-      throw new NetworkError('无法连接 Agentdoor 服务');
+    } catch (error) {
+      if (error instanceof AgentdoorSdkError && error.code === 'NETWORK_ERROR') {
+        throw new NetworkError('无法连接 Agentdoor 服务');
+      }
+      if (error instanceof AgentdoorSdkError && error.statusCode === 401) throw new AuthError(error.message);
+      if (error instanceof AgentdoorSdkError) throw new Error(error.message);
+      throw error;
     }
-    if (response.status === 401 && retry && session?.refreshToken && path !== '/auth/refresh') {
-      const refreshed = await this.request<TokenPair>(
-        '/auth/refresh',
-        { method: 'POST', body: { refreshToken: session.refreshToken }, authenticated: false },
-        false,
-      );
-      await this.credentials.save({
-        ...refreshed,
-        ...(session.organizationId ? { organizationId: session.organizationId } : {}),
-      });
-      return this.request(path, init, false);
-    }
-    if (!response.ok) {
-      const payload = (await response.json().catch(() => undefined)) as
-        | { message?: string; error?: { message?: string } }
-        | undefined;
-      if (response.status === 401) throw new AuthError(payload?.message ?? payload?.error?.message ?? '登录已失效');
-      throw new Error(payload?.message ?? payload?.error?.message ?? `请求失败 (${response.status})`);
-    }
-    if (response.status === 204) return undefined as T;
-    return response.json() as Promise<T>;
   }
   async raw(url: string, init?: RequestInit) {
     try {

@@ -1,4 +1,4 @@
-import type { TokenPair } from '@agentdoor/contracts';
+import { AgentdoorClient } from '@agentdoor/sdk';
 import type { WebClient, WebSessionStore } from './types';
 
 type RequestOptions = {
@@ -11,42 +11,14 @@ type RequestOptions = {
 
 export function createWebClient(baseUrl: string, sessionStore: WebSessionStore): WebClient {
   const api = baseUrl.replace(/\/$/, '');
+  const sdk = new AgentdoorClient({
+    baseUrl: api,
+    session: () => sessionStore.get(),
+    saveSession: (session) => sessionStore.set(session),
+  });
 
-  async function request<T>(path: string, options: RequestOptions = {}, retry = true): Promise<T> {
-    const session = sessionStore.get();
-    const headers = new Headers({ accept: 'application/json' });
-    if (options.body !== undefined) headers.set('content-type', 'application/json');
-    if (options.authenticated !== false && session) headers.set('authorization', `Bearer ${session.accessToken}`);
-    const method = (options.method ?? 'GET').toUpperCase();
-    const idempotencyKey =
-      options.authenticated !== false && session && !['GET', 'HEAD', 'OPTIONS'].includes(method)
-        ? (options.idempotencyKey ?? crypto.randomUUID())
-        : undefined;
-    if (idempotencyKey) headers.set('idempotency-key', idempotencyKey);
-    const organizationId = options.organizationId ?? session?.organizationId;
-    if (organizationId) headers.set('x-organization-id', organizationId);
-    const response = await fetch(`${api}${path}`, {
-      method,
-      headers,
-      ...(options.body !== undefined ? { body: JSON.stringify(options.body) } : {}),
-    });
-    if (response.status === 401 && retry && session?.refreshToken && path !== '/auth/refresh') {
-      const refreshed = await request<TokenPair>(
-        '/auth/refresh',
-        { method: 'POST', body: { refreshToken: session.refreshToken }, authenticated: false },
-        false,
-      );
-      sessionStore.set({ ...refreshed, ...(session.organizationId ? { organizationId: session.organizationId } : {}) });
-      return request<T>(path, { ...options, ...(idempotencyKey ? { idempotencyKey } : {}) }, false);
-    }
-    if (!response.ok) {
-      const payload = (await response.json().catch(() => undefined)) as
-        | { message?: string; error?: { message?: string; code?: string } }
-        | undefined;
-      throw new Error(payload?.message ?? payload?.error?.message ?? `请求失败 (${response.status})`);
-    }
-    if (response.status === 204) return undefined as T;
-    return response.json() as Promise<T>;
+  function request<T>(path: string, options: RequestOptions = {}): Promise<T> {
+    return sdk.request<T>(path, options);
   }
 
   const org = (organizationId: string) => ({ organizationId });

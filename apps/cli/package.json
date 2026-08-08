@@ -20,6 +20,7 @@
     "@agentdoor/adapter-sdk": "workspace:*",
     "@agentdoor/capability-kit": "workspace:*",
     "@agentdoor/contracts": "workspace:*",
+    "@agentdoor/sdk": "workspace:*",
     "@agentdoor/security-scan": "workspace:*"
   },
   "devDependencies": {

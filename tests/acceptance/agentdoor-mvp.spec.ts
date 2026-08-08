@@ -52,13 +52,17 @@ async function request<T>(
   options: RequestInit & { token?: string; expected?: number[] } = {},
 ): Promise<{ status: number; body: T; text: string }> {
   const { token, expected = [200, 201, 202, 204], ...requestOptions } = options;
+  const method = (requestOptions.method ?? 'GET').toUpperCase();
+  const headers = new Headers(requestOptions.headers);
+  if (requestOptions.body) headers.set('content-type', 'application/json');
+  if (token) headers.set('authorization', `Bearer ${token}`);
+  if (token && !['GET', 'HEAD', 'OPTIONS'].includes(method) && !headers.has('idempotency-key')) {
+    headers.set('idempotency-key', randomUUID());
+  }
   const response = await fetch(`${apiUrl}${path}`, {
     ...requestOptions,
-    headers: {
-      ...(requestOptions.body ? { 'content-type': 'application/json' } : {}),
-      ...(token ? { authorization: `Bearer ${token}` } : {}),
-      ...requestOptions.headers,
-    },
+    method,
+    headers,
   });
   const text = await response.text();
   if (!expected.includes(response.status))

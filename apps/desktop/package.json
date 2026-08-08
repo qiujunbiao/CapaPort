@@ -14,6 +14,7 @@
     "@agentdoor/capability-kit": "workspace:*",
     "@agentdoor/contracts": "workspace:*",
     "@agentdoor/security-scan": "workspace:*",
+    "@agentdoor/sdk": "workspace:*",
     "@tanstack/react-query": "5.101.4",
     "@tauri-apps/api": "2.11.1",
     "fflate": "0.8.3",

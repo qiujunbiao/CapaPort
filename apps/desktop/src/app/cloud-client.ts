@@ -3,7 +3,6 @@ import type {
   ArtifactUploadPlan,
   CapabilitySummary,
   CapabilityVersionSummary,
-  ErrorEnvelope,
   InstallPlan,
   OrganizationSummary,
   ProjectBindingSummary,
@@ -14,6 +13,7 @@ import type {
   TenantContext,
   TokenPair,
 } from '@agentdoor/contracts';
+import { AgentdoorClient, AgentdoorSdkError } from '@agentdoor/sdk';
 import type { CloudClient, DeviceSummary, InstallationSummary, LocalPackageExport, Session } from './types';
 
 export class CloudError extends Error {
@@ -36,27 +36,25 @@ function base64Bytes(value: string): Uint8Array {
 export function createCloudClient(
   baseUrl = import.meta.env.VITE_API_URL || 'http://127.0.0.1:3210/api/v1',
 ): CloudClient {
+  const sdk = new AgentdoorClient({ baseUrl });
+
   async function request<T>(
     path: string,
     options: RequestInit & { session?: Session; organizationId?: string } = {},
   ): Promise<T> {
-    const headers = new Headers(options.headers);
-    if (options.body && !headers.has('content-type')) headers.set('content-type', 'application/json');
-    if (options.session) headers.set('authorization', `Bearer ${options.session.accessToken}`);
-    const method = (options.method ?? 'GET').toUpperCase();
-    if (options.session && !['GET', 'HEAD', 'OPTIONS'].includes(method) && !headers.has('idempotency-key')) {
-      headers.set('idempotency-key', crypto.randomUUID());
+    const { session, organizationId, method, body, headers } = options;
+    try {
+      return await sdk.request<T>(path, {
+        ...(method ? { method } : {}),
+        ...(body === undefined ? {} : { body }),
+        ...(headers ? { headers } : {}),
+        ...(session ? { session } : { authenticated: false }),
+        ...(organizationId ? { organizationId } : {}),
+      });
+    } catch (error) {
+      if (error instanceof AgentdoorSdkError) throw new CloudError(error.code, error.message, error.fieldErrors);
+      throw error;
     }
-    if (options.organizationId) headers.set('x-organization-id', options.organizationId);
-    const response = await fetch(`${baseUrl}${path}`, { ...options, method, headers });
-    if (!response.ok) {
-      const error = (await response
-        .json()
-        .catch(() => ({ code: 'NETWORK_ERROR', message: '请求失败，请稍后重试' }))) as ErrorEnvelope;
-      throw new CloudError(error.code, error.message, error.fieldErrors);
-    }
-    if (response.status === 204) return undefined as T;
-    return response.json() as Promise<T>;
   }
 
   async function createCapabilityDraft(input: {
