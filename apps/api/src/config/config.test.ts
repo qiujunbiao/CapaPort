@@ -30,6 +30,12 @@ describe('configuration', () => {
     });
   });
 
+  it('parses explicit browser origins for hosted clients', () => {
+    expect(
+      parseConfig({ ...validEnvironment, CORS_ORIGINS: 'https://app.example.com, https://admin.example.com' }),
+    ).toMatchObject({ corsOrigins: ['https://app.example.com', 'https://admin.example.com'] });
+  });
+
   it('rejects missing and malformed values before application startup', () => {
     expect(() => parseConfig({ ...validEnvironment, PORT: 'invalid' })).toThrow(/PORT/);
     expect(() => parseConfig({ ...validEnvironment, DATABASE_URL: '' })).toThrow(/DATABASE_URL/);

@@ -7,8 +7,8 @@ import { APP_CONFIG, type AppConfig } from './config/config.js';
 
 async function main(): Promise<void> {
   const app = await NestFactory.create<NestFastifyApplication>(AppModule, new FastifyAdapter({ trustProxy: true }));
-  configureApplication(app);
   const config = app.get<AppConfig>(APP_CONFIG);
+  configureApplication(app, config);
   await app.listen({ port: config.port, host: '0.0.0.0' });
 }
 

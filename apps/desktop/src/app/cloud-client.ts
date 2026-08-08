@@ -14,7 +14,14 @@ import type {
   TokenPair,
 } from '@agentdoor/contracts';
 import { AgentdoorClient, AgentdoorSdkError } from '@agentdoor/sdk';
-import type { CloudClient, DeviceSummary, InstallationSummary, LocalPackageExport, Session } from './types';
+import type {
+  CloudClient,
+  DeviceSummary,
+  InstallationSummary,
+  LocalPackageExport,
+  Session,
+  SessionStore,
+} from './types';
 
 export class CloudError extends Error {
   constructor(
@@ -35,8 +42,17 @@ function base64Bytes(value: string): Uint8Array {
 
 export function createCloudClient(
   baseUrl = import.meta.env.VITE_API_URL || 'http://127.0.0.1:3210/api/v1',
+  sessionStore?: SessionStore,
 ): CloudClient {
-  const sdk = new AgentdoorClient({ baseUrl });
+  const sdk = new AgentdoorClient({
+    baseUrl,
+    ...(sessionStore
+      ? {
+          session: sessionStore.get,
+          saveSession: (session) => sessionStore.set(session),
+        }
+      : {}),
+  });
 
   async function request<T>(
     path: string,
@@ -166,6 +182,7 @@ export function createCloudClient(
 
   return {
     isOnline: () => navigator.onLine,
+    logout: (session) => request<void>('/auth/logout', { method: 'POST', session }),
     login: (input) => request<TokenPair>('/auth/login', { method: 'POST', body: JSON.stringify(input) }),
     register: (input) => request('/auth/register', { method: 'POST', body: JSON.stringify(input) }),
     verify: (input) => request('/auth/verify', { method: 'POST', body: JSON.stringify(input) }),

@@ -46,6 +46,7 @@ export function cloudFixture(
   let notificationReadAt: string | null = null;
   return {
     isOnline: () => online,
+    logout: async () => undefined,
     login: async () => {
       if (options.loginError) throw new Error(options.loginError);
       return { accessToken: 'token', refreshToken: 'refresh', expiresIn: 900 };

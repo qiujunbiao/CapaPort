@@ -94,6 +94,7 @@ export type DraftRevisionSummary = {
 
 export interface CloudClient {
   isOnline(): boolean;
+  logout(session: Session): Promise<void>;
   login(input: { kind: 'email' | 'phone'; target: string; password: string; deviceName: string }): Promise<TokenPair>;
   register?(input: {
     kind: 'email' | 'phone';

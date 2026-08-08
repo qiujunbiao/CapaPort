@@ -3,6 +3,7 @@ name: agentdoor-production
 x-backend-environment: &backend-environment
   NODE_ENV: production
   PORT: 3100
+  CORS_ORIGINS: ${CORS_ORIGINS:?Set CORS_ORIGINS to the hosted Web origins}
   DATABASE_URL_FILE: /run/secrets/database_url
   REDIS_URL: ${REDIS_URL:?Set REDIS_URL}
   S3_ENDPOINT: ${S3_ENDPOINT:?Set S3_ENDPOINT}

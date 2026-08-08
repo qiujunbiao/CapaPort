@@ -279,4 +279,22 @@ describe('desktop application safety workflows', () => {
     fireEvent.click(screen.getByRole('button', { name: '标为已读' }));
     await waitFor(() => expect(screen.queryByRole('button', { name: '标为已读' })).not.toBeInTheDocument());
   });
+
+  it('revokes the cloud session before clearing local credentials on logout', async () => {
+    const cloud = cloudFixture();
+    const logout = vi.fn().mockResolvedValue(undefined);
+    Object.assign(cloud, { logout });
+    const sessionStore = createMemorySessionStore({
+      accessToken: 'token',
+      refreshToken: 'refresh',
+      organizationId: 'org-a',
+    });
+    render(<DesktopApp cloud={cloud} local={localFixture()} sessionStore={sessionStore} />);
+
+    fireEvent.click(await screen.findByRole('button', { name: '设置' }));
+    fireEvent.click(screen.getByRole('button', { name: '退出登录' }));
+
+    await waitFor(() => expect(logout).toHaveBeenCalledWith(expect.objectContaining({ accessToken: 'token' })));
+    expect(await screen.findByRole('heading', { name: '进入 Agentdoor' })).toBeInTheDocument();
+  });
 });

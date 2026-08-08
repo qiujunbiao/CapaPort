@@ -21,7 +21,7 @@
       }
     ],
     "security": {
-      "csp": "default-src 'self'; connect-src 'self' http://127.0.0.1:3210 http://127.0.0.1:9000; img-src 'self' data:; style-src 'self' 'unsafe-inline'"
+      "csp": "default-src 'self'; connect-src 'self' https: http://127.0.0.1:3210 http://127.0.0.1:9000; img-src 'self' data:; style-src 'self' 'unsafe-inline'"
     }
   },
   "bundle": {
@@ -32,7 +32,7 @@
   "plugins": {
     "updater": {
       "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXkgQUZGMDFGNTY0MUEzNEZENgpSV1RXVDZOQlZoL3dyOTVCVDljczliT0pvWEY3Y3FjaUIySmRYSkZKUEcvaUVtbkZBU1hPYzgzOQ==",
-      "endpoints": ["https://releases.agentdoor.com/desktop/{{target}}/{{arch}}/{{current_version}}"],
+      "endpoints": ["https://github.com/qiujunbiao/CapaPort/releases/latest/download/latest.json"],
       "dangerousInsecureTransportProtocol": false
     }
   }

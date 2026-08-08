@@ -359,9 +359,13 @@ function AppContent({
         organization={organization}
         queue={queueQuery.data}
         online={online}
-        onLogout={() => {
-          sessionStore.clear();
-          queryClient.clear();
+        onLogout={async () => {
+          try {
+            await cloud.logout(session);
+          } finally {
+            sessionStore.clear();
+            queryClient.clear();
+          }
         }}
         onRefreshQueue={() => void queueQuery.refetch()}
         onSyncQueue={() => {

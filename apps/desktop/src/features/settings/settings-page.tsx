@@ -18,7 +18,7 @@ export function SettingsPage({
   organization: OrganizationSummary | undefined;
   queue: SyncQueueStatus | undefined;
   online: boolean;
-  onLogout: () => void;
+  onLogout: () => void | Promise<void>;
   onRefreshQueue: () => void;
   onSyncQueue: () => void;
 }) {

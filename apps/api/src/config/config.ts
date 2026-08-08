@@ -4,6 +4,7 @@ const environmentSchema = z
   .object({
     NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
     PORT: z.coerce.number().int().min(1).max(65_535).default(3_100),
+    CORS_ORIGINS: z.string().optional(),
     DATABASE_URL: z.url(),
     REDIS_URL: z.url(),
     S3_ENDPOINT: z.url(),
@@ -53,6 +54,7 @@ const environmentSchema = z
 export type AppConfig = {
   nodeEnv: 'development' | 'test' | 'production';
   port: number;
+  corsOrigins: string[];
   databaseUrl: string;
   redisUrl: string;
   s3: {
@@ -92,6 +94,18 @@ export function parseConfig(environment: Record<string, string | undefined>): Ap
   return {
     nodeEnv: parsed.data.NODE_ENV,
     port: parsed.data.PORT,
+    corsOrigins: parsed.data.CORS_ORIGINS
+      ? parsed.data.CORS_ORIGINS.split(',')
+          .map((origin) => origin.trim())
+          .filter(Boolean)
+      : [
+          'http://localhost:1420',
+          'http://127.0.0.1:1420',
+          'http://localhost:1430',
+          'http://127.0.0.1:1430',
+          'tauri://localhost',
+          'http://tauri.localhost',
+        ],
     databaseUrl: parsed.data.DATABASE_URL,
     redisUrl: parsed.data.REDIS_URL,
     s3: {

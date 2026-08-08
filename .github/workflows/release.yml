@@ -60,9 +60,13 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      - name: Validate hosted client endpoint
+        env:
+          CAPAPORT_API_URL: ${{ vars.CAPAPORT_API_URL }}
+        run: test -n "$CAPAPORT_API_URL"
       - run: pnpm --filter @agentdoor/web build
         env:
-          VITE_API_URL: https://agentdoor.example/api/v1
+          VITE_API_URL: ${{ vars.CAPAPORT_API_URL }}
       - uses: actions/upload-artifact@v4
         with:
           name: agentdoor-web
@@ -103,12 +107,18 @@ jobs:
           cache: pnpm
       - uses: dtolnay/rust-toolchain@stable
       - run: pnpm install --frozen-lockfile
+      - name: Validate hosted client endpoint
+        shell: bash
+        env:
+          CAPAPORT_API_URL: ${{ vars.CAPAPORT_API_URL }}
+        run: test -n "$CAPAPORT_API_URL"
       - if: runner.os == 'macOS'
         run: rustup target add aarch64-apple-darwin x86_64-apple-darwin
       - if: runner.os == 'Windows'
         run: rustup target add x86_64-pc-windows-msvc
       - if: runner.os == 'macOS'
         env:
+          VITE_API_URL: ${{ vars.CAPAPORT_API_URL }}
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
           APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
@@ -139,6 +149,7 @@ jobs:
       - if: runner.os == 'macOS'
         uses: tauri-apps/tauri-action@v0
         env:
+          VITE_API_URL: ${{ vars.CAPAPORT_API_URL }}
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
           APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
@@ -153,6 +164,7 @@ jobs:
       - if: runner.os == 'Windows'
         uses: tauri-apps/tauri-action@v0
         env:
+          VITE_API_URL: ${{ vars.CAPAPORT_API_URL }}
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         with:

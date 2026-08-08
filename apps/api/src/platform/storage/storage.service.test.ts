@@ -6,6 +6,7 @@ function config(encryption?: AppConfig['s3']['encryption']): AppConfig {
   return {
     nodeEnv: 'test',
     port: 3100,
+    corsOrigins: ['http://localhost:1430'],
     databaseUrl: 'postgres://localhost/agentdoor',
     redisUrl: 'redis://localhost:6379',
     s3: {

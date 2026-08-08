@@ -1,11 +1,12 @@
 import type { INestApplication } from '@nestjs/common';
+import type { AppConfig } from './config/config.js';
 import { registerOpenApi } from './openapi.js';
 import { AppExceptionFilter } from './platform/errors/app-exception.filter.js';
 
-export function configureApplication(app: INestApplication): void {
+export function configureApplication(app: INestApplication, config?: Pick<AppConfig, 'corsOrigins'>): void {
   app.setGlobalPrefix('api/v1');
   app.enableCors({
-    origin: [
+    origin: config?.corsOrigins ?? [
       'http://localhost:1420',
       'http://127.0.0.1:1420',
       'http://localhost:1430',
