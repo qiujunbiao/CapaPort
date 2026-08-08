@@ -201,7 +201,7 @@ export function SecurityPage({
             {risks.flatMap(({ publication, findings }) =>
               findings.map((finding) => (
                 <article
-                  key={`${publication.id}:${finding.ruleId}:${finding.path}:${finding.line ?? 0}:${finding.evidenceDigest}`}
+                  key={`${publication.id}:${finding.ruleId}:${finding.path}:${finding.severity}:${finding.message}`}
                 >
                   <span>
                     <strong>{finding.ruleId}</strong>
