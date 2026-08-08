@@ -6,6 +6,7 @@ import { AuthGuard } from '../../src/modules/identity/auth.guard.js';
 import { SessionService } from '../../src/modules/identity/session.service.js';
 import { OrganizationController } from '../../src/modules/organizations/organization.controller.js';
 import { OrganizationService } from '../../src/modules/organizations/organization.service.js';
+import { SecurityPolicyService } from '../../src/modules/organizations/security-policy.service.js';
 import { AppError } from '../../src/platform/errors/app-error.js';
 import { AppExceptionFilter } from '../../src/platform/errors/app-exception.filter.js';
 import { RequestIdMiddleware } from '../../src/platform/request-context/request-id.middleware.js';
@@ -30,6 +31,7 @@ describe('organization invitation HTTP contract', () => {
       controllers: [OrganizationController],
       providers: [
         { provide: OrganizationService, useValue: organizations },
+        { provide: SecurityPolicyService, useValue: {} },
         { provide: RateLimitService, useValue: { assertAllowed: vi.fn().mockResolvedValue(undefined) } },
         {
           provide: SessionService,
