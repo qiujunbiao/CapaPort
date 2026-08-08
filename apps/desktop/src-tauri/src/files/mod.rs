@@ -27,6 +27,23 @@ pub struct InstallPlan {
     pub writes: Vec<PlannedWrite>,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PlannedRemoval {
+    pub relative_path: String,
+    pub expected_digest: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct UninstallPlan {
+    pub transaction_id: String,
+    pub adapter_id: String,
+    pub capability_slug: String,
+    pub root_path: String,
+    pub files: Vec<PlannedRemoval>,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
 pub enum ChangeKind {
@@ -76,6 +93,17 @@ struct RecoveryJournal {
     root: PathBuf,
     state: String,
     entries: Vec<JournalEntry>,
+    #[serde(default)]
+    restore_lock: Option<LockRestore>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+struct LockRestore {
+    id: String,
+    adapter_id: String,
+    capability_slug: String,
+    root_path: String,
+    lock_json: String,
 }
 
 #[derive(Clone)]
@@ -176,6 +204,7 @@ impl FileEngine {
             root: root.clone(),
             state: "applying".into(),
             entries: Vec::new(),
+            restore_lock: None,
         };
         for write in &plan.writes {
             let relative = safe_relative(&write.relative_path)?;
@@ -325,6 +354,132 @@ impl FileEngine {
         self.rollback_journal(Path::new(&path), database, false)
     }
 
+    pub fn uninstall(&self, plan: &UninstallPlan, database: &Database) -> RuntimeResult<ApplyResult> {
+        self.uninstall_with_failures(plan, database, None, false)
+    }
+
+    fn uninstall_with_failures(
+        &self,
+        plan: &UninstallPlan,
+        database: &Database,
+        fail_after: Option<usize>,
+        fail_rollback: bool,
+    ) -> RuntimeResult<ApplyResult> {
+        validate_identifier(&plan.transaction_id)?;
+        validate_identifier(&plan.adapter_id)?;
+        validate_identifier(&plan.capability_slug)?;
+        let root = Path::new(&plan.root_path)
+            .canonicalize()
+            .map_err(|_| RuntimeError::PathNotAllowed)?;
+        let lock_json = database
+            .load_lock(&plan.adapter_id, &plan.capability_slug, &plan.root_path)?
+            .ok_or(RuntimeError::NotFound)?;
+        let runtime_root = root.join(".agentdoor");
+        let backup_root = runtime_root.join("backups").join(&plan.transaction_id);
+        let journal_path = runtime_root
+            .join("recovery")
+            .join(format!("{}.json", plan.transaction_id));
+        fs::create_dir_all(&backup_root).map_err(|_| RuntimeError::TransactionFailed)?;
+        if let Some(parent) = journal_path.parent() {
+            fs::create_dir_all(parent).map_err(|_| RuntimeError::TransactionFailed)?;
+        }
+        let mut seen = std::collections::HashSet::new();
+        let mut journal = RecoveryJournal {
+            transaction_id: plan.transaction_id.clone(),
+            root,
+            state: "applying".into(),
+            entries: Vec::new(),
+            restore_lock: Some(LockRestore {
+                id: plan.transaction_id.clone(),
+                adapter_id: plan.adapter_id.clone(),
+                capability_slug: plan.capability_slug.clone(),
+                root_path: plan.root_path.clone(),
+                lock_json,
+            }),
+        };
+        for (index, file) in plan.files.iter().enumerate() {
+            let relative = safe_relative(&file.relative_path)?;
+            if !seen.insert(relative.clone()) {
+                return Err(RuntimeError::InvalidInput);
+            }
+            let destination = self.policy.resolve(&journal.root, &relative)?;
+            if !destination.exists() {
+                continue;
+            }
+            let current = digest(&fs::read(&destination).map_err(|_| RuntimeError::TransactionFailed)?);
+            if current != file.expected_digest {
+                return Err(RuntimeError::LocalModificationConflict);
+            }
+            let backup = backup_root.join(&relative);
+            if let Some(parent) = backup.parent() {
+                fs::create_dir_all(parent).map_err(|_| RuntimeError::TransactionFailed)?;
+            }
+            fs::copy(&destination, &backup).map_err(|_| RuntimeError::TransactionFailed)?;
+            database.save_backup(
+                &format!("{}-{}", plan.transaction_id, index),
+                &plan.transaction_id,
+                &file.relative_path,
+                &backup.to_string_lossy(),
+                &now(),
+            )?;
+            journal.entries.push(JournalEntry {
+                relative_path: file.relative_path.clone(),
+                destination,
+                backup,
+                existed: true,
+                applied: false,
+            });
+        }
+        write_journal(&journal_path, &journal)?;
+        database.save_journal(
+            &plan.transaction_id,
+            "applying",
+            &journal_path.to_string_lossy(),
+            &now(),
+        )?;
+        for index in 0..journal.entries.len() {
+            if fail_after == Some(index) {
+                journal.state = "rollback_required".into();
+                write_journal(&journal_path, &journal)?;
+                return self
+                    .rollback_journal(&journal_path, database, fail_rollback)
+                    .and(Err(RuntimeError::TransactionFailed));
+            }
+            journal.entries[index].applied = true;
+            write_journal(&journal_path, &journal)?;
+            if fs::remove_file(&journal.entries[index].destination).is_err() {
+                journal.state = "rollback_required".into();
+                write_journal(&journal_path, &journal)?;
+                return self
+                    .rollback_journal(&journal_path, database, fail_rollback)
+                    .and(Err(RuntimeError::TransactionFailed));
+            }
+        }
+        if database
+            .remove_lock(&plan.adapter_id, &plan.capability_slug, &plan.root_path)
+            .is_err()
+        {
+            journal.state = "rollback_required".into();
+            write_journal(&journal_path, &journal)?;
+            return self
+                .rollback_journal(&journal_path, database, fail_rollback)
+                .and(Err(RuntimeError::TransactionFailed));
+        }
+        journal.state = "uninstalled".into();
+        write_journal(&journal_path, &journal)?;
+        database.save_journal(
+            &plan.transaction_id,
+            "uninstalled",
+            &journal_path.to_string_lossy(),
+            &now(),
+        )?;
+        Ok(ApplyResult {
+            transaction_id: plan.transaction_id.clone(),
+            changed_files: journal.entries.len(),
+            state: "uninstalled".into(),
+        })
+    }
+
     fn rollback_journal(
         &self,
         journal_path: &Path,
@@ -354,6 +509,12 @@ impl FileEngine {
                 if !entry.backup.exists() {
                     journal.state = "manual_recovery_required".into();
                     write_journal(journal_path, &journal)?;
+                    database.save_journal(
+                        &journal.transaction_id,
+                        &journal.state,
+                        &journal_path.to_string_lossy(),
+                        &now(),
+                    )?;
                     return Err(RuntimeError::RollbackFailed);
                 }
                 if entry.destination.exists() {
@@ -368,6 +529,16 @@ impl FileEngine {
             } else if entry.destination.exists() {
                 fs::remove_file(&entry.destination).map_err(|_| RuntimeError::RollbackFailed)?;
             }
+        }
+        if let Some(lock) = &journal.restore_lock {
+            database.save_lock(
+                &lock.id,
+                &lock.adapter_id,
+                &lock.capability_slug,
+                &lock.root_path,
+                &lock.lock_json,
+                &now(),
+            )?;
         }
         journal.state = "rolled_back".into();
         write_journal(journal_path, &journal)?;
@@ -555,5 +726,83 @@ mod tests {
             engine.preview(&plan),
             Err(RuntimeError::DigestMismatch)
         ));
+    }
+
+    #[test]
+    fn uninstall_failure_restores_every_removed_file_and_preserves_the_lock() {
+        let (root, engine, database) = fixture();
+        let first = root.path().join("skills/release/SKILL.md");
+        let second = root.path().join("skills/release/reference.md");
+        fs::create_dir_all(first.parent().unwrap()).unwrap();
+        fs::write(&first, "first").unwrap();
+        fs::write(&second, "second").unwrap();
+        database
+            .save_lock(
+                "install-release",
+                "codex",
+                "release",
+                &root.path().to_string_lossy(),
+                "{}",
+                &now(),
+            )
+            .unwrap();
+        let plan = UninstallPlan {
+            transaction_id: "uninstall-release".into(),
+            adapter_id: "codex".into(),
+            capability_slug: "release".into(),
+            root_path: root.path().to_string_lossy().into(),
+            files: vec![
+                PlannedRemoval {
+                    relative_path: "skills/release/SKILL.md".into(),
+                    expected_digest: digest(b"first"),
+                },
+                PlannedRemoval {
+                    relative_path: "skills/release/reference.md".into(),
+                    expected_digest: digest(b"second"),
+                },
+            ],
+        };
+
+        let result = engine.uninstall_with_failures(&plan, &database, Some(1), false);
+
+        assert!(matches!(result, Err(RuntimeError::TransactionFailed)));
+        assert_eq!(fs::read_to_string(first).unwrap(), "first");
+        assert_eq!(fs::read_to_string(second).unwrap(), "second");
+        assert!(database.load_lock("codex", "release", &root.path().to_string_lossy()).unwrap().is_some());
+        assert_eq!(database.journal_state("uninstall-release").unwrap().as_deref(), Some("rolled_back"));
+    }
+
+    #[test]
+    fn completed_uninstall_can_be_explicitly_rolled_back() {
+        let (root, engine, database) = fixture();
+        let target = root.path().join("skills/release/SKILL.md");
+        fs::create_dir_all(target.parent().unwrap()).unwrap();
+        fs::write(&target, "installed").unwrap();
+        database
+            .save_lock(
+                "install-release",
+                "codex",
+                "release",
+                &root.path().to_string_lossy(),
+                "{}",
+                &now(),
+            )
+            .unwrap();
+        let plan = UninstallPlan {
+            transaction_id: "uninstall-release".into(),
+            adapter_id: "codex".into(),
+            capability_slug: "release".into(),
+            root_path: root.path().to_string_lossy().into(),
+            files: vec![PlannedRemoval {
+                relative_path: "skills/release/SKILL.md".into(),
+                expected_digest: digest(b"installed"),
+            }],
+        };
+
+        assert_eq!(engine.uninstall(&plan, &database).unwrap().state, "uninstalled");
+        assert!(!target.exists());
+        assert!(database.load_lock("codex", "release", &root.path().to_string_lossy()).unwrap().is_none());
+        assert_eq!(engine.rollback("uninstall-release", &database).unwrap().state, "rolled_back");
+        assert_eq!(fs::read_to_string(target).unwrap(), "installed");
     }
 }
