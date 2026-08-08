@@ -34,4 +34,19 @@ describe('configuration', () => {
     expect(() => parseConfig({ ...validEnvironment, PORT: 'invalid' })).toThrow(/PORT/);
     expect(() => parseConfig({ ...validEnvironment, DATABASE_URL: '' })).toThrow(/DATABASE_URL/);
   });
+
+  it('requires a complete SMS provider configuration in production', () => {
+    const production = { ...validEnvironment, NODE_ENV: 'production', METRICS_TOKEN: 'm'.repeat(32) };
+    expect(() => parseConfig(production)).toThrow(/SMS_PROVIDER_URL/);
+    expect(
+      parseConfig({
+        ...production,
+        SMS_PROVIDER_URL: 'https://sms.example.com/v1/messages',
+        SMS_PROVIDER_TOKEN: 'sms-provider-secret-token',
+        SMS_SENDER: 'Agentdoor',
+      }),
+    ).toMatchObject({
+      notification: { sms: { endpoint: 'https://sms.example.com/v1/messages', sender: 'Agentdoor' } },
+    });
+  });
 });

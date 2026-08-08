@@ -2,6 +2,7 @@ import { Global, Module } from '@nestjs/common';
 import { APP_CONFIG, parseConfig } from '../config/config.js';
 import { DatabaseService } from './database/database.service.js';
 import { OutboxService } from './database/outbox.service.js';
+import { createSmsProvider, SMS_PROVIDER } from './notifications/sms.provider.js';
 import { RedisService } from './redis/redis.service.js';
 import { StorageService } from './storage/storage.service.js';
 
@@ -15,6 +16,11 @@ import { StorageService } from './storage/storage.service.js';
     { provide: 'REDIS_SERVICE', useExisting: RedisService },
     StorageService,
     OutboxService,
+    {
+      provide: SMS_PROVIDER,
+      inject: [APP_CONFIG],
+      useFactory: (config: ReturnType<typeof parseConfig>) => createSmsProvider(config),
+    },
   ],
   exports: [
     APP_CONFIG,
@@ -24,6 +30,7 @@ import { StorageService } from './storage/storage.service.js';
     'REDIS_SERVICE',
     StorageService,
     OutboxService,
+    SMS_PROVIDER,
   ],
 })
 export class PlatformModule {}

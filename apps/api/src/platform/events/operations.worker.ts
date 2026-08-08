@@ -4,6 +4,7 @@ import nodemailer from 'nodemailer';
 import type { Pool, PoolClient } from 'pg';
 import type { AppConfig } from '../../config/config.js';
 import { notificationForEvent } from '../../modules/notifications/notification.template.js';
+import { createSmsProvider, type SmsProvider } from '../notifications/sms.provider.js';
 import { platformMetrics } from '../telemetry/metrics-registry.js';
 import { platformLogger } from '../telemetry/structured-logger.js';
 
@@ -36,6 +37,7 @@ export class OperationsWorker {
   private readonly queue: Queue<{ eventId: string }>;
   private readonly worker: Worker<{ eventId: string }>;
   private readonly transport: ReturnType<typeof nodemailer.createTransport>;
+  private readonly sms: SmsProvider;
 
   constructor(
     private readonly pool: Pool,
@@ -56,6 +58,7 @@ export class OperationsWorker {
       port: config.notification.smtpPort,
       secure: false,
     });
+    this.sms = createSmsProvider(config);
     this.worker = new Worker(queueName, (job) => this.process(job), {
       connection,
       concurrency: 5,
@@ -295,15 +298,22 @@ export class OperationsWorker {
     for (const delivery of deliveries.rows) {
       if (!delivery.target) continue;
       try {
-        const destination =
-          delivery.channel === 'email' ? delivery.target : `sms.${delivery.target.replace(/\D/g, '')}@agentdoor.local`;
-        await this.transport.sendMail({
-          from: this.config.notification.smtpFrom,
-          to: destination,
-          messageId: `<${sourceEventId}.${delivery.user_id}@agentdoor.local>`,
-          subject: delivery.title,
-          text: delivery.body,
-        });
+        if (delivery.channel === 'sms') {
+          await this.sms.send({
+            to: delivery.target,
+            template: 'notification',
+            variables: { title: delivery.title, body: delivery.body },
+            idempotencyKey: delivery.id,
+          });
+        } else {
+          await this.transport.sendMail({
+            from: this.config.notification.smtpFrom,
+            to: delivery.target,
+            messageId: `<${sourceEventId}.${delivery.user_id}@agentdoor.local>`,
+            subject: delivery.title,
+            text: delivery.body,
+          });
+        }
         await this.pool.query(
           `UPDATE notification_deliveries
             SET status='delivered',attempts=attempts+1,delivered_at=now(),updated_at=now(),error_code=NULL

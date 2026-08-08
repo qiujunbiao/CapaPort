@@ -21,11 +21,20 @@ const environmentSchema = z
     SMTP_HOST: z.string().min(1),
     SMTP_PORT: z.coerce.number().int().min(1).max(65_535).default(1025),
     SMTP_FROM: z.string().min(3),
+    SMS_PROVIDER_URL: z.url().optional(),
+    SMS_PROVIDER_TOKEN: z.string().min(16).optional(),
+    SMS_SENDER: z.string().trim().min(1).max(32).optional(),
+    SMS_TIMEOUT_MS: z.coerce.number().int().min(500).max(30_000).default(5_000),
     METRICS_TOKEN: z.string().min(32).optional(),
   })
   .superRefine((value, context) => {
     if (value.NODE_ENV === 'production' && !value.METRICS_TOKEN) {
       context.addIssue({ code: 'custom', path: ['METRICS_TOKEN'], message: 'is required in production' });
+    }
+    if (value.NODE_ENV === 'production') {
+      for (const key of ['SMS_PROVIDER_URL', 'SMS_PROVIDER_TOKEN', 'SMS_SENDER'] as const) {
+        if (!value[key]) context.addIssue({ code: 'custom', path: [key], message: 'is required in production' });
+      }
     }
   });
 
@@ -50,7 +59,12 @@ export type AppConfig = {
     refreshTtlDays: number;
     verificationTtlMinutes: number;
   };
-  notification: { smtpHost: string; smtpPort: number; smtpFrom: string };
+  notification: {
+    smtpHost: string;
+    smtpPort: number;
+    smtpFrom: string;
+    sms?: { endpoint: string; token: string; sender: string; timeoutMs: number };
+  };
   metricsToken: string;
 };
 
@@ -87,6 +101,16 @@ export function parseConfig(environment: Record<string, string | undefined>): Ap
       smtpHost: parsed.data.SMTP_HOST,
       smtpPort: parsed.data.SMTP_PORT,
       smtpFrom: parsed.data.SMTP_FROM,
+      ...(parsed.data.SMS_PROVIDER_URL && parsed.data.SMS_PROVIDER_TOKEN && parsed.data.SMS_SENDER
+        ? {
+            sms: {
+              endpoint: parsed.data.SMS_PROVIDER_URL,
+              token: parsed.data.SMS_PROVIDER_TOKEN,
+              sender: parsed.data.SMS_SENDER,
+              timeoutMs: parsed.data.SMS_TIMEOUT_MS,
+            },
+          }
+        : {}),
     },
     metricsToken: parsed.data.METRICS_TOKEN ?? 'agentdoor-development-metrics-token',
   };

@@ -21,6 +21,10 @@ x-backend-environment: &backend-environment
   SMTP_HOST: ${SMTP_HOST:?Set SMTP_HOST}
   SMTP_PORT: ${SMTP_PORT:-587}
   SMTP_FROM: ${SMTP_FROM:?Set SMTP_FROM}
+  SMS_PROVIDER_URL: ${SMS_PROVIDER_URL:?Set SMS_PROVIDER_URL}
+  SMS_PROVIDER_TOKEN_FILE: /run/secrets/sms_provider_token
+  SMS_SENDER: ${SMS_SENDER:?Set SMS_SENDER}
+  SMS_TIMEOUT_MS: ${SMS_TIMEOUT_MS:-5000}
   AGENTDOOR_SERVICE: ${AGENTDOOR_SERVICE:-backend}
 
 x-backend-security: &backend-security
@@ -40,6 +44,7 @@ x-backend-security: &backend-security
     - refresh_token_pepper
     - verification_pepper
     - metrics_token
+    - sms_provider_token
   networks: [backend]
   stop_grace_period: 30s
 
@@ -103,3 +108,5 @@ secrets:
     file: ${AGENTDOOR_SECRETS_DIR:?Set AGENTDOOR_SECRETS_DIR}/verification_pepper
   metrics_token:
     file: ${AGENTDOOR_SECRETS_DIR:?Set AGENTDOOR_SECRETS_DIR}/metrics_token
+  sms_provider_token:
+    file: ${AGENTDOOR_SECRETS_DIR:?Set AGENTDOOR_SECRETS_DIR}/sms_provider_token
