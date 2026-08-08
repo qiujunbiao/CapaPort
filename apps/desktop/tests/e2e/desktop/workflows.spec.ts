@@ -33,6 +33,7 @@ async function injectClients(page: Page, options: { conflict?: boolean } = {}) {
     };
     const cloud = {
       isOnline: () => true,
+      logout: async () => undefined,
       login: async () => session,
       me: async () => ({ id: 'user-a', displayName: '林默', identities: [] }),
       organizations: async () => [{ id: 'org-a', name: '平台研发', slug: 'platform', role: 'owner', status: 'active' }],
@@ -70,6 +71,15 @@ async function injectClients(page: Page, options: { conflict?: boolean } = {}) {
           status: 'active',
         },
       ],
+      securityPolicy: async () => ({
+        blockedSeverities: ['high', 'critical'],
+        confirmationSeverities: ['medium'],
+        blockedTerms: [],
+        allowedExecutablePaths: [],
+        allowedNetworkHosts: [],
+        executablePolicy: 'confirm',
+      }),
+      recordAnalyticsEvent: async () => undefined,
       capabilities: async () => [capability],
       publications: async () => publications,
       installations: async () => [],

@@ -507,7 +507,7 @@ select {
   font-size: 11px;
   text-align: left;
 }
-.admin-sidebar nav button:hover {
+.admin-sidebar :where(nav button:hover) {
   color: white;
   background: #20211c;
 }
@@ -519,7 +519,7 @@ select {
 .admin-sidebar nav svg {
   width: 17px;
 }
-.admin-sidebar nav i {
+.admin-sidebar :where(nav i) {
   width: 6px;
   height: 6px;
   margin-left: auto;
@@ -1017,7 +1017,7 @@ select {
   border-top: 1px solid var(--line);
   padding: 13px 0;
 }
-.version-list article > div:first-child {
+.version-list :where(article > div:first-child) {
   display: flex;
   flex-direction: column;
   gap: 4px;

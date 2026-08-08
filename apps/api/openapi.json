@@ -803,6 +803,28 @@
         "tags": ["Organization"]
       }
     },
+    "/api/v1/organizations/{organizationId}/security-policy": {
+      "get": {
+        "operationId": "organization_securityPolicy",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": ["Organization"]
+      },
+      "patch": {
+        "operationId": "organization_updateSecurityPolicy",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": ["Organization"]
+      }
+    },
     "/api/v1/organizations/{organizationId}/switch": {
       "post": {
         "operationId": "organization_switch",

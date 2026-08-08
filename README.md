@@ -77,6 +77,8 @@ pnpm --dir apps/desktop exec tauri dev
 pnpm security:gate       # 依赖、凭据、租户与安全回归门禁
 pnpm stack:smoke         # 容器、迁移、备份恢复、持久化烟测
 pnpm acceptance          # 十步真实业务验收，使用独立空数据卷
+pnpm e2e                 # CLI 真实云端 + Web/Desktop 浏览器端到端验收
+pnpm brand:check         # 断代品牌残留门禁
 pnpm release:verify      # 完整发布前校验
 pnpm artifacts:cli       # 生成 CLI 与 SHA-256 校验文件
 ```

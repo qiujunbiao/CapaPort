@@ -26,6 +26,10 @@ if (secureSessionStore) await secureSessionStore.hydrate();
 const sessionStore = injected?.sessionStore ?? secureSessionStore ?? desktopSessionStore;
 createRoot(root).render(
   <StrictMode>
-    <DesktopApp cloud={injected?.cloud ?? createCloudClient(undefined, sessionStore)} local={local} sessionStore={sessionStore} />
+    <DesktopApp
+      cloud={injected?.cloud ?? createCloudClient(undefined, sessionStore)}
+      local={local}
+      sessionStore={sessionStore}
+    />
   </StrictMode>,
 );

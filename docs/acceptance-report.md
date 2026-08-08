@@ -31,6 +31,8 @@
 | 安全 | `pnpm security:gate` | 凭据、租户、依赖、路径、扫描器 |
 | 容器 | `pnpm stack:smoke` | 非 root、只读、迁移、发布分发、备份恢复、重启持久化 |
 | 业务 | `pnpm acceptance` | 十步跨端、跨 Agent、跨租户真实流程 |
+| 端到端 | `pnpm e2e` | CLI 连接真实容器云端，Web/Desktop 运行 Chromium 工作流 |
+| 品牌门禁 | `pnpm brand:check` | 当前跟踪文件中的旧品牌残留必须为零 |
 | CLI | `pnpm artifacts:cli` | 可执行单文件与 SHA-256 |
 | 桌面运行时 | Rust acceptance harness | 更新、冲突、导入、恢复、事务卸载 |
 | 桌面发布 | Release workflow matrix | macOS universal、Windows x64、updater 签名、SHA-256、SPDX SBOM、provenance |

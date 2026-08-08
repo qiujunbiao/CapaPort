@@ -95,6 +95,15 @@ async function injectConsole(page: Page) {
       revokeInvitation: async () => undefined,
       changeMemberRole: async () => undefined,
       removeMember: async () => undefined,
+      securityPolicy: async () => ({
+        blockedSeverities: ['high', 'critical'],
+        confirmationSeverities: ['medium'],
+        blockedTerms: [],
+        allowedExecutablePaths: [],
+        allowedNetworkHosts: [],
+        executablePolicy: 'confirm',
+      }),
+      updateSecurityPolicy: async (_organizationId: string, policy: Record<string, unknown>) => policy,
       spaces: async () => spaces,
       createSpace: async (input: Record<string, unknown>) => {
         const created = { id: `space-${spaces.length}`, organizationId: 'org-a', status: 'active', ...input };

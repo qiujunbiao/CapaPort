@@ -20,8 +20,8 @@ import { scanPackage } from '@capaport/security-scan';
 import { Inject, Injectable } from '@nestjs/common';
 import { AppError } from '../../platform/errors/app-error.js';
 import { SpaceService } from '../access/space.service.js';
-import { ArtifactService } from './artifact.service.js';
 import { SecurityPolicyService } from '../organizations/security-policy.service.js';
+import { ArtifactService } from './artifact.service.js';
 
 export type CapabilityRecord = CapabilitySummary & {
   hasPublishedVersion?: boolean;

@@ -176,13 +176,15 @@ export function InstallModal({
           ...installMetadata,
           outcome: 'installed',
         });
-        void cloud.recordAnalyticsEvent(session, organizationId, {
-          eventName: updateCheck?.action === 'update' ? 'capability.updated' : 'capability.installed',
-          capabilityId: capability.id,
-          agent: installMetadata.agent,
-          source: 'desktop',
-          outcome: 'success',
-        }).catch(() => undefined);
+        void cloud
+          .recordAnalyticsEvent(session, organizationId, {
+            eventName: updateCheck?.action === 'update' ? 'capability.updated' : 'capability.installed',
+            capabilityId: capability.id,
+            agent: installMetadata.agent,
+            source: 'desktop',
+            outcome: 'success',
+          })
+          .catch(() => undefined);
         setInstallationReported(true);
       } catch (caught) {
         setError(caught instanceof Error ? caught.message : '云端状态上报失败，请稍后重试');
@@ -211,13 +213,15 @@ export function InstallModal({
           ...installMetadata,
           outcome: 'installed',
         });
-        void cloud.recordAnalyticsEvent(session, organizationId, {
-          eventName: updateCheck?.action === 'update' ? 'capability.updated' : 'capability.installed',
-          capabilityId: capability.id,
-          agent: installMetadata.agent,
-          source: 'desktop',
-          outcome: 'success',
-        }).catch(() => undefined);
+        void cloud
+          .recordAnalyticsEvent(session, organizationId, {
+            eventName: updateCheck?.action === 'update' ? 'capability.updated' : 'capability.installed',
+            capabilityId: capability.id,
+            agent: installMetadata.agent,
+            source: 'desktop',
+            outcome: 'success',
+          })
+          .catch(() => undefined);
       }
       setInstallationReported(true);
     } catch (caught) {
@@ -294,13 +298,15 @@ export function InstallModal({
         agent: agent.adapterId as AgentId,
         archive,
       });
-      void cloud.recordAnalyticsEvent(session, organizationId, {
-        eventName: 'capability.imported',
-        capabilityId: capability.id,
-        agent: agent.adapterId as AgentId,
-        source: 'desktop',
-        outcome: 'success',
-      }).catch(() => undefined);
+      void cloud
+        .recordAnalyticsEvent(session, organizationId, {
+          eventName: 'capability.imported',
+          capabilityId: capability.id,
+          agent: agent.adapterId as AgentId,
+          source: 'desktop',
+          outcome: 'success',
+        })
+        .catch(() => undefined);
       setDraftMessage('本地版本已保存为个人草稿');
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : '本地版本导入草稿失败');

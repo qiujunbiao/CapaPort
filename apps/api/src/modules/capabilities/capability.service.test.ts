@@ -173,6 +173,8 @@ describe('CapabilityService', () => {
     );
 
     expect(result.scanStatus).toBe('blocked');
-    expect(result.scanReport.findings).toEqual(expect.arrayContaining([expect.objectContaining({ ruleId: 'SEC_ORG_TERM' })]));
+    expect(result.scanReport.findings).toEqual(
+      expect.arrayContaining([expect.objectContaining({ ruleId: 'SEC_ORG_TERM' })]),
+    );
   });
 });

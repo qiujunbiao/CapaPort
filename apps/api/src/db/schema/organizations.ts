@@ -1,5 +1,5 @@
-import { sql } from 'drizzle-orm';
 import type { OrganizationSecurityPolicy } from '@capaport/contracts/organizations';
+import { sql } from 'drizzle-orm';
 import { index, jsonb, pgTable, text, timestamp, uniqueIndex, uuid } from 'drizzle-orm/pg-core';
 import { users } from './identity.js';
 
@@ -96,9 +96,7 @@ export const organizationSecurityPolicies = pgTable('organization_security_polic
   organizationId: uuid('organization_id')
     .primaryKey()
     .references(() => organizations.id, { onDelete: 'cascade' }),
-  blockedSeverities: jsonb('blocked_severities')
-    .$type<OrganizationSecurityPolicy['blockedSeverities']>()
-    .notNull(),
+  blockedSeverities: jsonb('blocked_severities').$type<OrganizationSecurityPolicy['blockedSeverities']>().notNull(),
   confirmationSeverities: jsonb('confirmation_severities')
     .$type<OrganizationSecurityPolicy['confirmationSeverities']>()
     .notNull(),

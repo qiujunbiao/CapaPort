@@ -336,6 +336,16 @@ export const apiOperations = [
     operationId: 'organization_transferOwnership',
   },
   {
+    method: 'GET',
+    path: '/organizations/{organizationId}/security-policy',
+    operationId: 'organization_securityPolicy',
+  },
+  {
+    method: 'PATCH',
+    path: '/organizations/{organizationId}/security-policy',
+    operationId: 'organization_updateSecurityPolicy',
+  },
+  {
     method: 'POST',
     path: '/organizations/{organizationId}/switch',
     operationId: 'organization_switch',

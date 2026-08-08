@@ -38,19 +38,30 @@ describe('ProjectService', () => {
   beforeEach(() => vi.clearAllMocks());
 
   it.each([
-    ['createBinding', () =>
-      new ProjectService(store, spaces as never, artifacts as never, policies as never).createBinding(tenant, 'user-a', 'project-a', {
-        deviceId: 'device-a',
-        localBindingId: '11111111-1111-4111-8111-111111111111',
-        agents: ['codex'],
-      })],
-    ['removeBinding', () =>
-      new ProjectService(store, spaces as never, artifacts as never, policies as never).removeBinding(
-        tenant,
-        'user-a',
-        'project-a',
-        'binding-a',
-      )],
+    [
+      'createBinding',
+      () =>
+        new ProjectService(store, spaces as never, artifacts as never, policies as never).createBinding(
+          tenant,
+          'user-a',
+          'project-a',
+          {
+            deviceId: 'device-a',
+            localBindingId: '11111111-1111-4111-8111-111111111111',
+            agents: ['codex'],
+          },
+        ),
+    ],
+    [
+      'removeBinding',
+      () =>
+        new ProjectService(store, spaces as never, artifacts as never, policies as never).removeBinding(
+          tenant,
+          'user-a',
+          'project-a',
+          'binding-a',
+        ),
+    ],
   ])('requires content creation authority for %s', async (_operation, invoke) => {
     store.createBinding.mockImplementation(async (input) => input);
 

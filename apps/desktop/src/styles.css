@@ -464,7 +464,7 @@ p {
 .side-rail nav button svg {
   width: 19px;
 }
-.side-rail nav button:hover {
+.side-rail :where(nav button:hover) {
   background: #20211d;
   color: white;
 }
@@ -596,9 +596,7 @@ p {
   justify-content: center;
   padding: 0;
 }
-.desktop-shell--collapsed .side-rail nav span,
-.desktop-shell--collapsed .side-rail__security span,
-.desktop-shell--collapsed .rail-registry {
+.desktop-shell--collapsed :where(.side-rail nav span, .side-rail__security span, .rail-registry) {
   display: none;
 }
 .desktop-shell--collapsed .side-rail__security {
@@ -990,8 +988,8 @@ p {
   margin: 18px 0;
   border-top: 1px solid #d5d0c6;
 }
-.project-card dl div,
-.settings-list div {
+.project-card :where(dl div),
+.settings-list :where(div) {
   padding: 10px 0;
   display: flex;
   justify-content: space-between;
@@ -1735,9 +1733,7 @@ p {
     justify-content: center;
     padding: 0;
   }
-  .side-rail nav span,
-  .side-rail__security span,
-  .rail-registry {
+  .desktop-shell :where(.side-rail nav span, .side-rail__security span, .rail-registry) {
     display: none;
   }
   .side-rail__security {

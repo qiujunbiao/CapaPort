@@ -129,13 +129,15 @@ export function DiscoveryModal({
           agent: selected.agent.adapterId as AgentId,
           archive,
         }));
-      void cloud.recordAnalyticsEvent(session, organizationId, {
-        eventName: 'capability.imported',
-        capabilityId: draft.capabilityId,
-        agent: selected.agent.adapterId as AgentId,
-        source: 'desktop',
-        outcome: 'success',
-      }).catch(() => undefined);
+      void cloud
+        .recordAnalyticsEvent(session, organizationId, {
+          eventName: 'capability.imported',
+          capabilityId: draft.capabilityId,
+          agent: selected.agent.adapterId as AgentId,
+          source: 'desktop',
+          outcome: 'success',
+        })
+        .catch(() => undefined);
       if (draft.riskFindingDigests.length && (!riskAccepted || riskReason.trim().length < 3)) {
         setPendingDraft(draft);
         return;
@@ -151,12 +153,14 @@ export function DiscoveryModal({
           ? { riskAcceptance: { findingDigests: draft.riskFindingDigests, reason: riskReason.trim() } }
           : {}),
       });
-      void cloud.recordAnalyticsEvent(session, organizationId, {
-        eventName: 'publication.started',
-        capabilityId: draft.capabilityId,
-        source: 'desktop',
-        outcome: 'success',
-      }).catch(() => undefined);
+      void cloud
+        .recordAnalyticsEvent(session, organizationId, {
+          eventName: 'publication.started',
+          capabilityId: draft.capabilityId,
+          source: 'desktop',
+          outcome: 'success',
+        })
+        .catch(() => undefined);
       onPublished();
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : '创建草稿失败');

@@ -20,12 +20,21 @@ jobs:
         with:
           node-version: 22
           cache: pnpm
+      - uses: dtolnay/rust-toolchain@stable
       - run: pnpm install --frozen-lockfile
+      - run: pnpm brand:check
+      - run: pnpm migrations:check
       - run: pnpm lint
       - run: pnpm typecheck
       - run: pnpm test
+      - run: cargo test --manifest-path apps/desktop/src-tauri/Cargo.toml
       - run: pnpm security:gate
       - run: pnpm build
+      - run: pnpm sdk:check
+      - run: pnpm stack:smoke
+      - run: pnpm acceptance
+      - run: pnpm exec playwright install --with-deps chromium
+      - run: pnpm e2e
 
   cli:
     needs: verify

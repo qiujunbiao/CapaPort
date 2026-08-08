@@ -1,4 +1,10 @@
-import type { AgentId, CapabilitySummary, OrganizationSecurityPolicy, SpaceSummary, UpdateCheck } from '@capaport/contracts';
+import type {
+  AgentId,
+  CapabilitySummary,
+  OrganizationSecurityPolicy,
+  SpaceSummary,
+  UpdateCheck,
+} from '@capaport/contracts';
 import { QueryClient, QueryClientProvider, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   Bell,
@@ -171,9 +177,7 @@ function AppContent({
       writeCache(organizationId, 'security-policy', value);
       return value;
     },
-    initialData: organizationId
-      ? readCache<OrganizationSecurityPolicy>(organizationId, 'security-policy')
-      : undefined,
+    initialData: organizationId ? readCache<OrganizationSecurityPolicy>(organizationId, 'security-policy') : undefined,
     enabled: Boolean(session && organizationId && online),
     retry: false,
   });
@@ -301,13 +305,15 @@ function AppContent({
               agent: installation.agent,
               outcome: 'uninstalled',
             });
-            void cloud.recordAnalyticsEvent(session, organizationId, {
-              eventName: 'capability.uninstalled',
-              capabilityId: installation.capabilityId,
-              agent: installation.agent,
-              source: 'desktop',
-              outcome: 'success',
-            }).catch(() => undefined);
+            void cloud
+              .recordAnalyticsEvent(session, organizationId, {
+                eventName: 'capability.uninstalled',
+                capabilityId: installation.capabilityId,
+                agent: installation.agent,
+                source: 'desktop',
+                outcome: 'success',
+              })
+              .catch(() => undefined);
             await queryClient.invalidateQueries({ queryKey: ['installations', organizationId] });
           }}
         />

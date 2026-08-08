@@ -33,9 +33,7 @@ describe('security scanner', () => {
   });
 
   it('does not classify a manifest slug with a timestamp suffix as a secret', async () => {
-    const report = await scanPackage([
-      file('capaport.yaml', 'metadata:\n  slug: publication-e2e-1786124899401-95310'),
-    ]);
+    const report = await scanPackage([file('capaport.yaml', 'metadata:\n  slug: publication-e2e-1786124899401-95310')]);
     expect(report.findings.filter((item) => item.ruleId === 'SEC_HIGH_ENTROPY')).toHaveLength(0);
   });
 

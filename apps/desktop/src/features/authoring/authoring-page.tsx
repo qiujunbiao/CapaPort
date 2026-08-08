@@ -7,7 +7,12 @@ import {
   updatePackageMetadata,
   validateEditablePackage,
 } from '@capaport/capability-kit';
-import type { CapabilitySummary, OrganizationSecurityPolicy, PublicationSummary, SpaceSummary } from '@capaport/contracts';
+import type {
+  CapabilitySummary,
+  OrganizationSecurityPolicy,
+  PublicationSummary,
+  SpaceSummary,
+} from '@capaport/contracts';
 import type { ScanReport } from '@capaport/security-scan';
 import { FileClock, Save, Send } from 'lucide-react';
 import { useMemo, useState } from 'react';
@@ -229,12 +234,14 @@ export function AuthoringPage({
           ? { riskAcceptance: { findingDigests: revision.findings, reason: riskReason.trim() } }
           : {}),
       });
-      void cloud.recordAnalyticsEvent(session, organizationId, {
-        eventName: 'publication.started',
-        capabilityId: revision.capabilityId,
-        source: 'desktop',
-        outcome: 'success',
-      }).catch(() => undefined);
+      void cloud
+        .recordAnalyticsEvent(session, organizationId, {
+          eventName: 'publication.started',
+          capabilityId: revision.capabilityId,
+          source: 'desktop',
+          outcome: 'success',
+        })
+        .catch(() => undefined);
       setMessage(publication.queued ? '已加入离线队列，联网后自动提交' : '已提交到审核流程');
       onSubmitted();
     } catch (caught) {

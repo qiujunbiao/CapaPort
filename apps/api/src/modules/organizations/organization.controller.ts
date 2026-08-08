@@ -5,9 +5,9 @@ import {
   closeOrganizationRequestSchema,
   createOrganizationRequestSchema,
   inviteMemberRequestSchema,
+  organizationSecurityPolicySchema,
   transferOwnershipRequestSchema,
   updateOrganizationRequestSchema,
-  organizationSecurityPolicySchema,
 } from '@capaport/contracts/organizations';
 import {
   Body,

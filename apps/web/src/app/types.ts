@@ -115,10 +115,7 @@ export interface WebClient {
   changeMemberRole(organizationId: string, membershipId: string, role: 'admin' | 'auditor' | 'member'): Promise<void>;
   removeMember(organizationId: string, membershipId: string): Promise<void>;
   securityPolicy(organizationId: string): Promise<OrganizationSecurityPolicy>;
-  updateSecurityPolicy(
-    organizationId: string,
-    policy: OrganizationSecurityPolicy,
-  ): Promise<OrganizationSecurityPolicy>;
+  updateSecurityPolicy(organizationId: string, policy: OrganizationSecurityPolicy): Promise<OrganizationSecurityPolicy>;
   spaces(): Promise<SpaceSummary[]>;
   createSpace(input: {
     type: 'team' | 'project';

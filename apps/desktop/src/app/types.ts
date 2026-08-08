@@ -3,15 +3,15 @@ import type {
   CapabilitySummary,
   CapabilityVersionSummary,
   InstallPlan as CloudInstallPlan,
-  OrganizationSummary,
   OrganizationSecurityPolicy,
+  OrganizationSummary,
+  ProductEvent,
   PublicationSummary,
   PublicUser,
   SpaceSummary,
   TenantContext,
   TokenPair,
   UpdateCheck,
-  ProductEvent,
 } from '@capaport/contracts';
 import type { ProjectBindingSummary, ProjectContextSummary } from '@capaport/contracts/projects';
 import type {
