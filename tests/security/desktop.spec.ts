@@ -31,6 +31,7 @@ describe('desktop security gate', () => {
       'clear_session',
       'complete_write',
       'detect_agents',
+      'discover_local_skills',
       'enqueue_write',
       'export_local_package',
       'export_project_context',
