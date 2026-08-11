@@ -413,6 +413,6 @@ git commit -m "feat(auth): explain password security requirements"
 
 ## Final Integration
 
-- [ ] Rebase or fast-forward the implementation branch onto the latest `main` without dropping the design commit.
-- [ ] Re-run `pnpm test`, `pnpm typecheck`, `pnpm build`, `pnpm security:gate`, and `git diff --check` on the integrated result.
+- [x] Rebase or fast-forward the implementation branch onto the latest `main` without dropping the design commit.
+- [x] Re-run `pnpm test`, `pnpm typecheck`, `pnpm build`, `pnpm security:gate`, and `git diff --check` on the integrated result.
 - [ ] Merge with `--ff-only`, push `main`, and verify `git rev-parse HEAD` equals `git ls-remote origin refs/heads/main`.
