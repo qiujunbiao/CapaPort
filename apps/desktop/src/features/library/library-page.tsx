@@ -1,3 +1,4 @@
+import { agentLabels, type EditableAgent } from '@capaport/capability-kit';
 import {
   type AgentId,
   type CapabilitySummary,
@@ -16,6 +17,8 @@ const scopeTypes: Record<string, SpaceSummary['type'] | undefined> = {
   项目: 'project',
   组织: 'organization',
 };
+
+const compatibleAgents = Object.entries(agentLabels) as Array<[EditableAgent, string]>;
 
 export function LibraryPage({
   capabilities,
@@ -92,10 +95,11 @@ export function LibraryPage({
             兼容 Agent
             <select aria-label="兼容 Agent" value={agent} onChange={(event) => setAgent(event.target.value)}>
               <option value="all">全部 Agent</option>
-              <option value="codex">Codex</option>
-              <option value="claude-code">Claude Code</option>
-              <option value="cursor">Cursor</option>
-              <option value="gemini-cli">Gemini CLI</option>
+              {compatibleAgents.map(([id, label]) => (
+                <option value={id} key={id}>
+                  {label}
+                </option>
+              ))}
             </select>
           </label>
         </div>

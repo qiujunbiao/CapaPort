@@ -3,6 +3,23 @@ import { describe, expect, it, vi } from 'vitest';
 import { LibraryPage } from './library-page';
 
 describe('LibraryPage publication visibility', () => {
+  it('offers WorkBuddy and QwenWork compatibility filters', () => {
+    render(
+      <LibraryPage
+        capabilities={[]}
+        spaces={[]}
+        installations={[]}
+        updateChecks={{}}
+        online
+        onInstall={vi.fn()}
+        onUninstall={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByRole('option', { name: 'WorkBuddy' })).toHaveValue('workbuddy');
+    expect(screen.getByRole('option', { name: '千问 Work（QwenWork）' })).toHaveValue('qwenwork');
+  });
+
   it('shows only capabilities that have an installable published version', () => {
     render(
       <LibraryPage

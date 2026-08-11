@@ -171,7 +171,7 @@ pnpm artifacts:cli       # 生成 CLI 与 SHA-256 校验文件
 - 服务重启、数据库备份恢复、对象存储恢复和迁移串行化；
 - Web 管理端、桌面端和 Linux CLI 的端到端业务流程。
 
-截至当前基线，完整验证结果为：API 169 个用例通过（另 1 个容器发布用例由真实栈测试执行），安全门禁 37/37、Web 单元测试 21/21、Desktop 单元测试 87/87、Web E2E 3/3、Desktop E2E 7/7、最终验收 24/24；`pnpm release:verify` 退出码为 0。
+截至当前基线，完整验证结果为：API 169 个用例通过（另 1 个容器发布用例由真实栈测试执行），安全门禁 37/37、Web 单元测试 21/21、Desktop 单元测试 88/88、Web E2E 3/3、Desktop E2E 7/7、最终验收 24/24；`pnpm release:verify` 退出码为 0。
 
 Git 标签 `v*` 会触发发布流水线，产出 macOS、Windows 桌面包、Linux 可运行 CLI 以及带 SBOM/来源证明的多架构后端镜像。
 
