@@ -6,6 +6,9 @@ CapaPort 是面向研发团队的组织级 AI 能力管理平台。它把 Skill�
 
 产品由 macOS/Windows 桌面客户端、Linux CLI、Web 管理后台和 Docker 化云端服务组成。首批适配 Codex、Claude Code、Cursor 与 Gemini CLI；支持个人、组织、团队、项目四类空间，一个项目空间可绑定多个本地目录，但不会上传业务源码。
 
+- 源码仓库：[github.com/qiujunbiao/CapaPort](https://github.com/qiujunbiao/CapaPort)
+- 当前版本：`0.1.0`
+
 ## 能力范畴
 
 CapaPort 管理的“能力”不是单一文件，而是可发现、可审查、可版本化、可分发的能力包。一个能力包可以组合：
@@ -56,9 +59,11 @@ flowchart LR
 
 ## 一键本地运行
 
-要求：Docker Desktop 或 Docker Engine + Compose v2。克隆仓库后执行：
+要求：Git、Docker Desktop 或 Docker Engine + Compose v2。克隆仓库后执行：
 
 ```bash
+git clone https://github.com/qiujunbiao/CapaPort.git
+cd CapaPort
 docker compose -f infra/compose/compose.yaml up -d --build --wait
 ```
 
@@ -182,6 +187,13 @@ tests/acceptance/  跨端、跨租户最终验收
 docs/              设计、用户、管理员和运维文档
 ```
 
+## 参与项目
+
+- 使用问题、缺陷和功能建议请提交到 [GitHub Issues](https://github.com/qiujunbiao/CapaPort/issues)。
+- 准备较大改动前，请先创建 Issue 说明目标、边界和验证方式，避免重复实现或破坏能力包协议。
+- 提交 Pull Request 前，请至少运行与改动范围匹配的测试、`pnpm lint` 和 `pnpm typecheck`；涉及发布、权限、安全或跨端行为的改动应运行 `pnpm release:verify`。
+- 安全漏洞或疑似凭据泄露请不要提交公开 Issue；请通过仓库的 Security 页面私下报告。
+
 ## 许可
 
-当前仓库为私有产品工程，未授予对外开源许可。
+本仓库源代码公开可见。公开访问不等于授予开源许可；当前仓库根目录尚未提供 `LICENSE` 文件，除非另有书面许可，不授予复制、修改或再分发权。正式许可证确定后，以根目录 `LICENSE` 文件为准。
