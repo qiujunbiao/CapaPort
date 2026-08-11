@@ -13,6 +13,11 @@ import { hash as argonHash, verify as argonVerify } from '@node-rs/argon2';
 import { AppError } from '../../platform/errors/app-error.js';
 import { maskIdentity, normalizeIdentity, validatePasswordStrength } from './identity.policy.js';
 import type { IdentityRecord } from './identity.repository.js';
+import {
+  PASSWORD_RISK_CHECKER,
+  PasswordRiskCheckUnavailableError,
+  type PasswordRiskChecker,
+} from './password-risk-checker.js';
 import type { SessionClient } from './session.service.js';
 import type { ChallengeMetadata, PreparedChallenge } from './verification.service.js';
 
@@ -33,7 +38,13 @@ export interface IdentityDataStore {
     codeDigest: string;
     expiresAt: Date;
   }): Promise<void>;
-  changePasswordAndRevoke(userId: string, passwordHash: string, now: Date): Promise<void>;
+  completePasswordRecovery(input: {
+    challengeId: string;
+    codeDigest: string;
+    userId: string;
+    passwordHash: string;
+    now: Date;
+  }): Promise<void>;
   listIdentities(userId: string): Promise<Array<{ kind: IdentityKind; value: string; verifiedAt: Date | null }>>;
   exportAccount(userId: string): Promise<Record<string, unknown>>;
   requestAccountDeletion(userId: string, scheduledAt: Date): Promise<void>;
@@ -70,7 +81,14 @@ export interface IdentityVerification {
     userId: string,
     identityId?: string,
   ): Promise<ChallengeMetadata>;
-  consumeRecovery(challengeId: string, code: string): Promise<{ status: 'consumed'; userId: string }>;
+  authorizeRecovery(challengeId: string, code: string): Promise<{
+    status: 'authorized';
+    userId: string;
+    identityId: string | null;
+    kind: IdentityKind;
+    target: string;
+    codeDigest: string;
+  }>;
 }
 
 export interface SessionIssuer {
@@ -100,14 +118,16 @@ export class IdentityService {
     @Inject('IDENTITY_VERIFICATION') private readonly verification: IdentityVerification,
     @Inject('SESSION_ISSUER') private readonly sessions: SessionIssuer,
     @Inject('LOGIN_RATE_LIMITER') private readonly rateLimiter: RateLimiter,
+    @Inject(PASSWORD_RISK_CHECKER) private readonly passwordRisk: PasswordRiskChecker,
   ) {}
 
   async register(input: RegisterRequest): Promise<ChallengeMetadata> {
     const normalizedValue = normalizeIdentity(input.kind, input.target);
-    validatePasswordStrength(input.password);
+    validatePasswordStrength(input.password, { identity: normalizedValue, displayName: input.displayName });
     if (await this.repository.findIdentity(input.kind, normalizedValue)) {
       throw new AppError('AUTH_IDENTITY_EXISTS', 'An account already uses this email or phone number.', 409);
     }
+    await this.assertPasswordSafe(normalizedValue, input.password);
     const userId = randomUUID();
     const identityId = randomUUID();
     const passwordHash = await this.password.hash(input.password);
@@ -178,10 +198,17 @@ export class IdentityService {
   }
 
   async completeRecovery(input: RecoveryCompleteRequest): Promise<{ recovered: true }> {
-    validatePasswordStrength(input.newPassword);
-    const challenge = await this.verification.consumeRecovery(input.challengeId, input.code);
+    const challenge = await this.verification.authorizeRecovery(input.challengeId, input.code);
+    validatePasswordStrength(input.newPassword, { identity: challenge.target });
+    await this.assertPasswordSafe(challenge.target, input.newPassword);
     const passwordHash = await this.password.hash(input.newPassword);
-    await this.repository.changePasswordAndRevoke(challenge.userId, passwordHash, new Date());
+    await this.repository.completePasswordRecovery({
+      challengeId: input.challengeId,
+      codeDigest: challenge.codeDigest,
+      userId: challenge.userId,
+      passwordHash,
+      now: new Date(),
+    });
     return { recovered: true };
   }
 
@@ -230,5 +257,26 @@ export class IdentityService {
 
   private isUniqueViolation(error: unknown): boolean {
     return typeof error === 'object' && error !== null && 'code' in error && error.code === '23505';
+  }
+
+  private async assertPasswordSafe(identity: string, password: string): Promise<void> {
+    try {
+      if ((await this.passwordRisk.check(identity, password)) === 'compromised') {
+        throw new AppError('AUTH_PASSWORD_COMPROMISED', '该密码曾出现在数据泄露中，请勿继续使用。', 400, {
+          password: ['该密码曾出现在数据泄露中，请勿继续使用。'],
+        });
+      }
+    } catch (error) {
+      if (error instanceof AppError) throw error;
+      if (error instanceof PasswordRiskCheckUnavailableError) {
+        throw new AppError(
+          'AUTH_PASSWORD_RISK_CHECK_UNAVAILABLE',
+          '暂时无法完成密码安全检查，请稍后重试。',
+          503,
+          { password: ['暂时无法完成密码安全检查，请稍后重试。'] },
+        );
+      }
+      throw error;
+    }
   }
 }

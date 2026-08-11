@@ -1,12 +1,13 @@
 import { describe, expect, it, vi } from 'vitest';
 import { AppError } from '../../platform/errors/app-error.js';
+import { PasswordRiskCheckUnavailableError, type PasswordRiskChecker } from './password-risk-checker.js';
 import { type IdentityDataStore, IdentityService, type PasswordHasher, type RateLimiter } from './identity.service.js';
 
 function dependencies() {
   const repository: IdentityDataStore = {
     findIdentity: vi.fn().mockResolvedValue(undefined),
     createRegistration: vi.fn().mockResolvedValue(undefined),
-    changePasswordAndRevoke: vi.fn().mockResolvedValue(undefined),
+    completePasswordRecovery: vi.fn().mockResolvedValue(undefined),
     listIdentities: vi.fn().mockResolvedValue([]),
     exportAccount: vi.fn().mockResolvedValue({ schemaVersion: 1 }),
     requestAccountDeletion: vi.fn().mockResolvedValue(undefined),
@@ -37,13 +38,14 @@ function dependencies() {
     }),
     verifyIdentity: vi.fn(),
     create: vi.fn(),
-    consumeRecovery: vi.fn(),
+    authorizeRecovery: vi.fn(),
   };
   const sessions = {
     issue: vi.fn().mockResolvedValue({ accessToken: 'access', refreshToken: 'refresh', expiresIn: 900 }),
   };
   const rateLimiter: RateLimiter = { assertAllowed: vi.fn(), recordFailure: vi.fn(), clear: vi.fn() };
-  return { repository, password, verification, sessions, rateLimiter };
+  const passwordRisk: PasswordRiskChecker = { check: vi.fn().mockResolvedValue('safe') };
+  return { repository, password, verification, sessions, rateLimiter, passwordRisk };
 }
 
 describe('IdentityService', () => {
@@ -62,6 +64,7 @@ describe('IdentityService', () => {
       deps.verification,
       deps.sessions,
       deps.rateLimiter,
+      deps.passwordRisk,
     ).register({
       kind: 'email',
       target: 'person@example.com',
@@ -80,6 +83,7 @@ describe('IdentityService', () => {
       deps.verification,
       deps.sessions,
       deps.rateLimiter,
+      deps.passwordRisk,
     ).register({
       kind: 'email',
       target: ' Person@Example.com ',
@@ -111,6 +115,7 @@ describe('IdentityService', () => {
       deps.verification,
       deps.sessions,
       deps.rateLimiter,
+      deps.passwordRisk,
     );
     await expect(
       service.register({
@@ -141,6 +146,7 @@ describe('IdentityService', () => {
       deps.verification,
       deps.sessions,
       deps.rateLimiter,
+      deps.passwordRisk,
     );
     await expect(
       service.login(
@@ -150,5 +156,94 @@ describe('IdentityService', () => {
     ).rejects.toMatchObject({ code: 'AUTH_CREDENTIALS_INVALID', message: expect.stringContaining('Email') });
     expect(deps.password.verify).toHaveBeenCalledWith(expect.stringMatching(/^\$argon2id\$/), 'Incorrect-Password9!');
     expect(deps.rateLimiter.recordFailure).toHaveBeenCalled();
+  });
+
+  it('rejects a compromised registration password before hashing it', async () => {
+    const deps = dependencies();
+    vi.mocked(deps.passwordRisk.check).mockResolvedValueOnce('compromised');
+    const service = new IdentityService(
+      deps.repository,
+      deps.password,
+      deps.verification,
+      deps.sessions,
+      deps.rateLimiter,
+      deps.passwordRisk,
+    );
+
+    await expect(
+      service.register({
+        kind: 'email',
+        target: 'person@example.com',
+        password: 'River-Stone-82',
+        displayName: 'Person',
+      }),
+    ).rejects.toMatchObject({
+      code: 'AUTH_PASSWORD_COMPROMISED',
+      fieldErrors: { password: ['该密码曾出现在数据泄露中，请勿继续使用。'] },
+    });
+    expect(deps.password.hash).not.toHaveBeenCalled();
+  });
+
+  it('keeps a recovery challenge reusable when the external risk check is unavailable', async () => {
+    const deps = dependencies();
+    vi.mocked(deps.verification.authorizeRecovery).mockResolvedValueOnce({
+      status: 'authorized',
+      userId: 'user-1',
+      identityId: 'identity-1',
+      kind: 'email',
+      target: 'person@example.com',
+      codeDigest: 'digest',
+    });
+    vi.mocked(deps.passwordRisk.check).mockRejectedValueOnce(new PasswordRiskCheckUnavailableError());
+    const service = new IdentityService(
+      deps.repository,
+      deps.password,
+      deps.verification,
+      deps.sessions,
+      deps.rateLimiter,
+      deps.passwordRisk,
+    );
+
+    await expect(
+      service.completeRecovery({ challengeId: 'challenge-1', code: '123456', newPassword: 'River-Stone-82' }),
+    ).rejects.toMatchObject({
+      code: 'AUTH_PASSWORD_RISK_CHECK_UNAVAILABLE',
+      statusCode: 503,
+      fieldErrors: { password: ['暂时无法完成密码安全检查，请稍后重试。'] },
+    });
+    expect(deps.repository.completePasswordRecovery).not.toHaveBeenCalled();
+  });
+
+  it('atomically completes recovery only after local and external checks pass', async () => {
+    const deps = dependencies();
+    vi.mocked(deps.verification.authorizeRecovery).mockResolvedValueOnce({
+      status: 'authorized',
+      userId: 'user-1',
+      identityId: 'identity-1',
+      kind: 'email',
+      target: 'person@example.com',
+      codeDigest: 'digest',
+    });
+    const service = new IdentityService(
+      deps.repository,
+      deps.password,
+      deps.verification,
+      deps.sessions,
+      deps.rateLimiter,
+      deps.passwordRisk,
+    );
+
+    await expect(
+      service.completeRecovery({ challengeId: 'challenge-1', code: '123456', newPassword: 'River-Stone-82' }),
+    ).resolves.toEqual({ recovered: true });
+    expect(deps.passwordRisk.check).toHaveBeenCalledWith('person@example.com', 'River-Stone-82');
+    expect(deps.repository.completePasswordRecovery).toHaveBeenCalledWith(
+      expect.objectContaining({
+        challengeId: 'challenge-1',
+        codeDigest: 'digest',
+        userId: 'user-1',
+        passwordHash: 'argon2id-hash',
+      }),
+    );
   });
 });
