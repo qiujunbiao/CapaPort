@@ -12,6 +12,7 @@ export type AdapterComplianceOptions = {
   supportedScopes?: readonly InstallScope[];
   roots?: Partial<Record<InstallScope, string>>;
   fixtureHomeDir?: string;
+  fixtureExpectedFiles?: readonly string[];
   createAdapter(environment: AdapterEnvironment): AgentAdapter;
 };
 
@@ -228,6 +229,10 @@ export function defineAdapterComplianceSuite(options: AdapterComplianceOptions):
           slug: 'release',
           componentType: 'skill',
         });
+        const release = inventory.find((capability) => capability.slug === 'release');
+        expect(release?.files.map((file) => file.path).sort()).toEqual(
+          [...(options.fixtureExpectedFiles ?? ['SKILL.md'])].sort(),
+        );
       });
     }
   });
