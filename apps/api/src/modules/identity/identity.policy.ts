@@ -1,9 +1,16 @@
-import type { IdentityKind } from '@capaport/contracts/auth';
+import {
+  type IdentityKind,
+  PASSWORD_MAX_CODE_POINTS,
+  PASSWORD_MIN_CODE_POINTS,
+} from '@capaport/contracts/auth';
+import { ZxcvbnFactory } from '@zxcvbn-ts/core';
+import { adjacencyGraphs, dictionary } from '@zxcvbn-ts/language-common';
 import { AppError } from '../../platform/errors/app-error.js';
 
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const e164Pattern = /^\+[1-9]\d{7,14}$/;
 const mainlandMobilePattern = /^1[3-9]\d{9}$/;
+const passwordStrength = new ZxcvbnFactory({ dictionary, graphs: adjacencyGraphs });
 
 export function normalizeIdentity(kind: IdentityKind, input: string): string {
   const value = input.trim();
@@ -27,17 +34,29 @@ export function normalizeIdentity(kind: IdentityKind, input: string): string {
   return normalized;
 }
 
-export function validatePasswordStrength(password: string): void {
-  const failures: string[] = [];
-  if (password.length < 12) failures.push('Use at least 12 characters.');
-  if (!/[a-z]/.test(password)) failures.push('Add a lowercase letter.');
-  if (!/[A-Z]/.test(password)) failures.push('Add an uppercase letter.');
-  if (!/\d/.test(password)) failures.push('Add a number.');
-  if (!/[^A-Za-z0-9]/.test(password)) failures.push('Add a symbol.');
-  if (/password|123456|qwerty|letmein|admin/i.test(password)) failures.push('Avoid common password phrases.');
-  if (failures.length > 0) {
-    throw new AppError('AUTH_PASSWORD_WEAK', 'Password does not meet the security policy.', 400, {
-      password: failures,
+export function validatePasswordStrength(
+  password: string,
+  context: { identity?: string; displayName?: string } = {},
+): void {
+  const length = Array.from(password).length;
+  if (length < PASSWORD_MIN_CODE_POINTS) {
+    throw new AppError('AUTH_PASSWORD_TOO_SHORT', '密码至少需要 8 个字符。', 400, {
+      password: ['密码至少需要 8 个字符。'],
+    });
+  }
+  if (length > PASSWORD_MAX_CODE_POINTS) {
+    throw new AppError('AUTH_PASSWORD_TOO_LONG', '密码不能超过 256 个字符。', 400, {
+      password: ['密码不能超过 256 个字符。'],
+    });
+  }
+
+  const identityParts = context.identity?.split(/[^\p{L}\p{N}]+/u) ?? [];
+  const userInputs = [...identityParts, context.displayName, 'CapaPort'].filter(
+    (value): value is string => Boolean(value?.trim()),
+  );
+  if (passwordStrength.check(password, userInputs).score < 2) {
+    throw new AppError('AUTH_PASSWORD_TOO_SIMPLE', '该密码过于简单或容易被猜到，请换一个密码。', 400, {
+      password: ['该密码过于简单或容易被猜到，请换一个密码。'],
     });
   }
 }
