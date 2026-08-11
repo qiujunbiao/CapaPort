@@ -22,6 +22,9 @@ export type ChallengePurpose = 'verify_identity' | 'recover_password';
 export type ChallengeConsumption =
   | { status: 'consumed'; userId: string; identityId: string | null; kind: IdentityKind; target: string }
   | { status: 'not_found' | 'expired' | 'invalid' | 'exhausted' | 'already_used' };
+export type ChallengeAuthorization =
+  | { status: 'authorized'; userId: string; identityId: string | null; kind: IdentityKind; target: string }
+  | { status: 'not_found' | 'expired' | 'invalid' | 'exhausted' | 'already_used' };
 
 @Injectable()
 export class IdentityRepository implements SessionStore {
@@ -183,6 +186,64 @@ export class IdentityRepository implements SessionStore {
     }
   }
 
+  async authorizeChallenge(
+    challengeId: string,
+    purpose: ChallengePurpose,
+    codeDigest: string,
+    now: Date,
+  ): Promise<ChallengeAuthorization> {
+    const client = await this.database.pool.connect();
+    try {
+      await client.query('BEGIN');
+      const result = await client.query<{
+        purpose: string;
+        code_digest: string;
+        user_id: string | null;
+        identity_id: string | null;
+        kind: IdentityKind;
+        target: string;
+        expires_at: Date;
+        consumed_at: Date | null;
+        attempts: number;
+      }>('SELECT * FROM verification_challenges WHERE id = $1 FOR UPDATE', [challengeId]);
+      const challenge = result.rows[0];
+      if (!challenge || challenge.purpose !== purpose || !challenge.user_id) {
+        await client.query('ROLLBACK');
+        return { status: 'not_found' };
+      }
+      if (challenge.consumed_at) {
+        await client.query('ROLLBACK');
+        return { status: 'already_used' };
+      }
+      if (challenge.expires_at <= now) {
+        await client.query('ROLLBACK');
+        return { status: 'expired' };
+      }
+      if (challenge.attempts >= 5) {
+        await client.query('ROLLBACK');
+        return { status: 'exhausted' };
+      }
+      if (challenge.code_digest !== codeDigest) {
+        await client.query('UPDATE verification_challenges SET attempts = attempts + 1 WHERE id = $1', [challengeId]);
+        await client.query('COMMIT');
+        return { status: 'invalid' };
+      }
+      await client.query('COMMIT');
+      return {
+        status: 'authorized',
+        userId: challenge.user_id,
+        identityId: challenge.identity_id,
+        kind: challenge.kind,
+        target: challenge.target,
+      };
+    } catch (error) {
+      await client.query('ROLLBACK');
+      throw error;
+    } finally {
+      client.release();
+    }
+  }
+
   async markIdentityVerified(userId: string, identityId: string, verifiedAt: Date): Promise<void> {
     await this.database.transaction(async (transaction) => {
       await transaction.update(userIdentities).set({ verifiedAt }).where(eq(userIdentities.id, identityId));
@@ -205,6 +266,69 @@ export class IdentityRepository implements SessionStore {
         await transaction.update(refreshTokens).set({ revokedAt: now }).where(eq(refreshTokens.sessionId, session.id));
       }
     });
+  }
+
+  async completePasswordRecovery(input: {
+    challengeId: string;
+    codeDigest: string;
+    userId: string;
+    passwordHash: string;
+    now: Date;
+  }): Promise<void> {
+    const client = await this.database.pool.connect();
+    try {
+      await client.query('BEGIN');
+      const result = await client.query<{
+        purpose: string;
+        code_digest: string;
+        user_id: string | null;
+        expires_at: Date;
+        consumed_at: Date | null;
+        attempts: number;
+      }>('SELECT * FROM verification_challenges WHERE id = $1 FOR UPDATE', [input.challengeId]);
+      const challenge = result.rows[0];
+      if (
+        !challenge ||
+        challenge.purpose !== 'recover_password' ||
+        challenge.user_id !== input.userId ||
+        challenge.code_digest !== input.codeDigest
+      ) {
+        throw new AppError('AUTH_VERIFICATION_INVALID', 'The verification request is invalid.', 400);
+      }
+      if (challenge.consumed_at) {
+        throw new AppError('AUTH_VERIFICATION_USED', 'The verification code has already been used.', 409);
+      }
+      if (challenge.expires_at <= input.now) {
+        throw new AppError('AUTH_VERIFICATION_EXPIRED', 'The verification code has expired.', 410);
+      }
+      if (challenge.attempts >= 5) {
+        throw new AppError('AUTH_VERIFICATION_EXHAUSTED', 'Too many verification attempts. Request a new code.', 429);
+      }
+      await client.query('UPDATE verification_challenges SET consumed_at = $2 WHERE id = $1', [
+        input.challengeId,
+        input.now,
+      ]);
+      await client.query('UPDATE users SET password_hash = $2, updated_at = $3 WHERE id = $1', [
+        input.userId,
+        input.passwordHash,
+        input.now,
+      ]);
+      await client.query(
+        `UPDATE sessions SET revoked_at = $2, revocation_reason = 'password_recovery' WHERE user_id = $1`,
+        [input.userId, input.now],
+      );
+      await client.query(
+        `UPDATE refresh_tokens SET revoked_at = $2
+         WHERE session_id IN (SELECT id FROM sessions WHERE user_id = $1)`,
+        [input.userId, input.now],
+      );
+      await client.query('COMMIT');
+    } catch (error) {
+      await client.query('ROLLBACK');
+      throw error;
+    } finally {
+      client.release();
+    }
   }
 
   async listIdentities(userId: string): Promise<Array<{ kind: IdentityKind; value: string; verifiedAt: Date | null }>> {

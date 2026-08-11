@@ -5,7 +5,7 @@ import type { AppConfig } from '../../config/config.js';
 import { APP_CONFIG } from '../../config/config.js';
 import { AppError } from '../../platform/errors/app-error.js';
 import { maskIdentity } from './identity.policy.js';
-import type { ChallengeConsumption, ChallengePurpose } from './identity.repository.js';
+import type { ChallengeAuthorization, ChallengeConsumption, ChallengePurpose } from './identity.repository.js';
 
 export type PreparedChallenge = {
   id: string;
@@ -31,6 +31,12 @@ export interface VerificationStore {
     expiresAt: Date;
   }): Promise<void>;
   consumeChallenge(id: string, purpose: ChallengePurpose, codeDigest: string, now: Date): Promise<ChallengeConsumption>;
+  authorizeChallenge(
+    id: string,
+    purpose: ChallengePurpose,
+    codeDigest: string,
+    now: Date,
+  ): Promise<ChallengeAuthorization>;
   markIdentityVerified(userId: string, identityId: string, verifiedAt: Date): Promise<void>;
 }
 
@@ -111,6 +117,16 @@ export class VerificationService {
     return this.consume(challengeId, code, 'recover_password');
   }
 
+  async authorizeRecovery(
+    challengeId: string,
+    code: string,
+  ): Promise<Extract<ChallengeAuthorization, { status: 'authorized' }> & { codeDigest: string }> {
+    const codeDigest = this.digest(challengeId, code);
+    const result = await this.store.authorizeChallenge(challengeId, 'recover_password', codeDigest, new Date());
+    if (result.status !== 'authorized') this.throwChallengeError(result.status);
+    return { ...result, codeDigest };
+  }
+
   publicMetadata(challenge: PreparedChallenge): ChallengeMetadata {
     return {
       challengeId: challenge.id,
@@ -127,6 +143,10 @@ export class VerificationService {
   ): Promise<Extract<ChallengeConsumption, { status: 'consumed' }>> {
     const result = await this.store.consumeChallenge(challengeId, purpose, this.digest(challengeId, code), new Date());
     if (result.status === 'consumed') return result;
+    return this.throwChallengeError(result.status);
+  }
+
+  private throwChallengeError(status: Exclude<ChallengeConsumption['status'], 'consumed'>): never {
     const errors: Record<Exclude<ChallengeConsumption['status'], 'consumed'>, [string, string, number]> = {
       not_found: ['AUTH_VERIFICATION_INVALID', 'The verification request is invalid.', 400],
       invalid: ['AUTH_VERIFICATION_INVALID', 'The verification code is incorrect.', 400],
@@ -134,8 +154,8 @@ export class VerificationService {
       exhausted: ['AUTH_VERIFICATION_EXHAUSTED', 'Too many verification attempts. Request a new code.', 429],
       already_used: ['AUTH_VERIFICATION_USED', 'The verification code has already been used.', 409],
     };
-    const [errorCode, message, status] = errors[result.status];
-    throw new AppError(errorCode, message, status);
+    const [errorCode, message, statusCode] = errors[status];
+    throw new AppError(errorCode, message, statusCode);
   }
 
   private digest(challengeId: string, code: string): string {

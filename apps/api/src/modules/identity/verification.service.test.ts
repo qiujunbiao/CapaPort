@@ -13,6 +13,7 @@ describe('VerificationService', () => {
     const store: VerificationStore = {
       createChallenge: vi.fn().mockResolvedValue(undefined),
       consumeChallenge: vi.fn(),
+      authorizeChallenge: vi.fn(),
       markIdentityVerified: vi.fn(),
     };
     const sender: VerificationSender = { send: vi.fn().mockResolvedValue(undefined) };
@@ -31,6 +32,7 @@ describe('VerificationService', () => {
     const store: VerificationStore = {
       createChallenge: vi.fn().mockResolvedValue(undefined),
       consumeChallenge: vi.fn(),
+      authorizeChallenge: vi.fn(),
       markIdentityVerified: vi.fn(),
     };
     const sender: VerificationSender = { send: vi.fn().mockResolvedValue(undefined) };
@@ -48,6 +50,7 @@ describe('VerificationService', () => {
   it('rejects expired and already-used verification challenges', async () => {
     const store: VerificationStore = {
       createChallenge: vi.fn(),
+      authorizeChallenge: vi.fn(),
       consumeChallenge: vi
         .fn()
         .mockResolvedValueOnce({ status: 'expired' })
@@ -61,5 +64,34 @@ describe('VerificationService', () => {
     await expect(service.verifyIdentity('00000000-0000-4000-8000-000000000001', '123456')).rejects.toMatchObject({
       code: 'AUTH_VERIFICATION_USED',
     } satisfies Partial<AppError>);
+  });
+
+  it('authorizes password recovery without consuming the one-time challenge', async () => {
+    const store: VerificationStore = {
+      createChallenge: vi.fn(),
+      consumeChallenge: vi.fn(),
+      authorizeChallenge: vi.fn().mockResolvedValue({
+        status: 'authorized',
+        userId: 'user-1',
+        identityId: 'identity-1',
+        kind: 'email',
+        target: 'person@example.com',
+      }),
+      markIdentityVerified: vi.fn(),
+    };
+    const service = new VerificationService(store, { send: vi.fn() }, config);
+
+    await expect(service.authorizeRecovery('challenge-1', '123456')).resolves.toMatchObject({
+      userId: 'user-1',
+      target: 'person@example.com',
+      codeDigest: expect.stringMatching(/^[a-f0-9]{64}$/),
+    });
+    expect(store.authorizeChallenge).toHaveBeenCalledWith(
+      'challenge-1',
+      'recover_password',
+      expect.stringMatching(/^[a-f0-9]{64}$/),
+      expect.any(Date),
+    );
+    expect(store.consumeChallenge).not.toHaveBeenCalled();
   });
 });
