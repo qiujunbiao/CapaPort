@@ -94,7 +94,7 @@ docker compose -f infra/compose/compose.yaml down -v
 
 ## 从源码开发
 
-要求 Node.js 22、pnpm 11.16、Rust stable（仅桌面原生端需要）和 Docker。
+要求 Node.js 22.12 或更高版本、pnpm 11.16、Rust stable（仅桌面原生端需要）和 Docker。Node.js 23、24 等更高版本同样满足要求；不要仅因版本号不是偶数就判断为与 Vite 不兼容。
 
 ```bash
 corepack enable
@@ -113,11 +113,22 @@ pnpm --filter @capaport/cli build
 node apps/cli/dist/capaport.mjs --help
 ```
 
-桌面原生开发运行：
+macOS 首次开发桌面原生端时，先安装 Xcode Command Line Tools 与 Rust stable：
 
 ```bash
-pnpm --dir apps/desktop exec tauri dev
+xcode-select --install
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+source "$HOME/.cargo/env"
 ```
+
+如果 Rust 已安装但终端找不到 `cargo`，请确认 `$HOME/.cargo/bin` 在 `PATH` 中。随后运行环境自检并启动桌面端：
+
+```bash
+pnpm desktop:doctor
+pnpm desktop:dev
+```
+
+`desktop:doctor` 会检查当前 Node.js、pnpm、Cargo、Rust 编译器，以及 macOS 的 Xcode Command Line Tools，并在缺少依赖或 PATH 配置错误时给出对应修复提示。Tauri 首次启动会编译 Rust 依赖，耗时可能比后续启动更长。
 
 ## 验证与发布
 

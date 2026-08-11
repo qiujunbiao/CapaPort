@@ -5,11 +5,13 @@
   "type": "module",
   "packageManager": "pnpm@11.16.0",
   "engines": {
-    "node": ">=22.0.0"
+    "node": ">=22.12.0"
   },
   "scripts": {
     "build": "turbo run build",
     "dev": "turbo run dev --parallel",
+    "desktop:doctor": "tsx scripts/check-desktop-development.ts",
+    "desktop:dev": "pnpm desktop:doctor && pnpm --dir apps/desktop exec tauri dev",
     "test": "turbo run test",
     "typecheck": "turbo run typecheck",
     "lint": "biome check .",

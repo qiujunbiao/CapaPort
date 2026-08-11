@@ -9,6 +9,36 @@ async function source(path: string): Promise<string> {
 }
 
 describe('release delivery contract', () => {
+  it('selects the desktop application when Cargo runs the Tauri manifest', async () => {
+    const manifest = await source('apps/desktop/src-tauri/Cargo.toml');
+    expect(manifest).toContain('default-run = "capaport-desktop"');
+  });
+
+  it('keeps the runtime acceptance harness out of normal desktop bundles', async () => {
+    const manifest = await source('apps/desktop/src-tauri/Cargo.toml');
+    const runtimeTest = await source('tests/acceptance/desktop-runtime.spec.ts');
+    expect(manifest).toMatch(/\[\[example\]\][\s\S]*name = "capaport-runtime-harness"/);
+    expect(runtimeTest).toContain("'--example'");
+  });
+
+  it('provides a checked desktop development entrypoint with the Node version required by Vite', async () => {
+    const packageJson = JSON.parse(await source('package.json')) as {
+      engines?: { node?: string };
+      scripts?: Record<string, string>;
+    };
+    expect(packageJson.engines?.node).toBe('>=22.12.0');
+    expect(packageJson.scripts?.['desktop:doctor']).toBe('tsx scripts/check-desktop-development.ts');
+    expect(packageJson.scripts?.['desktop:dev']).toBe('pnpm desktop:doctor && pnpm --dir apps/desktop exec tauri dev');
+  });
+
+  it('documents the desktop environment check before the native development command', async () => {
+    const readme = await source('README.md');
+    expect(readme).toContain('pnpm desktop:doctor');
+    expect(readme).toContain('pnpm desktop:dev');
+    expect(readme).toContain('xcode-select --install');
+    expect(readme).toContain('source "$HOME/.cargo/env"');
+  });
+
   it('ships a one-command full local stack with Web and hardened backend services', async () => {
     const compose = await source('infra/compose/compose.yaml');
     const packageJson = await source('package.json');
@@ -48,7 +78,7 @@ describe('release delivery contract', () => {
   });
 
   it('ships an executable Rust runtime acceptance harness instead of source-string assertions', async () => {
-    const harness = await source('apps/desktop/src-tauri/src/bin/runtime_harness.rs');
+    const harness = await source('apps/desktop/src-tauri/examples/runtime_harness.rs');
     const test = await source('tests/acceptance/desktop-runtime.spec.ts');
     expect(harness).toContain('Runtime::new');
     expect(harness).toContain('preview_install');

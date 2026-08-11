@@ -2,6 +2,7 @@
 name = "capaport-desktop"
 version = "0.1.0"
 edition = "2024"
+default-run = "capaport-desktop"
 
 [lib]
 name = "capaport_runtime"
@@ -11,9 +12,9 @@ path = "src/lib.rs"
 name = "capaport-desktop"
 path = "src/main.rs"
 
-[[bin]]
+[[example]]
 name = "capaport-runtime-harness"
-path = "src/bin/runtime_harness.rs"
+path = "examples/runtime_harness.rs"
 
 [features]
 default = []
