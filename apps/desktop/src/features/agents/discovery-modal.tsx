@@ -406,7 +406,7 @@ export function DiscoveryModal({
                   {loading ? '正在检测本地 Agent' : `发现 ${agents.length} 个 Agent，${inventory.length} 项能力`}
                 </strong>
               </span>
-              <small>只读取 Codex、Claude Code、Cursor 与 Gemini CLI 的已知能力目录。</small>
+              <small>只读取 Codex、Claude Code、Cursor、Gemini CLI、WorkBuddy 与千问 Work 的已知能力目录。</small>
               {discoveryIssues.length ? <small>另有 {discoveryIssues.length} 个路径未能读取</small> : null}
             </div>
             {loading ? (

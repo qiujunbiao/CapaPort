@@ -1,4 +1,5 @@
 import {
+  agentLabels,
   compatibleAgentsForComponents,
   createEditablePackage,
   type EditableAgent,
@@ -23,6 +24,15 @@ import { scanArchiveBeforeUpload } from '../../security/client-scan';
 import { PackageEditor } from './package-editor';
 
 type SavedDraft = { capabilityId: string; draftId: string; digest: string; sequence: number; findings: string[] };
+
+const editableAgents: readonly EditableAgent[] = [
+  'codex',
+  'claude-code',
+  'cursor',
+  'gemini-cli',
+  'workbuddy',
+  'qwenwork',
+];
 
 function archiveBase64(bytes: Uint8Array): string {
   let binary = '';
@@ -353,7 +363,7 @@ export function AuthoringPage({
           </div>
           <fieldset className="agent-checkboxes">
             <legend>兼容 Agent</legend>
-            {(['codex', 'claude-code', 'cursor', 'gemini-cli'] as const).map((agent) => (
+            {editableAgents.map((agent) => (
               <label key={agent}>
                 <input
                   type="checkbox"
@@ -361,7 +371,7 @@ export function AuthoringPage({
                   disabled={!compatibleAgents.includes(agent)}
                   onChange={() => toggleAgent(agent)}
                 />
-                {agent}
+                {agentLabels[agent]}
               </label>
             ))}
           </fieldset>

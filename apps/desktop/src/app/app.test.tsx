@@ -474,6 +474,45 @@ describe('desktop application safety workflows', () => {
     expect(await screen.findByText('已提交到审核流程')).toBeInTheDocument();
   });
 
+  it('offers WorkBuddy and QwenWork only for Skill-only packages', async () => {
+    render(
+      <DesktopApp
+        cloud={cloudFixture()}
+        local={localFixture()}
+        sessionStore={createMemorySessionStore({
+          accessToken: 'token',
+          refreshToken: 'refresh',
+          organizationId: 'org-a',
+        })}
+      />,
+    );
+    fireEvent.click(await screen.findByRole('button', { name: '创作' }));
+    const workbuddy = screen.getByRole('checkbox', { name: 'WorkBuddy' });
+    const qwenwork = screen.getByRole('checkbox', { name: '千问 Work（QwenWork）' });
+    expect(workbuddy).toBeEnabled();
+    expect(qwenwork).toBeEnabled();
+
+    fireEvent.click(screen.getByRole('button', { name: '添加Prompt' }));
+    expect(workbuddy).toBeDisabled();
+    expect(qwenwork).toBeDisabled();
+  });
+
+  it('describes all six clients in local discovery', async () => {
+    render(
+      <DesktopApp
+        cloud={cloudFixture()}
+        local={localFixture()}
+        sessionStore={createMemorySessionStore({
+          accessToken: 'token',
+          refreshToken: 'refresh',
+          organizationId: 'org-a',
+        })}
+      />,
+    );
+    fireEvent.click(await screen.findByRole('button', { name: '本地发现' }));
+    expect(await screen.findByText(/WorkBuddy 与千问 Work/)).toBeInTheDocument();
+  });
+
   it('queues an unchanged saved draft for submission while offline', async () => {
     let online = true;
     const cloud = cloudFixture();

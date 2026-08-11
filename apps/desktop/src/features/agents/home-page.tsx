@@ -81,7 +81,7 @@ export function HomePage({
             <EmptyState
               icon={<Bot />}
               title="尚未发现 Agent"
-              description="安装或配置 Codex、Claude Code、Cursor、Gemini CLI 后重新检测。"
+              description="安装或配置 Codex、Claude Code、Cursor、Gemini CLI、WorkBuddy 或千问 Work 后重新检测。"
               action={
                 <Button variant="secondary" onClick={onDiscover}>
                   重新检测

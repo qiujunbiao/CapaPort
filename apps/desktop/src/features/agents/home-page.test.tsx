@@ -33,4 +33,19 @@ describe('HomePage capability visibility', () => {
     expect(screen.getByText('Published')).toBeInTheDocument();
     expect(screen.queryByText('Pending')).not.toBeInTheDocument();
   });
+
+  it('names all supported clients in the empty state', () => {
+    render(
+      <HomePage
+        agents={[]}
+        capabilities={[]}
+        online
+        loading={false}
+        onDiscover={vi.fn()}
+        onNavigate={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByText(/WorkBuddy/)).toHaveTextContent('千问 Work');
+  });
 });
