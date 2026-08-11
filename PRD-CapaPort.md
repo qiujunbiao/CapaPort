@@ -8,7 +8,7 @@
 
 ## 1. 概要
 
-CapaPort 是跨 Agent 工具的企业级 AI 能力分发与治理平台。它通过桌面客户端、云端服务、Web 管理后台和 CLI，把员工在 Codex、Claude Code、Cursor、Gemini CLI 等工具中形成的 Skill、Prompt 和项目上下文沉淀为可审核、可安装、可更新、可追踪的组织资产。
+CapaPort 是跨 Agent 工具的企业级 AI 能力分发与治理平台。它通过桌面客户端、云端服务、Web 管理后台和 CLI，把员工在 Codex、Claude Code、Cursor、Gemini CLI、WorkBuddy、千问 Work 等工具中形成的 Skill、Prompt 和项目上下文沉淀为可审核、可安装、可更新、可追踪的组织资产。
 
 MVP 首先服务研发团队和 AI 高阶用户，验证“发现 → 沉淀 → 审核 → 安装 → 更新”闭环。员工继续使用熟悉的 Agent 工具，CapaPort 负责组织资产的标准化、共享、权限、安全和持续迭代。
 
@@ -61,7 +61,7 @@ MVP 不构建通用 Agent 运行平台，不托管模型推理，不上传或索
 
 ### 5.1 首批用户
 
-首批用户是已经使用 Codex、Claude Code、Cursor 或 Gemini CLI 的研发团队和 AI 高阶用户。他们具备本地文件、项目目录和版本概念，但不应被要求理解 CapaPort 的内部存储格式。
+首批用户是已经使用 Codex、Claude Code、Cursor、Gemini CLI、WorkBuddy 或千问 Work 的研发团队和 AI 高阶用户。他们具备本地文件、项目目录和版本概念，但不应被要求理解 CapaPort 的内部存储格式。
 
 ### 5.2 核心角色
 
@@ -177,7 +177,7 @@ CapaPort 的核心差异不是管理某一种 Agent，而是提供平台中立�
 - 组织角色与团队、项目空间角色。
 - 个人、团队、项目、组织四类空间。
 - Skill、Prompt、项目上下文包的创建、导入、编辑和版本管理。
-- Codex、Claude Code、Cursor、Gemini CLI 本地适配器。
+- Codex、Claude Code、Cursor、Gemini CLI、WorkBuddy、千问 Work 本地适配器；其中 WorkBuddy 与千问 Work 首版仅支持原生 Skill。
 - 本地发现、安装、卸载、更新、冲突检测和恢复。
 - 团队/项目可配置审核；组织级强制审核。
 - 安全扫描、风险阻断、风险确认和扫描报告。

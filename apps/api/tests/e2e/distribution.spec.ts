@@ -24,7 +24,7 @@ describe('distribution HTTP contract', () => {
         versionId: 'version-a',
         version: '1.0.0',
         digest: 'a'.repeat(64),
-        adapter: 'codex',
+        adapter: 'qwenwork',
         permissions: { filesystem: 'read-project', network: 'none' },
         download: { url: 'https://objects.example/signed', expiresIn: 120 },
       }),
@@ -72,6 +72,24 @@ describe('distribution HTTP contract', () => {
     expect(unsafe.json().code).toBe('VALIDATION_ERROR');
     expect(distribution.registerDevice).not.toHaveBeenCalled();
 
+    const supported = await server.inject({
+      method: 'POST',
+      url: '/api/v1/devices',
+      headers: { authorization: 'Bearer token' },
+      payload: {
+        name: 'Agent workstation',
+        platform: 'macos',
+        appVersion: '1.0.0',
+        supportedAgents: ['codex', 'claude-code', 'cursor', 'gemini-cli', 'workbuddy', 'qwenwork'],
+      },
+    });
+    expect(supported.statusCode, supported.body).toBe(201);
+    expect(distribution.registerDevice).toHaveBeenCalledWith(
+      expect.objectContaining({ organizationId: 'org-a' }),
+      'user-a',
+      expect.objectContaining({ supportedAgents: expect.arrayContaining(['workbuddy', 'qwenwork']) }),
+    );
+
     const plan = await server.inject({
       method: 'POST',
       url: '/api/v1/distribution/install-plans',
@@ -80,11 +98,11 @@ describe('distribution HTTP contract', () => {
         deviceId: '00000000-0000-4000-8000-000000000001',
         capabilityId: '00000000-0000-4000-8000-000000000002',
         versionId: '00000000-0000-4000-8000-000000000003',
-        agent: 'codex',
+        agent: 'qwenwork',
       },
     });
     expect(plan.statusCode, plan.body).toBe(201);
-    expect(plan.json()).toMatchObject({ digest: 'a'.repeat(64), adapter: 'codex', download: { expiresIn: 120 } });
+    expect(plan.json()).toMatchObject({ digest: 'a'.repeat(64), adapter: 'qwenwork', download: { expiresIn: 120 } });
     expect(plan.body).not.toContain('objectKey');
   });
 });

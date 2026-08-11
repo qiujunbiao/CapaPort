@@ -21,10 +21,14 @@
 - Claude Code：用户/项目 `.claude`。
 - Cursor：项目 `.cursor`。
 - Gemini CLI：用户/项目 `.gemini`。
+- WorkBuddy：用户级 `~/.workbuddy/skills`，项目级 `.codebuddy/skills`。
+- 千问 Work（QwenWork）：用户级 `~/.qwenworkcn/skills`，不提供项目级目录。
 
 实际目录由本机适配器探测结果决定，界面会展示作用域和路径。项目空间可绑定多个本地项目目录，每个绑定单独选择同步规则、上下文和能力包。
 
 Skill 发现会递归查找包含 `SKILL.md` 的能力目录，并按规范化后的真实路径去重。从上述可信 Skill 根目录直接进入的目录符号链接可以指向用户目录内外；断链、循环链接或无权限目录会被单独跳过，不影响其他能力。能力包确定后，其内部链接只能解析到同一能力包目录内。
+
+WorkBuddy 与千问 Work 当前只支持 Skill。安装和导入会完整保留 `SKILL.md`、`scripts/`、`references/` 与 `assets/` 等普通文件；Prompt 和项目上下文不会被转换为 Skill。
 
 ## 安全边界
 

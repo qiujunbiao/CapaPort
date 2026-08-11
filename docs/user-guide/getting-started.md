@@ -11,7 +11,7 @@
 ## 第一次沉淀能力
 
 1. 在桌面端“本地发现”中选择项目目录并运行扫描。
-2. 查看 Codex、Claude Code、Cursor 或 Gemini CLI 中发现的 Skill、规则和 Prompt。
+2. 查看 Codex、Claude Code、Cursor、Gemini CLI、WorkBuddy 或千问 Work 中发现的原生能力。
 3. 选择条目，补充名称、说明、标签、目标 Agent；需要时加入不含源码的项目上下文文档。
 4. 客户端先执行敏感信息扫描。阻断项必须删除；仅在组织策略允许时确认非阻断警告。
 5. 保存到个人空间，或提交到团队/项目/组织空间。

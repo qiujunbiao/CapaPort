@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+- 新增 WorkBuddy 与千问 Work（QwenWork）Skill 适配器，覆盖发现、导入、安装、更新冲突保护和安全卸载。
+- WorkBuddy 支持用户级 `~/.workbuddy/skills/` 与项目级 `.codebuddy/skills/`；千问 Work 支持用户级 `~/.qwenworkcn/skills/`。
+
 ## 0.1.0 - 2026-08-08
 
 - 完成邮箱/手机号账号体系、验证码、会话刷新、设备和组织邀请闭环。

@@ -1,4 +1,4 @@
-import type { OrganizationRole, PublicationSummary } from '@capaport/contracts';
+import type { AgentId, OrganizationRole, PublicationSummary } from '@capaport/contracts';
 import type { SpaceMember, WebClient } from '../app/types';
 
 export function webFixture(
@@ -38,7 +38,7 @@ export function webFixture(
     name: '发布护航',
     description: '发布检查与风险提示',
     tags: ['release'],
-    compatibility: ['codex', 'claude-code'] as Array<'codex' | 'claude-code' | 'cursor' | 'gemini-cli'>,
+    compatibility: ['codex', 'claude-code'] as AgentId[],
     ownerUserId: 'user-a',
     status: 'active' as const,
     hasPublishedVersion: true,

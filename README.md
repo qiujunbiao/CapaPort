@@ -4,7 +4,7 @@
 
 CapaPort 是面向研发团队的组织级 AI 能力管理平台。它把 Skill、Prompt 和项目上下文统一为“能力包”，覆盖从本地发现、敏感信息扫描、沉淀审核，到跨 Agent 安装与安全更新的完整闭环。
 
-产品由 macOS/Windows 桌面客户端、Linux CLI、Web 管理后台和 Docker 化云端服务组成。首批适配 Codex、Claude Code、Cursor 与 Gemini CLI；支持个人、组织、团队、项目四类空间，一个项目空间可绑定多个本地目录，但不会上传业务源码。
+产品由 macOS/Windows 桌面客户端、Linux CLI、Web 管理后台和 Docker 化云端服务组成。当前适配 Codex、Claude Code、Cursor、Gemini CLI、WorkBuddy 与千问 Work（QwenWork）；支持个人、组织、团队、项目四类空间，一个项目空间可绑定多个本地目录，但不会上传业务源码。
 
 - 源码仓库：[github.com/qiujunbiao/CapaPort](https://github.com/qiujunbiao/CapaPort)
 - 当前版本：`0.1.0`
@@ -23,7 +23,7 @@ CapaPort 管理的“能力”不是单一文件，而是可发现、可审查�
 | --- | --- |
 | 账号与组织 | 邮箱/手机号注册登录、验证与找回、组织创建与切换、邀请、成员角色、所有权移交、数据导出及关闭/注销宽限期 |
 | 空间与权限 | 个人、组织、团队、项目四类空间；空间成员角色、审核策略、组织安全策略和跨租户强隔离 |
-| 本地发现 | 发现 Codex、Claude Code、Cursor、Gemini CLI 的用户级、全局、插件及项目级能力；支持可信技能根目录直接进入的目录符号链接，并拒绝断链、循环和能力目录内部越界链接 |
+| 本地发现 | 发现 Codex、Claude Code、Cursor、Gemini CLI、WorkBuddy、千问 Work 的原生能力目录；支持可信技能根目录直接进入的目录符号链接，并拒绝断链、循环和能力目录内部越界链接 |
 | 创作与版本 | 创建能力元数据、草稿和不可变修订；组合 Skill、Prompt 与项目上下文；维护语义化版本、差异和生命周期 |
 | 安全扫描 | 上传前与服务端双重扫描凭据、令牌、私钥、连接串、高熵秘密、可执行文件、网络访问和路径越界；报告不回显秘密原文 |
 | 审核与发布 | 按空间策略直接发布或进入审核；查看冻结摘要、版本差异和扫描报告；支持通过、要求修改、拒绝、撤回、重新提交、弃用、下架和归档 |
@@ -46,7 +46,7 @@ flowchart LR
   Web["Web 管理后台"] --> API
   Desktop --> Adapters["本地适配器层"]
   CLI --> Adapters
-  Adapters --> Tools["Codex · Claude Code · Cursor · Gemini CLI"]
+  Adapters --> Tools["Codex · Claude Code · Cursor · Gemini CLI · WorkBuddy · 千问 Work"]
   API --> Worker["异步 Worker"]
   API --> Postgres["PostgreSQL"]
   API --> Redis["Redis"]
@@ -56,6 +56,19 @@ flowchart LR
 ```
 
 后端按账号、组织、空间、能力包、审核发布、分发安装、审计分析等领域模块组织，但以模块化单体方式部署。所有租户查询在服务端强制限定组织边界。
+
+## 客户端兼容矩阵
+
+| 客户端 | 用户级 Skill | 项目级 Skill | Prompt | 项目上下文 |
+| --- | --- | --- | --- | --- |
+| Codex | `.agents/skills/`、`.codex/skills/` | `.agents/skills/` | 不支持 | 不支持 |
+| Claude Code | `.claude/skills/` | `.claude/skills/` | 支持 | 支持 |
+| Cursor | `.cursor/skills/` | `.cursor/skills/` | 支持 | 支持 |
+| Gemini CLI | `.gemini/skills/` | `.gemini/skills/` | 支持 | 不支持 |
+| WorkBuddy | `~/.workbuddy/skills/` | `.codebuddy/skills/` | 不支持 | 不支持 |
+| 千问 Work（QwenWork） | `~/.qwenworkcn/skills/` | 不支持 | 不支持 | 不支持 |
+
+WorkBuddy 与千问 Work 的 Skill 会完整保留 `SKILL.md`、`scripts/`、`references/`、`assets/` 等辅助文件。请求未支持的 scope 或组件时，CapaPort 会明确拒绝，不会回退到其他目录或转换组件格式。
 
 ## 一键本地运行
 
@@ -179,7 +192,7 @@ Git 标签 `v*` 会触发发布流水线，产出 macOS、Windows 桌面包、Li
 
 ```text
 apps/              API、Worker、Web、Desktop、CLI
-adapters/          Codex、Claude Code、Cursor、Gemini CLI
+adapters/          Codex、Claude Code、Cursor、Gemini CLI、WorkBuddy、千问 Work
 packages/          契约、领域类型、能力包、扫描器、适配器 SDK
 infra/             Docker、Compose、部署与秘密配置样例
 scripts/           安全、镜像、烟测、验收、备份恢复脚本
