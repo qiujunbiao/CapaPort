@@ -217,8 +217,8 @@ docs/              设计、用户、管理员和运维文档
     <th>微信支付</th>
   </tr>
   <tr>
-    <td><img src="docs/assets/donate/alipay.jpg" alt="支付宝收款码" width="280" /></td>
-    <td><img src="docs/assets/donate/wechat-pay.jpg" alt="微信支付收款码" width="280" /></td>
+    <td align="center" valign="top" width="50%"><img src="docs/assets/donate/alipay.png" alt="支付宝收款码" width="280" /></td>
+    <td align="center" valign="top" width="50%"><img src="docs/assets/donate/wechat-pay.png" alt="微信支付收款码" width="280" /></td>
   </tr>
 </table>
 
