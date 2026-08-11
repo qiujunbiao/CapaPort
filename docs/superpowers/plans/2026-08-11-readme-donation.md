@@ -30,7 +30,7 @@
 - Consumes: the two original clipboard JPEG files supplied by the user.
 - Produces: stable repository-relative image paths consumed directly by GitHub's README renderer.
 
-- [ ] **Step 1: Create the asset directory and copy the original files without transformation**
+- [x] **Step 1: Create the asset directory and copy the original files without transformation**
 
 ```bash
 mkdir -p docs/assets/donate
@@ -38,7 +38,7 @@ cp /var/folders/wg/g67vj_9x4tb3lkt82wc0bx700000gn/T/codex-clipboard-c7eab38c-063
 cp /var/folders/wg/g67vj_9x4tb3lkt82wc0bx700000gn/T/codex-clipboard-6ad8a796-61b3-4c94-9aad-fb96b61c3ee8.jpg docs/assets/donate/wechat-pay.jpg
 ```
 
-- [ ] **Step 2: Verify copied bytes match the supplied images**
+- [x] **Step 2: Verify copied bytes match the supplied images**
 
 Run:
 
@@ -56,7 +56,7 @@ alipay.jpg: JPEG, 1280 x 1919
 wechat-pay.jpg: JPEG, 828 x 1124
 ```
 
-- [ ] **Step 3: Add the approved README section**
+- [x] **Step 3: Add the approved README section**
 
 Insert between “参与项目” and “许可”:
 
@@ -77,7 +77,7 @@ Insert between “参与项目” and “许可”:
 </table>
 ```
 
-- [ ] **Step 4: Verify paths, formatting, and scope**
+- [x] **Step 4: Verify paths, formatting, and scope**
 
 Run:
 
@@ -92,7 +92,7 @@ git status --short
 
 Expected: both files exist, README contains both paths, formatting and diff checks exit `0`, and only README, the two images, and this plan are uncommitted.
 
-- [ ] **Step 5: Commit and push the completed batch**
+- [x] **Step 5: Commit and push the completed batch**
 
 ```bash
 git add README.md docs/assets/donate/alipay.jpg docs/assets/donate/wechat-pay.jpg docs/superpowers/plans/2026-08-11-readme-donation.md

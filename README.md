@@ -207,6 +207,21 @@ docs/              设计、用户、管理员和运维文档
 - 提交 Pull Request 前，请至少运行与改动范围匹配的测试、`pnpm lint` 和 `pnpm typecheck`；涉及发布、权限、安全或跨端行为的改动应运行 `pnpm release:verify`。
 - 安全漏洞或疑似凭据泄露请不要提交公开 Issue；请通过仓库的 Security 页面私下报告。
 
+## 支持项目
+
+如果 CapaPort 对你有帮助，可以请作者喝杯咖啡。感谢你的支持，这会帮助项目持续维护和迭代。
+
+<table>
+  <tr>
+    <th>支付宝</th>
+    <th>微信支付</th>
+  </tr>
+  <tr>
+    <td><img src="docs/assets/donate/alipay.jpg" alt="支付宝收款码" width="280" /></td>
+    <td><img src="docs/assets/donate/wechat-pay.jpg" alt="微信支付收款码" width="280" /></td>
+  </tr>
+</table>
+
 ## 许可
 
 本项目采用 [Apache License 2.0](LICENSE) 开源许可证，可用于商业使用、修改和分发；使用与再分发时须遵守许可证中的版权、声明和专利条款。
