@@ -1,3 +1,4 @@
+import { agentLabels, type EditableAgent } from '@capaport/capability-kit';
 import type {
   AgentId,
   CapabilitySummary,
@@ -6,7 +7,6 @@ import type {
   SpaceSummary,
   UpdateCapabilityRequest,
 } from '@capaport/contracts';
-import { agentLabels, type EditableAgent } from '@capaport/capability-kit';
 import { Boxes, GitCompareArrows } from 'lucide-react';
 import { useState } from 'react';
 import { Button, EmptyState, ErrorNotice, PageHeader, Panel, Status } from '../../components/ui';

@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { agentIdSchema, type AgentId } from './capabilities.js';
+import { type AgentId, agentIdSchema } from './capabilities.js';
 
 export const registerDeviceRequestSchema = z
   .object({

@@ -4,9 +4,9 @@ import type { FilePlan, InstallLock } from '@capaport/adapter-sdk';
 import type { AgentId, CapabilitySummary, CapabilityVersionSummary, InstallPlan } from '@capaport/contracts';
 import { AtomicFileTransaction } from '../adapters.js';
 import type { ApiClient } from '../client.js';
+import { ensureAgentInstallation } from '../installations.js';
 import type { CliOutput } from '../output.js';
 import { canonicalPackage } from '../package.js';
-import { ensureAgentInstallation } from '../installations.js';
 import { CancelledError, ConflictError, type ParsedCommand, stringFlag, UsageError } from '../parser.js';
 import type { Prompter } from '../prompt.js';
 

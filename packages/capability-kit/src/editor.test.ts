@@ -1,14 +1,14 @@
 import { describe, expect, it } from 'vitest';
 import {
   addPackageComponent,
+  compatibleAgentsForComponents,
   createEditablePackage,
   exportEditablePackage,
   importEditablePackage,
+  unsupportedComponentsForAgent,
   updatePackageComponent,
   updatePackageMetadata,
   validateEditablePackage,
-  compatibleAgentsForComponents,
-  unsupportedComponentsForAgent,
 } from './editor.js';
 
 describe('editable capability packages', () => {

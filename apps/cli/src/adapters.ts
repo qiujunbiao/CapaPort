@@ -5,13 +5,13 @@ import { createCodexAdapter } from '@capaport/adapter-codex';
 import { createCursorAdapter } from '@capaport/adapter-cursor';
 import { createGeminiCliAdapter } from '@capaport/adapter-gemini-cli';
 import { createQwenWorkAdapter } from '@capaport/adapter-qwenwork';
-import { createWorkBuddyAdapter } from '@capaport/adapter-workbuddy';
 import {
   type AdapterEnvironment,
   type AgentAdapter,
   defaultAdapterEnvironment,
   type FileTransaction,
 } from '@capaport/adapter-sdk';
+import { createWorkBuddyAdapter } from '@capaport/adapter-workbuddy';
 
 export function adapters(environment: AdapterEnvironment = defaultAdapterEnvironment()): Record<string, AgentAdapter> {
   return {
