@@ -1,7 +1,7 @@
 export type AgentDescriptor = { adapterId: string; displayName: string; scope: 'user' | 'workspace'; rootPath: string };
 export type LocalCapabilitySummary = { slug: string; componentType: string; relativePath: string; digest: string };
 export type DiscoveredLocalSkill = {
-  adapterId: 'codex' | 'claude-code' | 'cursor' | 'gemini-cli';
+  adapterId: 'codex' | 'claude-code' | 'cursor' | 'gemini-cli' | 'workbuddy' | 'qwenwork';
   displayName: string;
   scope: 'user' | 'workspace';
   sourceKind: 'global' | 'shared' | 'plugin' | 'workspace';
@@ -71,7 +71,7 @@ export type LocalProjectBinding = {
   localBindingId: string;
   spaceId: string;
   localPath: string;
-  agents: Array<'codex' | 'claude-code' | 'cursor' | 'gemini-cli'>;
+  agents: Array<'codex' | 'claude-code' | 'cursor' | 'gemini-cli' | 'workbuddy' | 'qwenwork'>;
   status: 'active' | 'missing' | 'removed';
   createdAt: string;
 };
@@ -94,7 +94,7 @@ export type ContextPackageExport = {
   selectionDigest: string;
   fileCount: number;
   totalBytes: number;
-  agents: Array<'codex' | 'claude-code' | 'cursor' | 'gemini-cli'>;
+  agents: Array<'codex' | 'claude-code' | 'cursor' | 'gemini-cli' | 'workbuddy' | 'qwenwork'>;
   scanEngineVersion: string;
   scannedAt: string;
   archiveBase64: string;

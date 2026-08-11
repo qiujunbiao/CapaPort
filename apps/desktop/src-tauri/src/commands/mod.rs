@@ -234,13 +234,13 @@ impl Runtime {
     ) -> RuntimeResult<Self> {
         let database = Database::open(database_path)?;
         let mut roots = Vec::new();
-        for (_, _, directory) in agent_directories() {
-            let user = home_dir.join(directory);
+        for agent in agent_directories() {
+            let user = home_dir.join(agent.user_root);
             if user.is_dir() {
                 roots.push(user);
             }
-            if let Some(project) = &project_root {
-                let workspace = project.join(directory);
+            if let (Some(project), Some(workspace_root)) = (&project_root, agent.workspace_root) {
+                let workspace = project.join(workspace_root);
                 if workspace.is_dir() {
                     roots.push(workspace);
                 }
@@ -266,17 +266,22 @@ impl Runtime {
 
     pub fn detect_agents(&self) -> RuntimeResult<Vec<AgentDescriptor>> {
         let mut agents = Vec::new();
-        for (adapter_id, display_name, directory) in agent_directories() {
-            for (scope, base) in [
-                ("user", Some(&self.home_dir)),
-                ("workspace", self.project_root.as_ref()),
+        for agent in agent_directories() {
+            for (scope, root) in [
+                ("user", Some(self.home_dir.join(agent.user_root))),
+                (
+                    "workspace",
+                    self.project_root
+                        .as_ref()
+                        .zip(agent.workspace_root)
+                        .map(|(project, directory)| project.join(directory)),
+                ),
             ] {
-                let Some(base) = base else { continue };
-                let root = base.join(directory);
+                let Some(root) = root else { continue };
                 if root.is_dir() {
                     agents.push(AgentDescriptor {
-                        adapter_id: adapter_id.into(),
-                        display_name: display_name.into(),
+                        adapter_id: agent.id.into(),
+                        display_name: agent.display_name.into(),
                         scope: scope.into(),
                         root_path: root
                             .canonicalize()
@@ -292,11 +297,14 @@ impl Runtime {
                 continue;
             }
             let project = PathBuf::from(binding.local_path);
-            for (adapter_id, display_name, directory) in agent_directories() {
-                if !binding.agents.iter().any(|agent| agent == adapter_id) {
+            for agent in agent_directories() {
+                if !binding.agents.iter().any(|candidate| candidate == agent.id) {
                     continue;
                 }
-                let root = project.join(directory);
+                let Some(workspace_root) = agent.workspace_root else {
+                    continue;
+                };
+                let root = project.join(workspace_root);
                 if !root.is_dir() {
                     continue;
                 }
@@ -312,8 +320,8 @@ impl Runtime {
                     continue;
                 }
                 agents.push(AgentDescriptor {
-                    adapter_id: adapter_id.into(),
-                    display_name: display_name.into(),
+                    adapter_id: agent.id.into(),
+                    display_name: agent.display_name.into(),
                     scope: "workspace".into(),
                     root_path,
                 });
@@ -331,7 +339,7 @@ impl Runtime {
     ) -> RuntimeResult<Vec<LocalCapabilitySummary>> {
         if !agent_directories()
             .iter()
-            .any(|(id, _, _)| id == &input.adapter_id)
+            .any(|agent| agent.id == input.adapter_id)
         {
             return Err(RuntimeError::InvalidInput);
         }
@@ -438,14 +446,14 @@ impl Runtime {
 
     fn trusted_skill_roots(&self) -> Vec<TrustedSkillRoot> {
         let mut roots = Vec::new();
-        for (adapter_id, display_name, directory) in agent_directories() {
-            let user_skills = self.home_dir.join(directory).join("skills");
+        for agent in agent_directories() {
+            let user_skills = self.home_dir.join(agent.user_root).join("skills");
             if user_skills.is_dir() {
                 roots.push(TrustedSkillRoot::new(
-                    adapter_id,
-                    display_name,
+                    agent.id,
+                    agent.display_name,
                     "user",
-                    if adapter_id == "codex" {
+                    if agent.id == "codex" {
                         SkillSourceKind::Shared
                     } else {
                         SkillSourceKind::Global
@@ -453,12 +461,14 @@ impl Runtime {
                     user_skills,
                 ));
             }
-            if let Some(project_root) = &self.project_root {
-                let workspace_skills = project_root.join(directory).join("skills");
+            if let (Some(project_root), Some(workspace_root)) =
+                (&self.project_root, agent.workspace_root)
+            {
+                let workspace_skills = project_root.join(workspace_root).join("skills");
                 if workspace_skills.is_dir() {
                     roots.push(TrustedSkillRoot::new(
-                        adapter_id,
-                        display_name,
+                        agent.id,
+                        agent.display_name,
                         "workspace",
                         SkillSourceKind::Workspace,
                         workspace_skills,
@@ -499,15 +509,20 @@ impl Runtime {
         }
         if let Ok(bindings) = self.database.project_bindings(None) {
             for binding in bindings.into_iter().filter(|binding| binding.status == "active") {
-                for (adapter_id, display_name, directory) in agent_directories() {
-                    if !binding.agents.iter().any(|agent| agent == adapter_id) {
+                for agent in agent_directories() {
+                    if !binding.agents.iter().any(|candidate| candidate == agent.id) {
                         continue;
                     }
-                    let skills = PathBuf::from(&binding.local_path).join(directory).join("skills");
+                    let Some(workspace_root) = agent.workspace_root else {
+                        continue;
+                    };
+                    let skills = PathBuf::from(&binding.local_path)
+                        .join(workspace_root)
+                        .join("skills");
                     if skills.is_dir() {
                         roots.push(TrustedSkillRoot::new(
-                            adapter_id,
-                            display_name,
+                            agent.id,
+                            agent.display_name,
                             "workspace",
                             SkillSourceKind::Workspace,
                             skills,
@@ -786,8 +801,8 @@ impl Runtime {
         );
         let agent_name = agent_directories()
             .iter()
-            .find(|(adapter_id, _, _)| adapter_id == &input.adapter_id)
-            .map(|(_, display_name, _)| *display_name)
+            .find(|agent| agent.id == input.adapter_id)
+            .map(|agent| agent.display_name)
             .ok_or(RuntimeError::InvalidInput)?;
         let readme = format!(
             "# {slug}\n\nImported from {agent_name} by CapaPort.\n",
@@ -1002,17 +1017,58 @@ impl Runtime {
     }
 }
 
-fn agent_directories() -> [(&'static str, &'static str, &'static str); 4] {
+#[derive(Clone, Copy)]
+struct AgentDirectory {
+    id: &'static str,
+    display_name: &'static str,
+    user_root: &'static str,
+    workspace_root: Option<&'static str>,
+}
+
+fn agent_directories() -> [AgentDirectory; 6] {
     [
-        ("codex", "Codex", ".agents"),
-        ("claude-code", "Claude Code", ".claude"),
-        ("cursor", "Cursor", ".cursor"),
-        ("gemini-cli", "Gemini CLI", ".gemini"),
+        AgentDirectory {
+            id: "codex",
+            display_name: "Codex",
+            user_root: ".agents",
+            workspace_root: Some(".agents"),
+        },
+        AgentDirectory {
+            id: "claude-code",
+            display_name: "Claude Code",
+            user_root: ".claude",
+            workspace_root: Some(".claude"),
+        },
+        AgentDirectory {
+            id: "cursor",
+            display_name: "Cursor",
+            user_root: ".cursor",
+            workspace_root: Some(".cursor"),
+        },
+        AgentDirectory {
+            id: "gemini-cli",
+            display_name: "Gemini CLI",
+            user_root: ".gemini",
+            workspace_root: Some(".gemini"),
+        },
+        AgentDirectory {
+            id: "workbuddy",
+            display_name: "WorkBuddy",
+            user_root: ".workbuddy",
+            workspace_root: Some(".codebuddy"),
+        },
+        AgentDirectory {
+            id: "qwenwork",
+            display_name: "千问 Work（QwenWork）",
+            user_root: ".qwenworkcn",
+            workspace_root: None,
+        },
     ]
 }
 fn component_formats(adapter_id: &str) -> &'static [(&'static str, &'static str, &'static str)] {
     match adapter_id {
         "codex" => &[("skill", "skills", "")],
+        "workbuddy" | "qwenwork" => &[("skill", "skills", "")],
         "gemini-cli" => &[("skill", "skills", ""), ("prompt", "commands", "toml")],
         "claude-code" => &[
             ("skill", "skills", ""),
@@ -1221,6 +1277,45 @@ mod tests {
         )
         .unwrap();
         (root, runtime)
+    }
+    #[test]
+    fn detects_workbuddy_scopes_and_only_qwenwork_user_scope() {
+        let root = tempdir().unwrap();
+        let home = root.path().join("home");
+        let project = root.path().join("project");
+        std::fs::create_dir_all(home.join(".workbuddy/skills/release")).unwrap();
+        std::fs::create_dir_all(project.join(".codebuddy/skills/review")).unwrap();
+        std::fs::create_dir_all(home.join(".qwenworkcn/skills/release")).unwrap();
+        std::fs::create_dir_all(project.join(".qwenworkcn/skills/ignored")).unwrap();
+        for skill in [
+            home.join(".workbuddy/skills/release/SKILL.md"),
+            project.join(".codebuddy/skills/review/SKILL.md"),
+            home.join(".qwenworkcn/skills/release/SKILL.md"),
+            project.join(".qwenworkcn/skills/ignored/SKILL.md"),
+        ] {
+            std::fs::write(skill, "# Skill").unwrap();
+        }
+        let runtime = Runtime::new(
+            &root.path().join("state.db"),
+            home,
+            Some(project),
+            Arc::new(MemoryCredentialStore::default()),
+        )
+        .unwrap();
+
+        let agents = runtime.detect_agents().unwrap();
+        assert!(agents
+            .iter()
+            .any(|agent| agent.adapter_id == "workbuddy" && agent.scope == "user"));
+        assert!(agents
+            .iter()
+            .any(|agent| agent.adapter_id == "workbuddy" && agent.scope == "workspace"));
+        assert!(agents
+            .iter()
+            .any(|agent| agent.adapter_id == "qwenwork" && agent.scope == "user"));
+        assert!(!agents
+            .iter()
+            .any(|agent| agent.adapter_id == "qwenwork" && agent.scope == "workspace"));
     }
     #[test]
     fn commands_detect_inventory_bind_and_scan_without_leaking_content() {

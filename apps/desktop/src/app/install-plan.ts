@@ -45,6 +45,8 @@ const componentProfiles: Record<string, Partial<Record<'skill' | 'prompt' | 'con
     skill: { directory: 'skills' },
     prompt: { directory: 'commands', extension: '.toml', encode: encodeGeminiCommand },
   },
+  workbuddy: { skill: { directory: 'skills' } },
+  qwenwork: { skill: { directory: 'skills' } },
 };
 
 export type InstalledFileDigest = { relativePath: string; afterDigest: string };

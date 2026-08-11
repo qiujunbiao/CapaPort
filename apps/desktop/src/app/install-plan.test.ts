@@ -117,4 +117,39 @@ describe('desktop install plan verification', () => {
       }),
     ).rejects.toThrow('能力包未声明兼容 codex');
   });
+
+  it.each(['workbuddy', 'qwenwork'])('projects %s Skill files without enabling Prompt', async (adapterId) => {
+    const entries = {
+      'capaport.yaml': new TextEncoder().encode(
+        `metadata:\n  slug: secure-review\nspec:\n  compatibility:\n    agents: [${adapterId}]\n  components:\n    - type: skill\n      path: skills/secure-review\n`,
+      ),
+      'skills/secure-review/SKILL.md': new TextEncoder().encode('# Secure review'),
+      'skills/secure-review/references/guide.md': new TextEncoder().encode('# Guide'),
+    };
+    const plan = await buildLocalInstallPlan({
+      archive: zipSync(entries),
+      adapterId,
+      rootPath: '[authorized-root]',
+      packageDigest: await calculatePackageDigest(entries),
+    });
+    expect(plan.writes.map((write) => write.relativePath)).toEqual([
+      'skills/secure-review/references/guide.md',
+      'skills/secure-review/SKILL.md',
+    ]);
+
+    const promptEntries = {
+      'capaport.yaml': new TextEncoder().encode(
+        `metadata:\n  slug: secure-review\nspec:\n  compatibility:\n    agents: [${adapterId}]\n  components:\n    - type: prompt\n      path: prompts/secure-review.md\n`,
+      ),
+      'prompts/secure-review.md': new TextEncoder().encode('Review securely.'),
+    };
+    await expect(
+      buildLocalInstallPlan({
+        archive: zipSync(promptEntries),
+        adapterId,
+        rootPath: '[authorized-root]',
+        packageDigest: await calculatePackageDigest(promptEntries),
+      }),
+    ).rejects.toThrow('所选 Agent 不支持 prompt');
+  });
 });
