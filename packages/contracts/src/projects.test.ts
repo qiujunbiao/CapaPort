@@ -38,4 +38,14 @@ describe('project contracts', () => {
       }).success,
     ).toBe(false);
   });
+
+  it('accepts project bindings for all six supported agents', () => {
+    expect(
+      createProjectBindingRequestSchema.safeParse({
+        deviceId: crypto.randomUUID(),
+        localBindingId: crypto.randomUUID(),
+        agents: ['codex', 'claude-code', 'cursor', 'gemini-cli', 'workbuddy', 'qwenwork'],
+      }).success,
+    ).toBe(true);
+  });
 });

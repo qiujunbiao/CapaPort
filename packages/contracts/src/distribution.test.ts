@@ -22,4 +22,15 @@ describe('distribution contracts', () => {
         .success,
     ).toBe(true);
   });
+
+  it('registers devices supporting WorkBuddy and QwenWork within the six-agent bound', () => {
+    expect(
+      registerDeviceRequestSchema.safeParse({
+        name: 'Agent workstation',
+        platform: 'macos',
+        appVersion: '1.0.0',
+        supportedAgents: ['codex', 'claude-code', 'cursor', 'gemini-cli', 'workbuddy', 'qwenwork'],
+      }).success,
+    ).toBe(true);
+  });
 });

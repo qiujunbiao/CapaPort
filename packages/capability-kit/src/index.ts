@@ -3,6 +3,7 @@ export { diffPackages, type PackageDiff } from './diff.js';
 export {
   addPackageComponent,
   agentComponentSupport,
+  agentLabels,
   compatibleAgentsForComponents,
   createEditablePackage,
   type EditableAgent,

@@ -48,7 +48,7 @@ const componentSchema = z
 const compatibilitySchema = z
   .object({
     agents: z
-      .array(z.enum(['codex', 'claude-code', 'cursor', 'gemini-cli']))
+      .array(z.enum(['codex', 'claude-code', 'cursor', 'gemini-cli', 'workbuddy', 'qwenwork']))
       .min(1)
       .max(20),
   })

@@ -43,6 +43,11 @@ describe('manifest parsing', () => {
     expect(manifest.spec.components.map((item) => item.type)).toEqual(['skill', 'prompt']);
   });
 
+  it('accepts WorkBuddy and QwenWork compatibility IDs', () => {
+    const yaml = manifestYaml.replace('agents: [claude-code, cursor]', 'agents: [workbuddy, qwenwork]');
+    expect(parseManifest(yaml).spec.compatibility.agents).toEqual(['workbuddy', 'qwenwork']);
+  });
+
   it.each(['../secret', '/etc/passwd', 'C:\\secrets\\key'])('rejects unsafe component path %s', (unsafePath) => {
     const yaml = manifestYaml.replace('skills/release', unsafePath);
     expect(() => parseManifest(yaml)).toThrow(/path/i);

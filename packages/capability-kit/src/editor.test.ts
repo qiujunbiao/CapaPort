@@ -7,6 +7,8 @@ import {
   updatePackageComponent,
   updatePackageMetadata,
   validateEditablePackage,
+  compatibleAgentsForComponents,
+  unsupportedComponentsForAgent,
 } from './editor.js';
 
 describe('editable capability packages', () => {
@@ -98,5 +100,21 @@ describe('editable capability packages', () => {
         'Gemini CLI 不支持当前能力包中的项目上下文组件',
       ]),
     );
+  });
+
+  it('treats WorkBuddy and QwenWork as Skill-only clients', () => {
+    expect(unsupportedComponentsForAgent('workbuddy', ['skill', 'prompt', 'context'])).toEqual([
+      'prompt',
+      'context',
+    ]);
+    expect(unsupportedComponentsForAgent('qwenwork', ['skill', 'prompt', 'context'])).toEqual(['prompt', 'context']);
+    expect(compatibleAgentsForComponents(['skill'])).toEqual([
+      'codex',
+      'claude-code',
+      'cursor',
+      'gemini-cli',
+      'workbuddy',
+      'qwenwork',
+    ]);
   });
 });

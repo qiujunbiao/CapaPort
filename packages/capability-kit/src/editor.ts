@@ -5,7 +5,7 @@ import { parseManifest } from './manifest.js';
 import type { CapabilityManifest } from './schema.js';
 
 export type EditableComponentType = 'skill' | 'prompt' | 'context';
-export type EditableAgent = 'codex' | 'claude-code' | 'cursor' | 'gemini-cli';
+export type EditableAgent = 'codex' | 'claude-code' | 'cursor' | 'gemini-cli' | 'workbuddy' | 'qwenwork';
 
 export type EditablePackageComponent = {
   id: string;
@@ -31,13 +31,17 @@ export const agentComponentSupport: Record<EditableAgent, readonly EditableCompo
   'claude-code': ['skill', 'prompt', 'context'],
   cursor: ['skill', 'prompt', 'context'],
   'gemini-cli': ['skill', 'prompt'],
+  workbuddy: ['skill'],
+  qwenwork: ['skill'],
 };
 
-const agentLabels: Record<EditableAgent, string> = {
+export const agentLabels: Record<EditableAgent, string> = {
   codex: 'Codex',
   'claude-code': 'Claude Code',
   cursor: 'Cursor',
   'gemini-cli': 'Gemini CLI',
+  workbuddy: 'WorkBuddy',
+  qwenwork: '千问 Work（QwenWork）',
 };
 
 const componentLabels: Record<EditableComponentType, string> = {

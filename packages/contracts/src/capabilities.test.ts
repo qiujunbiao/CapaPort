@@ -41,4 +41,18 @@ describe('capability contracts', () => {
     expect(updateCapabilityRequestSchema.safeParse({}).success).toBe(false);
     expect(updateCapabilityRequestSchema.parse({ description: '', tags: [] })).toEqual({ description: '', tags: [] });
   });
+
+  it('accepts all six supported agents and rejects a seventh entry', () => {
+    const request = {
+      spaceId: '00000000-0000-4000-8000-000000000001',
+      slug: 'portable-skill',
+      name: 'Portable skill',
+      compatibility: ['codex', 'claude-code', 'cursor', 'gemini-cli', 'workbuddy', 'qwenwork'],
+    };
+    expect(createCapabilityRequestSchema.safeParse(request).success).toBe(true);
+    expect(
+      createCapabilityRequestSchema.safeParse({ ...request, compatibility: [...request.compatibility, 'codex'] })
+        .success,
+    ).toBe(false);
+  });
 });

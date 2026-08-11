@@ -68,5 +68,7 @@ export const SupportedAgent = {
   ClaudeCode: 'claude-code',
   Cursor: 'cursor',
   GeminiCli: 'gemini-cli',
+  WorkBuddy: 'workbuddy',
+  QwenWork: 'qwenwork',
 } as const;
 export type SupportedAgent = (typeof SupportedAgent)[keyof typeof SupportedAgent];

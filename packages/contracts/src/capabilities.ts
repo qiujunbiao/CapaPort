@@ -8,7 +8,7 @@ const slugSchema = z
   .max(80)
   .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/);
 const tagSchema = slugSchema.max(40);
-export const agentIdSchema = z.enum(['codex', 'claude-code', 'cursor', 'gemini-cli']);
+export const agentIdSchema = z.enum(['codex', 'claude-code', 'cursor', 'gemini-cli', 'workbuddy', 'qwenwork']);
 
 export const createCapabilityRequestSchema = z.object({
   spaceId: z.uuid(),
@@ -16,7 +16,7 @@ export const createCapabilityRequestSchema = z.object({
   name: z.string().trim().min(1).max(120),
   description: z.string().trim().max(2_000).default(''),
   tags: z.array(tagSchema).max(20).default([]),
-  compatibility: z.array(agentIdSchema).min(1).max(4),
+  compatibility: z.array(agentIdSchema).min(1).max(6),
   forkedFromVersionId: z.uuid().optional(),
 });
 export const updateCapabilityRequestSchema = z
@@ -24,7 +24,7 @@ export const updateCapabilityRequestSchema = z
     name: z.string().trim().min(1).max(120).optional(),
     description: z.string().trim().max(2_000).optional(),
     tags: z.array(tagSchema).max(20).optional(),
-    compatibility: z.array(agentIdSchema).min(1).max(4).optional(),
+    compatibility: z.array(agentIdSchema).min(1).max(6).optional(),
   })
   .refine((value) => Object.keys(value).length > 0, 'At least one field is required.');
 

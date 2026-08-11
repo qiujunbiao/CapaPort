@@ -1,12 +1,12 @@
 import { z } from 'zod';
-import { agentIdSchema } from './capabilities.js';
+import { agentIdSchema, type AgentId } from './capabilities.js';
 
 export const registerDeviceRequestSchema = z
   .object({
     name: z.string().trim().min(1).max(120),
     platform: z.enum(['macos', 'windows', 'linux']),
     appVersion: z.string().trim().min(1).max(40),
-    supportedAgents: z.array(agentIdSchema).min(1).max(4),
+    supportedAgents: z.array(agentIdSchema).min(1).max(6),
   })
   .strict();
 export const updateDeviceRequestSchema = registerDeviceRequestSchema
@@ -48,7 +48,7 @@ export type DeviceSummary = {
   name: string;
   platform: 'macos' | 'windows' | 'linux';
   appVersion: string;
-  supportedAgents: Array<'codex' | 'claude-code' | 'cursor' | 'gemini-cli'>;
+  supportedAgents: AgentId[];
   status: 'active' | 'revoked';
   lastSeenAt: string;
 };
@@ -58,7 +58,7 @@ export type InstallPlan = {
   versionId: string;
   version: string;
   digest: string;
-  adapter: 'codex' | 'claude-code' | 'cursor' | 'gemini-cli';
+  adapter: AgentId;
   permissions: { filesystem: 'none' | 'read-project' | 'write-project'; network: 'none' | 'restricted' | 'full' };
   download: { url: string; expiresIn: number };
 };

@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { agentIdSchema } from './capabilities.js';
+import { agentIdSchema, type AgentId } from './capabilities.js';
 
 export const projectBindingIdSchema = z.uuid();
 
@@ -10,7 +10,7 @@ export const createProjectBindingRequestSchema = z
     agents: z
       .array(agentIdSchema)
       .min(1)
-      .max(4)
+      .max(6)
       .transform((values) => [...new Set(values)]),
   })
   .strict();
@@ -26,7 +26,7 @@ export const registerProjectContextRequestSchema = z
     agents: z
       .array(agentIdSchema)
       .min(1)
-      .max(4)
+      .max(6)
       .transform((values) => [...new Set(values)]),
     scan: z
       .object({
@@ -47,7 +47,7 @@ export type ProjectBindingSummary = {
   projectSpaceId: string;
   deviceId: string;
   localBindingId: string;
-  agents: Array<'codex' | 'claude-code' | 'cursor' | 'gemini-cli'>;
+  agents: AgentId[];
   status: 'active' | 'removed';
   lastSyncedAt?: string;
   createdAt: string;
@@ -64,7 +64,7 @@ export type ProjectContextSummary = {
   selectionDigest: string;
   fileCount: number;
   totalBytes: number;
-  agents: Array<'codex' | 'claude-code' | 'cursor' | 'gemini-cli'>;
+  agents: AgentId[];
   scanEngineVersion: string;
   createdAt: string;
 };
