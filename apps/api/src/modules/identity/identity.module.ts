@@ -1,6 +1,6 @@
 import { Module } from '@nestjs/common';
-import { PlatformModule } from '../../platform/platform.module.js';
 import { APP_CONFIG, type AppConfig } from '../../config/config.js';
+import { PlatformModule } from '../../platform/platform.module.js';
 import { AuthController } from './auth.controller.js';
 import { AuthGuard } from './auth.guard.js';
 import { IdentityRepository } from './identity.repository.js';

@@ -97,9 +97,7 @@ export type AppConfig = {
     accessTtlSeconds: number;
     refreshTtlDays: number;
     verificationTtlMinutes: number;
-    passwordRisk:
-      | { mode: 'development'; timeoutMs: number }
-      | { mode: 'google'; projectId: string; timeoutMs: number };
+    passwordRisk: { mode: 'development'; timeoutMs: number } | { mode: 'google'; projectId: string; timeoutMs: number };
   };
   notification: {
     smtpHost: string;
@@ -118,6 +116,16 @@ export function parseConfig(environment: Record<string, string | undefined>): Ap
     const detail = parsed.error.issues.map((issue) => `${issue.path.join('.')}: ${issue.message}`).join('; ');
     throw new Error(`Invalid application configuration: ${detail}`);
   }
+  const passwordRiskMode =
+    parsed.data.PASSWORD_RISK_MODE ?? (parsed.data.NODE_ENV === 'production' ? 'google' : 'development');
+  const passwordRisk: AppConfig['auth']['passwordRisk'] =
+    passwordRiskMode === 'google'
+      ? {
+          mode: 'google',
+          projectId: parsed.data.GOOGLE_CLOUD_PROJECT ?? '',
+          timeoutMs: parsed.data.PASSWORD_RISK_TIMEOUT_MS,
+        }
+      : { mode: 'development', timeoutMs: parsed.data.PASSWORD_RISK_TIMEOUT_MS };
   return {
     nodeEnv: parsed.data.NODE_ENV,
     port: parsed.data.PORT,
@@ -158,15 +166,7 @@ export function parseConfig(environment: Record<string, string | undefined>): Ap
       accessTtlSeconds: parsed.data.ACCESS_TOKEN_TTL_SECONDS,
       refreshTtlDays: parsed.data.REFRESH_TOKEN_TTL_DAYS,
       verificationTtlMinutes: parsed.data.VERIFICATION_TTL_MINUTES,
-      passwordRisk:
-        (parsed.data.PASSWORD_RISK_MODE ?? (parsed.data.NODE_ENV === 'production' ? 'google' : 'development')) ===
-        'google'
-          ? {
-              mode: 'google',
-              projectId: parsed.data.GOOGLE_CLOUD_PROJECT!,
-              timeoutMs: parsed.data.PASSWORD_RISK_TIMEOUT_MS,
-            }
-          : { mode: 'development', timeoutMs: parsed.data.PASSWORD_RISK_TIMEOUT_MS },
+      passwordRisk,
     },
     notification: {
       smtpHost: parsed.data.SMTP_HOST,

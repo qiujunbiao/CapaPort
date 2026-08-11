@@ -1,8 +1,24 @@
+import { PASSWORD_MIN_CODE_POINTS, PASSWORD_POLICY_HINT } from '@capaport/contracts/auth';
 import { ArrowRight, KeyRound, ShieldCheck } from 'lucide-react';
 import { type FormEvent, useState } from 'react';
 import type { CloudClient, SessionStore } from '../../app/types';
 import { BrandLockup } from '../../components/brand';
 import { Button, ErrorNotice } from '../../components/ui';
+
+function passwordFeedback(password: string, busy: boolean): string {
+  if (busy) return '正在检查密码安全性…';
+  const remaining = PASSWORD_MIN_CODE_POINTS - Array.from(password).length;
+  return remaining > 0 ? `还需输入 ${remaining} 个字符` : '提交后将检查密码安全性';
+}
+
+function errorMessage(error: unknown): string {
+  if (typeof error === 'object' && error !== null && 'fieldErrors' in error) {
+    const fieldErrors = (error as { fieldErrors?: Record<string, string[]> }).fieldErrors;
+    const passwordError = fieldErrors?.password?.[0];
+    if (passwordError) return passwordError;
+  }
+  return error instanceof Error ? error.message : '请求失败，请重试';
+}
 
 export function AuthScreen({ cloud, sessionStore }: { cloud: CloudClient; sessionStore: SessionStore }) {
   const [mode, setMode] = useState<'login' | 'register' | 'verify' | 'recover' | 'recover-verify'>('login');
@@ -19,6 +35,7 @@ export function AuthScreen({ cloud, sessionStore }: { cloud: CloudClient; sessio
 
   async function submit(event: FormEvent) {
     event.preventDefault();
+    if (busy) return;
     setBusy(true);
     setError('');
     try {
@@ -52,7 +69,7 @@ export function AuthScreen({ cloud, sessionStore }: { cloud: CloudClient; sessio
         setMode('login');
       }
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : '请求失败，请重试');
+      setError(errorMessage(caught));
     } finally {
       setBusy(false);
     }
@@ -138,12 +155,20 @@ export function AuthScreen({ cloud, sessionStore }: { cloud: CloudClient; sessio
                 <label>
                   密码
                   <input
+                    aria-label="密码"
                     value={password}
                     onChange={(event) => setPassword(event.target.value)}
                     type="password"
                     autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
+                    minLength={mode === 'register' ? PASSWORD_MIN_CODE_POINTS : undefined}
                     required
                   />
+                  {mode === 'register' ? (
+                    <span className="password-guidance">
+                      <small>{PASSWORD_POLICY_HINT}</small>
+                      <small aria-live="polite">{passwordFeedback(password, busy)}</small>
+                    </span>
+                  ) : null}
                 </label>
               ) : null}
             </>
@@ -163,12 +188,18 @@ export function AuthScreen({ cloud, sessionStore }: { cloud: CloudClient; sessio
                 <label>
                   新密码
                   <input
+                    aria-label="新密码"
                     value={password}
                     onChange={(event) => setPassword(event.target.value)}
                     type="password"
                     autoComplete="new-password"
+                    minLength={PASSWORD_MIN_CODE_POINTS}
                     required
                   />
+                  <span className="password-guidance">
+                    <small>{PASSWORD_POLICY_HINT}</small>
+                    <small aria-live="polite">{passwordFeedback(password, busy)}</small>
+                  </span>
                 </label>
               ) : null}
             </>

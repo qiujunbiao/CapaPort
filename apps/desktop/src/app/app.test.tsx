@@ -7,6 +7,62 @@ import { createMemorySessionStore } from './session-store';
 import type { Session } from './types';
 
 describe('desktop application safety workflows', () => {
+  it('explains the simplified password policy only when creating or resetting a password', () => {
+    render(<DesktopApp cloud={cloudFixture()} local={localFixture()} sessionStore={createMemorySessionStore()} />);
+    expect(screen.queryByText(/密码至少 8 个字符/)).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: '没有账号？立即注册' }));
+    expect(screen.getByText(/密码至少 8 个字符，可使用字母、数字和符号/)).toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText('密码'), { target: { value: 'abc' } });
+    expect(screen.getByText('还需输入 5 个字符')).toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText('密码'), { target: { value: 'river-82' } });
+    expect(screen.getByText('提交后将检查密码安全性')).toBeInTheDocument();
+  });
+
+  it('shows the password-specific server guidance instead of a generic error', async () => {
+    const cloud = cloudFixture();
+    cloud.register = async () => {
+      throw new CloudError('AUTH_PASSWORD_COMPROMISED', '请求无效', {
+        password: ['该密码曾出现在数据泄露中，请勿继续使用。'],
+      });
+    };
+    render(<DesktopApp cloud={cloud} local={localFixture()} sessionStore={createMemorySessionStore()} />);
+    fireEvent.click(screen.getByRole('button', { name: '没有账号？立即注册' }));
+    fireEvent.change(screen.getByLabelText('姓名'), { target: { value: 'Rocky' } });
+    fireEvent.change(screen.getByLabelText('邮箱或手机号'), { target: { value: 'rocky@example.com' } });
+    fireEvent.change(screen.getByLabelText('密码'), { target: { value: 'river-stone-82' } });
+    fireEvent.click(screen.getByRole('button', { name: '注册并验证' }));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('该密码曾出现在数据泄露中，请勿继续使用。');
+  });
+
+  it('shows password checking progress and prevents duplicate registration', async () => {
+    const cloud = cloudFixture();
+    let finish: () => void = () => undefined;
+    const pending = new Promise<void>((resolve) => {
+      finish = resolve;
+    });
+    const register = vi.fn(async () => {
+      await pending;
+      return { challengeId: 'challenge-a', maskedTarget: 'ro***@example.com' };
+    });
+    cloud.register = register;
+    render(<DesktopApp cloud={cloud} local={localFixture()} sessionStore={createMemorySessionStore()} />);
+    fireEvent.click(screen.getByRole('button', { name: '没有账号？立即注册' }));
+    fireEvent.change(screen.getByLabelText('姓名'), { target: { value: 'Rocky' } });
+    fireEvent.change(screen.getByLabelText('邮箱或手机号'), { target: { value: 'rocky@example.com' } });
+    fireEvent.change(screen.getByLabelText('密码'), { target: { value: 'river-stone-82' } });
+    const submit = screen.getByRole('button', { name: '注册并验证' });
+    fireEvent.click(submit);
+
+    expect(await screen.findByText('正在检查密码安全性…')).toBeInTheDocument();
+    expect(submit).toBeDisabled();
+    fireEvent.click(submit);
+    expect(register).toHaveBeenCalledOnce();
+    finish();
+    await screen.findByLabelText('验证码');
+  });
+
   it('uses meaningful page labels without decorative sequence numbers', async () => {
     render(
       <DesktopApp

@@ -1,8 +1,4 @@
-import {
-  type IdentityKind,
-  PASSWORD_MAX_CODE_POINTS,
-  PASSWORD_MIN_CODE_POINTS,
-} from '@capaport/contracts/auth';
+import { type IdentityKind, PASSWORD_MAX_CODE_POINTS, PASSWORD_MIN_CODE_POINTS } from '@capaport/contracts/auth';
 import { ZxcvbnFactory } from '@zxcvbn-ts/core';
 import { adjacencyGraphs, dictionary } from '@zxcvbn-ts/language-common';
 import { AppError } from '../../platform/errors/app-error.js';
@@ -51,8 +47,8 @@ export function validatePasswordStrength(
   }
 
   const identityParts = context.identity?.split(/[^\p{L}\p{N}]+/u) ?? [];
-  const userInputs = [...identityParts, context.displayName, 'CapaPort'].filter(
-    (value): value is string => Boolean(value?.trim()),
+  const userInputs = [...identityParts, context.displayName, 'CapaPort'].filter((value): value is string =>
+    Boolean(value?.trim()),
   );
   if (passwordStrength.check(password, userInputs).score < 2) {
     throw new AppError('AUTH_PASSWORD_TOO_SIMPLE', '该密码过于简单或容易被猜到，请换一个密码。', 400, {

@@ -253,6 +253,7 @@ describe('all API route success contracts', () => {
         accessTtlSeconds: 900,
         refreshTtlDays: 30,
         verificationTtlMinutes: 10,
+        passwordRisk: { mode: 'development', timeoutMs: 500 },
       },
       notification: { smtpHost: '127.0.0.1', smtpPort: 1025, smtpFrom: 'noreply@capaport.test' },
       metricsToken: token,

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { AppError } from '../../platform/errors/app-error.js';
+import type { AppError } from '../../platform/errors/app-error.js';
 import { normalizeIdentity, validatePasswordStrength } from './identity.policy.js';
 
 describe('identity policy', () => {

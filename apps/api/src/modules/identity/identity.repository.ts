@@ -251,23 +251,6 @@ export class IdentityRepository implements SessionStore {
     });
   }
 
-  async changePasswordAndRevoke(userId: string, passwordHash: string, now: Date): Promise<void> {
-    await this.database.transaction(async (transaction) => {
-      await transaction.update(users).set({ passwordHash, updatedAt: now }).where(eq(users.id, userId));
-      await transaction
-        .update(sessions)
-        .set({ revokedAt: now, revocationReason: 'password_recovery' })
-        .where(eq(sessions.userId, userId));
-      const userSessions = await transaction
-        .select({ id: sessions.id })
-        .from(sessions)
-        .where(eq(sessions.userId, userId));
-      for (const session of userSessions) {
-        await transaction.update(refreshTokens).set({ revokedAt: now }).where(eq(refreshTokens.sessionId, session.id));
-      }
-    });
-  }
-
   async completePasswordRecovery(input: {
     challengeId: string;
     codeDigest: string;
@@ -288,8 +271,7 @@ export class IdentityRepository implements SessionStore {
       }>('SELECT * FROM verification_challenges WHERE id = $1 FOR UPDATE', [input.challengeId]);
       const challenge = result.rows[0];
       if (
-        !challenge ||
-        challenge.purpose !== 'recover_password' ||
+        challenge?.purpose !== 'recover_password' ||
         challenge.user_id !== input.userId ||
         challenge.code_digest !== input.codeDigest
       ) {

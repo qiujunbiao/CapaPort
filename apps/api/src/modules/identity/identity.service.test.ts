@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { AppError } from '../../platform/errors/app-error.js';
-import { PasswordRiskCheckUnavailableError, type PasswordRiskChecker } from './password-risk-checker.js';
 import { type IdentityDataStore, IdentityService, type PasswordHasher, type RateLimiter } from './identity.service.js';
+import { type PasswordRiskChecker, PasswordRiskCheckUnavailableError } from './password-risk-checker.js';
 
 function dependencies() {
   const repository: IdentityDataStore = {

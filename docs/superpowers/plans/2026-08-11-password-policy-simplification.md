@@ -36,7 +36,7 @@
 - Produces: `validatePasswordStrength(password: string, context?: { identity?: string; displayName?: string }): void`.
 - Throws: `AUTH_PASSWORD_TOO_SHORT`, `AUTH_PASSWORD_TOO_LONG`, or `AUTH_PASSWORD_TOO_SIMPLE`, each with Chinese `fieldErrors.password`.
 
-- [ ] **Step 1: Write failing contract and policy tests**
+- [x] **Step 1: Write failing contract and policy tests**
 
 Add assertions that `Array.from(password).length` governs length, that eight-character nontrivial passwords and Unicode pass without composition rules, and that common/context-derived passwords fail:
 
@@ -58,7 +58,7 @@ Assert exported hint text is exactly:
 '密码至少 8 个字符，可使用字母、数字和符号。请勿使用常见、容易猜测或已泄露的密码。'
 ```
 
-- [ ] **Step 2: Run tests and verify the new expectations fail**
+- [x] **Step 2: Run tests and verify the new expectations fail**
 
 Run:
 
@@ -69,7 +69,7 @@ pnpm --filter @capaport/api test -- src/modules/identity/identity.policy.test.ts
 
 Expected: failures because the constants, 8-code-point rule, Chinese errors, and zxcvbn checks do not exist.
 
-- [ ] **Step 3: Add pinned strength dependencies**
+- [x] **Step 3: Add pinned strength dependencies**
 
 Run:
 
@@ -77,7 +77,7 @@ Run:
 pnpm --filter @capaport/api add @zxcvbn-ts/core@4.1.2 @zxcvbn-ts/language-common@4.1.3
 ```
 
-- [ ] **Step 4: Implement shared constants and local policy**
+- [x] **Step 4: Implement shared constants and local policy**
 
 Export constants from `packages/contracts/src/auth.ts`. Configure zxcvbn once at module load using the common dictionary and adjacency graphs. Analyze the original password, count length with `Array.from`, and pass context values as `userInputs` after removing empty entries.
 
@@ -91,7 +91,7 @@ throw new AppError('AUTH_PASSWORD_TOO_SHORT', '密码至少需要 8 个字符。
 
 Use equivalent `AUTH_PASSWORD_TOO_LONG` and `AUTH_PASSWORD_TOO_SIMPLE` errors. Do not mutate the password before hashing.
 
-- [ ] **Step 5: Run focused tests and commit**
+- [x] **Step 5: Run focused tests and commit**
 
 Run:
 
@@ -128,7 +128,7 @@ git commit -m "feat(auth): simplify local password policy"
 - Produces: `GooglePasswordRiskChecker` and `DevelopmentPasswordRiskChecker`.
 - Configures: `auth.passwordRisk: { mode: 'google'; projectId: string; timeoutMs: 500 } | { mode: 'development'; timeoutMs: 500 }`.
 
-- [ ] **Step 1: Write failing config and adapter tests**
+- [x] **Step 1: Write failing config and adapter tests**
 
 Cover:
 
@@ -145,7 +145,7 @@ Mock the Google client and helper so adapter tests assert:
 - a 500 ms timeout or provider error becomes `PasswordRiskCheckUnavailableError`;
 - errors and serialized objects never contain the test password.
 
-- [ ] **Step 2: Run tests and verify they fail**
+- [x] **Step 2: Run tests and verify they fail**
 
 Run:
 
@@ -155,7 +155,7 @@ pnpm --filter @capaport/api test -- src/config/config.test.ts src/modules/identi
 
 Expected: failures because config and checker do not exist.
 
-- [ ] **Step 3: Add pinned Google dependencies**
+- [x] **Step 3: Add pinned Google dependencies**
 
 Run:
 
@@ -163,7 +163,7 @@ Run:
 pnpm --filter @capaport/api add recaptcha-password-check-helpers@1.0.3 @google-cloud/recaptcha-enterprise@7.0.0
 ```
 
-- [ ] **Step 4: Implement config and injected adapters**
+- [x] **Step 4: Implement config and injected adapters**
 
 Add environment parsing:
 
@@ -179,7 +179,7 @@ Use `PasswordCheckVerification.create(identity, password)`, create an assessment
 
 Register the checker with a Nest factory provider selected from `AppConfig`; inject the symbol into `IdentityService` in Task 4.
 
-- [ ] **Step 5: Run focused tests and commit**
+- [x] **Step 5: Run focused tests and commit**
 
 Run:
 
@@ -210,7 +210,7 @@ git commit -m "feat(auth): add Google password risk checker"
 - Produces: `IdentityDataStore.completePasswordRecovery(input: { challengeId: string; codeDigest: string; userId: string; passwordHash: string; now: Date }): Promise<void>`.
 - Removes service dependence on `consumeRecovery` for password reset.
 
-- [ ] **Step 1: Write failing recovery tests**
+- [x] **Step 1: Write failing recovery tests**
 
 Add tests proving:
 
@@ -221,7 +221,7 @@ Add tests proving:
 - a failed password risk check leaves the challenge unconsumed and reusable;
 - concurrent completion allows only one success.
 
-- [ ] **Step 2: Run focused tests and verify they fail**
+- [x] **Step 2: Run focused tests and verify they fail**
 
 Run:
 
@@ -231,13 +231,13 @@ pnpm --filter @capaport/api test -- src/modules/identity/verification.service.te
 
 Expected: failures because `authorizeRecovery` and `completePasswordRecovery` do not exist.
 
-- [ ] **Step 3: Implement non-consuming authorization and atomic completion**
+- [x] **Step 3: Implement non-consuming authorization and atomic completion**
 
 Add a repository challenge inspection path that uses `SELECT ... FOR UPDATE`, preserves the current invalid-attempt behavior, and commits without setting `consumed_at` for a correct code. Return the HMAC `codeDigest` only inside the service boundary.
 
 Implement `completePasswordRecovery` as one PostgreSQL transaction. Re-read the challenge with `FOR UPDATE`, compare every invariant, then mark it consumed, update the user password, revoke sessions, and revoke refresh tokens before commit. Map stale/used challenges to existing stable verification errors.
 
-- [ ] **Step 4: Run focused tests and commit**
+- [x] **Step 4: Run focused tests and commit**
 
 Run:
 
@@ -266,7 +266,7 @@ git commit -m "fix(auth): make password recovery completion atomic"
 - Consumes: `validatePasswordStrength`, `PASSWORD_RISK_CHECKER`, `authorizeRecovery`, and `completePasswordRecovery`.
 - Produces stable field errors: `AUTH_PASSWORD_COMPROMISED` and `AUTH_PASSWORD_RISK_CHECK_UNAVAILABLE`.
 
-- [ ] **Step 1: Write failing orchestration tests**
+- [x] **Step 1: Write failing orchestration tests**
 
 For registration, assert call order local policy → Google checker → Argon2 hash → repository create. On weak, compromised, or unavailable outcomes, assert hash/create/delivery are not called.
 
@@ -279,7 +279,7 @@ Assert compromised and unavailable mappings:
 { code: 'AUTH_PASSWORD_RISK_CHECK_UNAVAILABLE', statusCode: 503, fieldErrors: { password: ['暂时无法完成密码安全检查，请稍后重试。'] } }
 ```
 
-- [ ] **Step 2: Run tests and verify they fail**
+- [x] **Step 2: Run tests and verify they fail**
 
 Run:
 
@@ -287,13 +287,13 @@ Run:
 pnpm --filter @capaport/api test -- src/modules/identity/identity.service.test.ts tests/e2e/auth.spec.ts
 ```
 
-- [ ] **Step 3: Implement orchestration and Chinese error envelopes**
+- [x] **Step 3: Implement orchestration and Chinese error envelopes**
 
 Inject `PasswordRiskChecker`. Add a private method that calls local policy with normalized identity/display name, then translates checker outcomes/errors into `AppError`. Do not catch unrelated errors.
 
 Keep login unchanged. Registration and reset must both use the same private policy method.
 
-- [ ] **Step 4: Run API identity and e2e tests and commit**
+- [x] **Step 4: Run API identity and e2e tests and commit**
 
 Run:
 
@@ -330,7 +330,7 @@ git commit -m "feat(auth): enforce password risk policy"
 - Web consumes `CapaPortSdkError.fieldErrors`; Desktop consumes `CloudError.fieldErrors`.
 - Production consumes `PASSWORD_RISK_MODE=google`, `GOOGLE_CLOUD_PROJECT`, and ADC through `GOOGLE_APPLICATION_CREDENTIALS`.
 
-- [ ] **Step 1: Write failing Web and Desktop tests**
+- [x] **Step 1: Write failing Web and Desktop tests**
 
 For both clients assert:
 
@@ -341,7 +341,7 @@ For both clients assert:
 - `fieldErrors.password[0]` is displayed instead of generic English text;
 - login mode does not show new-password guidance.
 
-- [ ] **Step 2: Run UI tests and verify they fail**
+- [x] **Step 2: Run UI tests and verify they fail**
 
 Run:
 
@@ -350,7 +350,7 @@ pnpm --filter @capaport/web test -- src/features/auth/auth-page.test.tsx
 pnpm --filter @capaport/desktop test -- src/features/auth/auth-screen.test.tsx
 ```
 
-- [ ] **Step 3: Implement shared copy consumption and field error mapping**
+- [x] **Step 3: Implement shared copy consumption and field error mapping**
 
 Import shared constants from `@capaport/contracts/auth`. Count with `Array.from(password).length`. Render the policy and live status near new-password fields with `aria-live="polite"`. Preserve existing `autocomplete="new-password"`, paste, and password-manager behavior.
 
@@ -366,7 +366,7 @@ function passwordFieldError(error: unknown): string | undefined {
 
 Use `passwordFieldError(caught) ?? caught.message` in both auth components.
 
-- [ ] **Step 4: Add development and production deployment configuration**
+- [x] **Step 4: Add development and production deployment configuration**
 
 Set `PASSWORD_RISK_MODE: development` in local compose. In production require:
 
@@ -378,7 +378,7 @@ GOOGLE_APPLICATION_CREDENTIALS: /run/secrets/google_application_credentials
 
 Add the `google_application_credentials` Compose secret and entrypoint support only where required. Document billing, API enablement, ADC secret permissions, the 500 ms fail-closed behavior, and a deployment smoke test that exercises a mocked checker outside production and configuration validation in production.
 
-- [ ] **Step 5: Run focused and repository-wide verification**
+- [x] **Step 5: Run focused and repository-wide verification**
 
 Run:
 
@@ -402,7 +402,7 @@ pnpm stack:smoke
 pnpm acceptance
 ```
 
-- [ ] **Step 6: Mark plan complete and commit**
+- [x] **Step 6: Mark plan complete and commit**
 
 Mark all completed checkboxes in this plan, then run:
 

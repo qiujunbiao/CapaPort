@@ -15,10 +15,13 @@ s3_secret_key
 jwt_secret
 refresh_token_pepper
 verification_pepper
+google_application_credentials.json
 metrics_token
 ```
 
-`jwt_secret`、两个 pepper 和 metrics token 使用密码学安全随机值，至少 32 字节。Compose 只把它们作为 `/run/secrets/*` 文件挂载，不写入环境转储或镜像层。
+`jwt_secret`、两个 pepper 和 metrics token 使用密码学安全随机值，至少 32 字节。`google_application_credentials.json` 使用仅有 reCAPTCHA Enterprise 评估权限的服务账号凭据。Compose 只把秘密作为 `/run/secrets/*` 文件挂载，不写入环境转储或镜像层。
+
+在 Google Cloud 项目中启用结算和 reCAPTCHA Enterprise Password Defense，并设置 `GOOGLE_CLOUD_PROJECT`。生产环境强制使用 Google 检查；开发和测试环境显式使用 `PASSWORD_RISK_MODE=development`，不能在生产绕过。
 
 ## 启动
 
@@ -36,6 +39,7 @@ export S3_SERVER_SIDE_ENCRYPTION=AES256
 export SMTP_HOST=smtp.example
 export SMTP_PORT=587
 export SMTP_FROM='CapaPort <no-reply@example.com>'
+export GOOGLE_CLOUD_PROJECT=capaport-production
 docker compose -f infra/compose/compose.production.yaml pull
 docker compose -f infra/compose/compose.production.yaml up migrate
 docker compose -f infra/compose/compose.production.yaml up -d api worker

@@ -14,6 +14,8 @@ x-backend-environment: &backend-environment
   JWT_SECRET: capaport-jwt-development-secret-change-me-now
   REFRESH_TOKEN_PEPPER: capaport-refresh-development-pepper-change-me
   VERIFICATION_PEPPER: capaport-verification-development-pepper-change-me
+  PASSWORD_RISK_MODE: development
+  PASSWORD_RISK_TIMEOUT_MS: 500
   METRICS_TOKEN: capaport-development-metrics-token
   ACCESS_TOKEN_TTL_SECONDS: 900
   REFRESH_TOKEN_TTL_DAYS: 30

@@ -1,8 +1,24 @@
+import { PASSWORD_MIN_CODE_POINTS, PASSWORD_POLICY_HINT } from '@capaport/contracts/auth';
 import { ArrowRight, ShieldCheck } from 'lucide-react';
 import { useState } from 'react';
 import type { WebClient, WebSessionStore } from '../../app/types';
 import { BrandLockup } from '../../components/brand';
 import { Button, ErrorNotice } from '../../components/ui';
+
+function passwordFeedback(password: string, busy: boolean): string {
+  if (busy) return '正在检查密码安全性…';
+  const remaining = PASSWORD_MIN_CODE_POINTS - Array.from(password).length;
+  return remaining > 0 ? `还需输入 ${remaining} 个字符` : '提交后将检查密码安全性';
+}
+
+function errorMessage(error: unknown): string {
+  if (typeof error === 'object' && error !== null && 'fieldErrors' in error) {
+    const fieldErrors = (error as { fieldErrors?: Record<string, string[]> }).fieldErrors;
+    const passwordError = fieldErrors?.password?.[0];
+    if (passwordError) return passwordError;
+  }
+  return error instanceof Error ? error.message : '操作失败，请稍后重试';
+}
 
 export function AuthPage({ client, sessionStore }: { client: WebClient; sessionStore: WebSessionStore }) {
   const [mode, setMode] = useState<'login' | 'register' | 'verify' | 'recover' | 'recover-verify'>('login');
@@ -18,6 +34,7 @@ export function AuthPage({ client, sessionStore }: { client: WebClient; sessionS
   const kind = target.includes('@') ? 'email' : 'phone';
 
   async function submit() {
+    if (busy) return;
     setBusy(true);
     setError('');
     try {
@@ -47,7 +64,7 @@ export function AuthPage({ client, sessionStore }: { client: WebClient; sessionS
         sessionStore.set(tokens);
       }
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : '操作失败，请稍后重试');
+      setError(errorMessage(caught));
     } finally {
       setBusy(false);
     }
@@ -145,9 +162,15 @@ export function AuthPage({ client, sessionStore }: { client: WebClient; sessionS
                     value={password}
                     onChange={(event) => setPassword(event.target.value)}
                     autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
-                    minLength={12}
+                    minLength={mode === 'register' ? PASSWORD_MIN_CODE_POINTS : undefined}
                     required
                   />
+                  {mode === 'register' ? (
+                    <span className="password-guidance">
+                      <small>{PASSWORD_POLICY_HINT}</small>
+                      <small aria-live="polite">{passwordFeedback(password, busy)}</small>
+                    </span>
+                  ) : null}
                 </label>
               ) : null}
             </>
@@ -171,9 +194,13 @@ export function AuthPage({ client, sessionStore }: { client: WebClient; sessionS
                     type="password"
                     value={password}
                     onChange={(event) => setPassword(event.target.value)}
-                    minLength={12}
+                    minLength={PASSWORD_MIN_CODE_POINTS}
                     required
                   />
+                  <span className="password-guidance">
+                    <small>{PASSWORD_POLICY_HINT}</small>
+                    <small aria-live="polite">{passwordFeedback(password, busy)}</small>
+                  </span>
                 </label>
               ) : null}
             </>

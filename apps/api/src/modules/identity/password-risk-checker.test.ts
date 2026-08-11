@@ -32,10 +32,7 @@ function googleDependencies(options: { leaked?: boolean; reject?: Error; pending
 describe('password risk checker', () => {
   it('returns the locally verified Google Password Defense verdict', async () => {
     const dependencies = googleDependencies({ leaked: true });
-    const checker = new GooglePasswordRiskChecker(
-      { projectId: 'capaport-production', timeoutMs: 500 },
-      dependencies,
-    );
+    const checker = new GooglePasswordRiskChecker({ projectId: 'capaport-production', timeoutMs: 500 }, dependencies);
 
     await expect(checker.check('person@example.com', testPassword)).resolves.toBe('compromised');
     expect(dependencies.createAssessment).toHaveBeenCalledWith(
@@ -49,18 +46,12 @@ describe('password risk checker', () => {
         },
       }),
     );
-    expect(dependencies.verification.verify).toHaveBeenCalledWith(
-      Uint8Array.from([7, 8]),
-      [Uint8Array.from([9, 10])],
-    );
+    expect(dependencies.verification.verify).toHaveBeenCalledWith(Uint8Array.from([7, 8]), [Uint8Array.from([9, 10])]);
   });
 
   it('maps provider failures to a password-free unavailable error', async () => {
     const dependencies = googleDependencies({ reject: new Error(`provider failed for ${testPassword}`) });
-    const checker = new GooglePasswordRiskChecker(
-      { projectId: 'capaport-production', timeoutMs: 500 },
-      dependencies,
-    );
+    const checker = new GooglePasswordRiskChecker({ projectId: 'capaport-production', timeoutMs: 500 }, dependencies);
 
     const error = await checker.check('person@example.com', testPassword).catch((caught) => caught);
     expect(error).toBeInstanceOf(PasswordRiskCheckUnavailableError);
@@ -81,8 +72,6 @@ describe('password risk checker', () => {
   });
 
   it('uses an explicit safe checker only for development and tests', async () => {
-    await expect(new DevelopmentPasswordRiskChecker().check('person@example.com', testPassword)).resolves.toBe(
-      'safe',
-    );
+    await expect(new DevelopmentPasswordRiskChecker().check('person@example.com', testPassword)).resolves.toBe('safe');
   });
 });

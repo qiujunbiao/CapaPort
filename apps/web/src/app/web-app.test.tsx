@@ -5,6 +5,62 @@ import { createMemoryWebSessionStore } from './session-store';
 import { WebApp } from './web-app';
 
 describe('organization web console', () => {
+  it('explains the simplified password policy only when creating or resetting a password', async () => {
+    render(<WebApp client={webFixture()} sessionStore={createMemoryWebSessionStore()} />);
+    expect(screen.queryByText(/密码至少 8 个字符/)).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: '没有账号？创建账号' }));
+    expect(screen.getByText(/密码至少 8 个字符，可使用字母、数字和符号/)).toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText('密码'), { target: { value: 'abc' } });
+    expect(screen.getByText('还需输入 5 个字符')).toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText('密码'), { target: { value: 'river-82' } });
+    expect(screen.getByText('提交后将检查密码安全性')).toBeInTheDocument();
+  });
+
+  it('shows the password-specific server guidance instead of a generic error', async () => {
+    const client = webFixture();
+    client.register = async () => {
+      throw Object.assign(new Error('请求无效'), {
+        fieldErrors: { password: ['该密码曾出现在数据泄露中，请勿继续使用。'] },
+      });
+    };
+    render(<WebApp client={client} sessionStore={createMemoryWebSessionStore()} />);
+    fireEvent.click(screen.getByRole('button', { name: '没有账号？创建账号' }));
+    fireEvent.change(screen.getByLabelText('显示名称'), { target: { value: 'Rocky' } });
+    fireEvent.change(screen.getByLabelText('邮箱或手机号'), { target: { value: 'rocky@example.com' } });
+    fireEvent.change(screen.getByLabelText('密码'), { target: { value: 'river-stone-82' } });
+    fireEvent.click(screen.getByRole('button', { name: '注册并验证' }));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('该密码曾出现在数据泄露中，请勿继续使用。');
+  });
+
+  it('shows password checking progress and prevents duplicate registration', async () => {
+    const client = webFixture();
+    let finish: () => void = () => undefined;
+    const pending = new Promise<void>((resolve) => {
+      finish = resolve;
+    });
+    const register = vi.fn(async () => {
+      await pending;
+      return { challengeId: 'challenge-a', maskedTarget: 'ro***@example.com' };
+    });
+    client.register = register;
+    render(<WebApp client={client} sessionStore={createMemoryWebSessionStore()} />);
+    fireEvent.click(screen.getByRole('button', { name: '没有账号？创建账号' }));
+    fireEvent.change(screen.getByLabelText('显示名称'), { target: { value: 'Rocky' } });
+    fireEvent.change(screen.getByLabelText('邮箱或手机号'), { target: { value: 'rocky@example.com' } });
+    fireEvent.change(screen.getByLabelText('密码'), { target: { value: 'river-stone-82' } });
+    fireEvent.click(screen.getByRole('button', { name: '注册并验证' }));
+
+    expect(await screen.findByText('正在检查密码安全性…')).toBeInTheDocument();
+    const submit = screen.getByRole('button', { name: '处理中…' });
+    expect(submit).toBeDisabled();
+    fireEvent.click(submit);
+    expect(register).toHaveBeenCalledOnce();
+    finish();
+    await screen.findByLabelText('验证码');
+  });
+
   it('creates an organization from an editable name without asking for a technical identifier', async () => {
     const client = webFixture();
     client.organizations = async () => [];

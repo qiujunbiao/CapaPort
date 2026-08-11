@@ -403,6 +403,17 @@ select {
 .auth-card form .button {
   margin-top: 5px;
 }
+.password-guidance {
+  display: grid;
+  gap: 4px;
+  margin-top: 7px;
+  color: var(--muted);
+  font-weight: 500;
+  line-height: 1.45;
+}
+.password-guidance small:last-child {
+  color: var(--orange-dark);
+}
 .text-button {
   display: block;
   margin: 20px auto 0;

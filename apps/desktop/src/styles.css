@@ -343,6 +343,17 @@ p {
   display: block;
   margin: auto;
 }
+.password-guidance {
+  display: grid;
+  gap: 4px;
+  margin-top: 7px;
+  color: var(--muted);
+  font-weight: 500;
+  line-height: 1.45;
+}
+.password-guidance small:last-child {
+  color: var(--orange-dark);
+}
 .error-notice {
   display: flex;
   justify-content: space-between;

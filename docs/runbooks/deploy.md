@@ -38,11 +38,16 @@ s3_secret_key
 jwt_secret
 refresh_token_pepper
 verification_pepper
+google_application_credentials.json
 metrics_token
 ```
 
 The JWT secret and three peppers/tokens must each contain at least 32 random characters. Never reuse development
 values. Keep the previous image tag and a verified backup before release.
+
+Enable billing and reCAPTCHA Enterprise Password Defense in `GOOGLE_CLOUD_PROJECT`. The service-account JSON in
+`google_application_credentials.json` must be scoped to create reCAPTCHA Enterprise assessments. Production startup
+fails when the project is missing or `PASSWORD_RISK_MODE` is not `google`; the default assessment timeout is 500 ms.
 
 ## Release
 

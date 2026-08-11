@@ -17,6 +17,10 @@ x-backend-environment: &backend-environment
   JWT_SECRET_FILE: /run/secrets/jwt_secret
   REFRESH_TOKEN_PEPPER_FILE: /run/secrets/refresh_token_pepper
   VERIFICATION_PEPPER_FILE: /run/secrets/verification_pepper
+  PASSWORD_RISK_MODE: google
+  PASSWORD_RISK_TIMEOUT_MS: ${PASSWORD_RISK_TIMEOUT_MS:-500}
+  GOOGLE_CLOUD_PROJECT: ${GOOGLE_CLOUD_PROJECT:?Set GOOGLE_CLOUD_PROJECT}
+  GOOGLE_APPLICATION_CREDENTIALS: /run/secrets/google_application_credentials
   METRICS_TOKEN_FILE: /run/secrets/metrics_token
   ACCESS_TOKEN_TTL_SECONDS: ${ACCESS_TOKEN_TTL_SECONDS:-900}
   REFRESH_TOKEN_TTL_DAYS: ${REFRESH_TOKEN_TTL_DAYS:-30}
@@ -46,6 +50,7 @@ x-backend-security: &backend-security
     - jwt_secret
     - refresh_token_pepper
     - verification_pepper
+    - google_application_credentials
     - metrics_token
     - sms_provider_token
   networks: [backend]
@@ -109,6 +114,8 @@ secrets:
     file: ${CAPAPORT_SECRETS_DIR:?Set CAPAPORT_SECRETS_DIR}/refresh_token_pepper
   verification_pepper:
     file: ${CAPAPORT_SECRETS_DIR:?Set CAPAPORT_SECRETS_DIR}/verification_pepper
+  google_application_credentials:
+    file: ${CAPAPORT_SECRETS_DIR:?Set CAPAPORT_SECRETS_DIR}/google_application_credentials.json
   metrics_token:
     file: ${CAPAPORT_SECRETS_DIR:?Set CAPAPORT_SECRETS_DIR}/metrics_token
   sms_provider_token:

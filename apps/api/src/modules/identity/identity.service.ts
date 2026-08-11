@@ -15,8 +15,8 @@ import { maskIdentity, normalizeIdentity, validatePasswordStrength } from './ide
 import type { IdentityRecord } from './identity.repository.js';
 import {
   PASSWORD_RISK_CHECKER,
-  PasswordRiskCheckUnavailableError,
   type PasswordRiskChecker,
+  PasswordRiskCheckUnavailableError,
 } from './password-risk-checker.js';
 import type { SessionClient } from './session.service.js';
 import type { ChallengeMetadata, PreparedChallenge } from './verification.service.js';
@@ -81,7 +81,10 @@ export interface IdentityVerification {
     userId: string,
     identityId?: string,
   ): Promise<ChallengeMetadata>;
-  authorizeRecovery(challengeId: string, code: string): Promise<{
+  authorizeRecovery(
+    challengeId: string,
+    code: string,
+  ): Promise<{
     status: 'authorized';
     userId: string;
     identityId: string | null;
@@ -269,12 +272,9 @@ export class IdentityService {
     } catch (error) {
       if (error instanceof AppError) throw error;
       if (error instanceof PasswordRiskCheckUnavailableError) {
-        throw new AppError(
-          'AUTH_PASSWORD_RISK_CHECK_UNAVAILABLE',
-          '暂时无法完成密码安全检查，请稍后重试。',
-          503,
-          { password: ['暂时无法完成密码安全检查，请稍后重试。'] },
-        );
+        throw new AppError('AUTH_PASSWORD_RISK_CHECK_UNAVAILABLE', '暂时无法完成密码安全检查，请稍后重试。', 503, {
+          password: ['暂时无法完成密码安全检查，请稍后重试。'],
+        });
       }
       throw error;
     }
