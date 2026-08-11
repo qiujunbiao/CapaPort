@@ -1,11 +1,17 @@
 import { Module } from '@nestjs/common';
 import { PlatformModule } from '../../platform/platform.module.js';
+import { APP_CONFIG, type AppConfig } from '../../config/config.js';
 import { AuthController } from './auth.controller.js';
 import { AuthGuard } from './auth.guard.js';
 import { IdentityRepository } from './identity.repository.js';
 import { Argon2PasswordHasher, IdentityService } from './identity.service.js';
 import { RedisLoginRateLimiter } from './login-rate-limiter.js';
 import { MailpitVerificationSender } from './notification.provider.js';
+import {
+  DevelopmentPasswordRiskChecker,
+  GooglePasswordRiskChecker,
+  PASSWORD_RISK_CHECKER,
+} from './password-risk-checker.js';
 import { SessionService } from './session.service.js';
 import { VerificationService } from './verification.service.js';
 
@@ -21,6 +27,14 @@ import { VerificationService } from './verification.service.js';
     SessionService,
     IdentityService,
     AuthGuard,
+    {
+      provide: PASSWORD_RISK_CHECKER,
+      inject: [APP_CONFIG],
+      useFactory: (config: AppConfig) =>
+        config.auth.passwordRisk.mode === 'google'
+          ? new GooglePasswordRiskChecker(config.auth.passwordRisk)
+          : new DevelopmentPasswordRiskChecker(),
+    },
     { provide: 'SESSION_STORE', useExisting: IdentityRepository },
     { provide: 'VERIFICATION_STORE', useExisting: IdentityRepository },
     { provide: 'VERIFICATION_SENDER', useExisting: MailpitVerificationSender },

@@ -20,6 +20,9 @@ const environmentSchema = z
     VERIFICATION_PEPPER: z.string().min(32),
     ACCESS_TOKEN_TTL_SECONDS: z.coerce.number().int().min(60).max(3_600).default(900),
     REFRESH_TOKEN_TTL_DAYS: z.coerce.number().int().min(1).max(365).default(30),
+    PASSWORD_RISK_MODE: z.enum(['google', 'development']).optional(),
+    GOOGLE_CLOUD_PROJECT: z.string().trim().min(1).optional(),
+    PASSWORD_RISK_TIMEOUT_MS: z.coerce.number().int().min(100).max(5_000).default(500),
     VERIFICATION_TTL_MINUTES: z.coerce.number().int().min(2).max(60).default(10),
     SMTP_HOST: z.string().min(1),
     SMTP_PORT: z.coerce.number().int().min(1).max(65_535).default(1025),
@@ -34,7 +37,28 @@ const environmentSchema = z
     if (value.NODE_ENV === 'production' && !value.METRICS_TOKEN) {
       context.addIssue({ code: 'custom', path: ['METRICS_TOKEN'], message: 'is required in production' });
     }
+    if (value.PASSWORD_RISK_MODE === 'google' && !value.GOOGLE_CLOUD_PROJECT) {
+      context.addIssue({
+        code: 'custom',
+        path: ['GOOGLE_CLOUD_PROJECT'],
+        message: 'is required when PASSWORD_RISK_MODE is google',
+      });
+    }
     if (value.NODE_ENV === 'production') {
+      if ((value.PASSWORD_RISK_MODE ?? 'google') !== 'google') {
+        context.addIssue({
+          code: 'custom',
+          path: ['PASSWORD_RISK_MODE'],
+          message: 'must be google in production',
+        });
+      }
+      if (!value.GOOGLE_CLOUD_PROJECT) {
+        context.addIssue({
+          code: 'custom',
+          path: ['GOOGLE_CLOUD_PROJECT'],
+          message: 'is required in production',
+        });
+      }
       if (!value.S3_SERVER_SIDE_ENCRYPTION) {
         context.addIssue({
           code: 'custom',
@@ -73,6 +97,9 @@ export type AppConfig = {
     accessTtlSeconds: number;
     refreshTtlDays: number;
     verificationTtlMinutes: number;
+    passwordRisk:
+      | { mode: 'development'; timeoutMs: number }
+      | { mode: 'google'; projectId: string; timeoutMs: number };
   };
   notification: {
     smtpHost: string;
@@ -131,6 +158,15 @@ export function parseConfig(environment: Record<string, string | undefined>): Ap
       accessTtlSeconds: parsed.data.ACCESS_TOKEN_TTL_SECONDS,
       refreshTtlDays: parsed.data.REFRESH_TOKEN_TTL_DAYS,
       verificationTtlMinutes: parsed.data.VERIFICATION_TTL_MINUTES,
+      passwordRisk:
+        (parsed.data.PASSWORD_RISK_MODE ?? (parsed.data.NODE_ENV === 'production' ? 'google' : 'development')) ===
+        'google'
+          ? {
+              mode: 'google',
+              projectId: parsed.data.GOOGLE_CLOUD_PROJECT!,
+              timeoutMs: parsed.data.PASSWORD_RISK_TIMEOUT_MS,
+            }
+          : { mode: 'development', timeoutMs: parsed.data.PASSWORD_RISK_TIMEOUT_MS },
     },
     notification: {
       smtpHost: parsed.data.SMTP_HOST,

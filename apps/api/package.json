@@ -22,6 +22,7 @@
     "@capaport/domain-types": "workspace:*",
     "@capaport/security-scan": "workspace:*",
     "@fastify/cors": "11.3.0",
+    "@google-cloud/recaptcha-enterprise": "7.0.0",
     "@nestjs/common": "11.1.28",
     "@nestjs/config": "4.0.4",
     "@nestjs/core": "11.1.28",
@@ -37,6 +38,7 @@
     "jose": "6.1.3",
     "nodemailer": "7.0.11",
     "pg": "8.22.0",
+    "recaptcha-password-check-helpers": "1.0.3",
     "reflect-metadata": "0.2.2",
     "rxjs": "7.8.2",
     "zod": "4.4.3"

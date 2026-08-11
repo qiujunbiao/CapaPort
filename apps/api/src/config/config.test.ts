@@ -26,7 +26,11 @@ describe('configuration', () => {
       nodeEnv: 'test',
       port: 3100,
       s3: { bucket: 'capaport', publicEndpoint: 'https://objects.example.com' },
-      auth: { accessTtlSeconds: 900, refreshTtlDays: 30 },
+      auth: {
+        accessTtlSeconds: 900,
+        refreshTtlDays: 30,
+        passwordRisk: { mode: 'development', timeoutMs: 500 },
+      },
     });
   });
 
@@ -52,9 +56,32 @@ describe('configuration', () => {
         SMS_SENDER: 'CapaPort',
         S3_SERVER_SIDE_ENCRYPTION: 'AES256',
         S3_KMS_KEY_ID: '',
+        PASSWORD_RISK_MODE: 'google',
+        GOOGLE_CLOUD_PROJECT: 'capaport-production',
       }),
     ).toMatchObject({
       notification: { sms: { endpoint: 'https://sms.example.com/v1/messages', sender: 'CapaPort' } },
+    });
+  });
+
+  it('requires Google Password Defense in production and rejects the development bypass', () => {
+    const production = {
+      ...validEnvironment,
+      NODE_ENV: 'production',
+      METRICS_TOKEN: 'm'.repeat(32),
+      SMS_PROVIDER_URL: 'https://sms.example.com/v1/messages',
+      SMS_PROVIDER_TOKEN: 'sms-provider-secret-token',
+      SMS_SENDER: 'CapaPort',
+      S3_SERVER_SIDE_ENCRYPTION: 'AES256',
+    };
+    expect(() => parseConfig(production)).toThrow(/GOOGLE_CLOUD_PROJECT/);
+    expect(() =>
+      parseConfig({ ...production, PASSWORD_RISK_MODE: 'development', GOOGLE_CLOUD_PROJECT: 'ignored' }),
+    ).toThrow(/PASSWORD_RISK_MODE/);
+    expect(
+      parseConfig({ ...production, PASSWORD_RISK_MODE: 'google', GOOGLE_CLOUD_PROJECT: 'capaport-production' }),
+    ).toMatchObject({
+      auth: { passwordRisk: { mode: 'google', projectId: 'capaport-production', timeoutMs: 500 } },
     });
   });
 

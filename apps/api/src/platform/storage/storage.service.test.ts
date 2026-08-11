@@ -25,6 +25,7 @@ function config(encryption?: AppConfig['s3']['encryption']): AppConfig {
       accessTtlSeconds: 900,
       refreshTtlDays: 30,
       verificationTtlMinutes: 10,
+      passwordRisk: { mode: 'development', timeoutMs: 500 },
     },
     notification: { smtpHost: 'localhost', smtpPort: 1025, smtpFrom: 'no-reply@example.com' },
     metricsToken: 'm'.repeat(32),
