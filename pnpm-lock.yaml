@@ -234,9 +234,15 @@ importers:
       '@capaport/adapter-gemini-cli':
         specifier: workspace:*
         version: link:../../adapters/gemini-cli
+      '@capaport/adapter-qwenwork':
+        specifier: workspace:*
+        version: link:../../adapters/qwenwork
       '@capaport/adapter-sdk':
         specifier: workspace:*
         version: link:../../packages/adapter-sdk
+      '@capaport/adapter-workbuddy':
+        specifier: workspace:*
+        version: link:../../adapters/workbuddy
       '@capaport/capability-kit':
         specifier: workspace:*
         version: link:../../packages/capability-kit

@@ -4,14 +4,18 @@ import { createClaudeCodeAdapter } from '@capaport/adapter-claude-code';
 import { createCodexAdapter } from '@capaport/adapter-codex';
 import { createCursorAdapter } from '@capaport/adapter-cursor';
 import { createGeminiCliAdapter } from '@capaport/adapter-gemini-cli';
-import type { AgentAdapter, FileTransaction } from '@capaport/adapter-sdk';
+import { createQwenWorkAdapter } from '@capaport/adapter-qwenwork';
+import { createWorkBuddyAdapter } from '@capaport/adapter-workbuddy';
+import { type AdapterEnvironment, type AgentAdapter, defaultAdapterEnvironment, type FileTransaction } from '@capaport/adapter-sdk';
 
-export function adapters(): Record<string, AgentAdapter> {
+export function adapters(environment: AdapterEnvironment = defaultAdapterEnvironment()): Record<string, AgentAdapter> {
   return {
-    codex: createCodexAdapter(),
-    'claude-code': createClaudeCodeAdapter(),
-    cursor: createCursorAdapter(),
-    'gemini-cli': createGeminiCliAdapter(),
+    codex: createCodexAdapter(environment),
+    'claude-code': createClaudeCodeAdapter(environment),
+    cursor: createCursorAdapter(environment),
+    'gemini-cli': createGeminiCliAdapter(environment),
+    workbuddy: createWorkBuddyAdapter(environment),
+    qwenwork: createQwenWorkAdapter(environment),
   };
 }
 
