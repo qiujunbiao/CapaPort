@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { webFixture } from '../../test/fixtures';
 import { MarketplacePage } from './marketplace-page';
@@ -42,5 +42,9 @@ describe('MarketplacePage capability visibility', () => {
 
     expect(screen.getByText('Published')).toBeInTheDocument();
     expect(screen.queryByText('Pending')).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /Published/ }));
+    fireEvent.click(screen.getByRole('button', { name: '编辑元数据' }));
+    expect(screen.getByRole('checkbox', { name: 'WorkBuddy' })).toBeInTheDocument();
+    expect(screen.getByRole('checkbox', { name: '千问 Work（QwenWork）' })).toBeInTheDocument();
   });
 });

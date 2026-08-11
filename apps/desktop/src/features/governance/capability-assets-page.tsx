@@ -6,9 +6,19 @@ import type {
   SpaceSummary,
   UpdateCapabilityRequest,
 } from '@capaport/contracts';
+import { agentLabels, type EditableAgent } from '@capaport/capability-kit';
 import { Boxes, GitCompareArrows } from 'lucide-react';
 import { useState } from 'react';
 import { Button, EmptyState, ErrorNotice, PageHeader, Panel, Status } from '../../components/ui';
+
+const editableAgents: readonly EditableAgent[] = [
+  'codex',
+  'claude-code',
+  'cursor',
+  'gemini-cli',
+  'workbuddy',
+  'qwenwork',
+];
 
 export function CapabilityAssetsPage({
   capabilities,
@@ -197,14 +207,14 @@ export function CapabilityAssetsPage({
                 </label>
                 <fieldset>
                   <legend>兼容 Agent</legend>
-                  {(['codex', 'claude-code', 'cursor', 'gemini-cli'] as const).map((agent) => (
+                  {editableAgents.map((agent) => (
                     <label key={agent}>
                       <input
                         type="checkbox"
                         checked={compatibility.includes(agent)}
                         onChange={() => toggleAgent(agent)}
                       />
-                      {agent}
+                      {agentLabels[agent]}
                     </label>
                   ))}
                 </fieldset>

@@ -11,6 +11,17 @@ import { useMemo, useState } from 'react';
 import type { WebClient } from '../../app/types';
 import { Button, EmptyState, ErrorNotice, LoadingBlock, PageHeader, Panel, Status } from '../../components/ui';
 
+const editableAgents: readonly AgentId[] = ['codex', 'claude-code', 'cursor', 'gemini-cli', 'workbuddy', 'qwenwork'];
+
+const agentLabels: Record<AgentId, string> = {
+  codex: 'Codex',
+  'claude-code': 'Claude Code',
+  cursor: 'Cursor',
+  'gemini-cli': 'Gemini CLI',
+  workbuddy: 'WorkBuddy',
+  qwenwork: '千问 Work（QwenWork）',
+};
+
 export function MarketplacePage({
   client,
   capabilities,
@@ -241,14 +252,14 @@ export function MarketplacePage({
                 </label>
                 <fieldset>
                   <legend>兼容 Agent</legend>
-                  {(['codex', 'claude-code', 'cursor', 'gemini-cli'] as const).map((agent) => (
+                  {editableAgents.map((agent) => (
                     <label key={agent}>
                       <input
                         type="checkbox"
                         checked={compatibility.includes(agent)}
                         onChange={() => toggleAgent(agent)}
                       />
-                      {agent}
+                      {agentLabels[agent]}
                     </label>
                   ))}
                 </fieldset>

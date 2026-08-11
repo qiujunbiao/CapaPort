@@ -62,6 +62,8 @@ describe('CapabilityAssetsPage', () => {
     );
 
     fireEvent.click(screen.getByRole('button', { name: /find-skills/ }));
+    expect(screen.getByRole('checkbox', { name: 'WorkBuddy' })).toBeInTheDocument();
+    expect(screen.getByRole('checkbox', { name: '千问 Work（QwenWork）' })).toBeInTheDocument();
     fireEvent.change(await screen.findByLabelText('能力名称'), { target: { value: 'Skill Finder' } });
     fireEvent.click(screen.getByRole('button', { name: '保存元数据' }));
     await waitFor(() =>

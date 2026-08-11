@@ -103,10 +103,7 @@ describe('editable capability packages', () => {
   });
 
   it('treats WorkBuddy and QwenWork as Skill-only clients', () => {
-    expect(unsupportedComponentsForAgent('workbuddy', ['skill', 'prompt', 'context'])).toEqual([
-      'prompt',
-      'context',
-    ]);
+    expect(unsupportedComponentsForAgent('workbuddy', ['skill', 'prompt', 'context'])).toEqual(['prompt', 'context']);
     expect(unsupportedComponentsForAgent('qwenwork', ['skill', 'prompt', 'context'])).toEqual(['prompt', 'context']);
     expect(compatibleAgentsForComponents(['skill'])).toEqual([
       'codex',

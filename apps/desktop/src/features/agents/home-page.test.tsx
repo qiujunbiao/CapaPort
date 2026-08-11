@@ -35,16 +35,7 @@ describe('HomePage capability visibility', () => {
   });
 
   it('names all supported clients in the empty state', () => {
-    render(
-      <HomePage
-        agents={[]}
-        capabilities={[]}
-        online
-        loading={false}
-        onDiscover={vi.fn()}
-        onNavigate={vi.fn()}
-      />,
-    );
+    render(<HomePage agents={[]} capabilities={[]} online loading={false} onDiscover={vi.fn()} onNavigate={vi.fn()} />);
 
     expect(screen.getByText(/WorkBuddy/)).toHaveTextContent('千问 Work');
   });

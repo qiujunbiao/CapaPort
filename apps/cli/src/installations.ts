@@ -1,10 +1,6 @@
 import { mkdir } from 'node:fs/promises';
 import { resolve } from 'node:path';
-import {
-  type AdapterEnvironment,
-  defaultAdapterEnvironment,
-  type InstallScope,
-} from '@capaport/adapter-sdk';
+import { type AdapterEnvironment, defaultAdapterEnvironment, type InstallScope } from '@capaport/adapter-sdk';
 import type { AgentId } from '@capaport/contracts';
 import { adapters } from './adapters.js';
 import { UsageError } from './parser.js';
