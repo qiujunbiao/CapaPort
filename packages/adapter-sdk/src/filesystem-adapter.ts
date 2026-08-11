@@ -13,6 +13,7 @@ import type {
   FilePlan,
   FilesystemAdapterConfig,
   InstallLock,
+  InstallScope,
   LocalCapability,
   ValidationResult,
 } from './types.js';
@@ -70,10 +71,12 @@ function localName(type: ComponentType, slug: string, files: PackageFile[]): str
   return match?.[1]?.trim().slice(0, 120) || slug;
 }
 
-function rootFor(config: FilesystemAdapterConfig, scope: 'user' | 'workspace'): string | undefined {
+function rootFor(config: FilesystemAdapterConfig, scope: InstallScope): string | undefined {
+  const relativeRoot = config.roots[scope];
+  if (!relativeRoot) return undefined;
   const base = scope === 'user' ? config.environment.homeDir : config.environment.projectRoot;
   if (!base) return undefined;
-  return joinPlatform(config.environment.platform, base, config.roots[scope]);
+  return joinPlatform(config.environment.platform, base, relativeRoot);
 }
 
 function samePath(left: string, right: string, platform: FilesystemAdapterConfig['environment']['platform']): boolean {

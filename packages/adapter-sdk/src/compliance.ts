@@ -3,12 +3,14 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { hashPackage } from '@capaport/capability-kit';
 import { afterEach, describe, expect, it } from 'vitest';
-import type { AdapterEnvironment, AgentAdapter, ComponentType, FileTransaction } from './types.js';
+import type { AdapterEnvironment, AgentAdapter, ComponentType, FileTransaction, InstallScope } from './types.js';
 
 export type AdapterComplianceOptions = {
   name: string;
   adapterId: string;
   supportedComponents: readonly ComponentType[];
+  supportedScopes?: readonly InstallScope[];
+  roots?: Partial<Record<InstallScope, string>>;
   fixtureHomeDir?: string;
   createAdapter(environment: AdapterEnvironment): AgentAdapter;
 };
@@ -35,6 +37,7 @@ class MemoryTransaction implements FileTransaction {
 
 export function defineAdapterComplianceSuite(options: AdapterComplianceOptions): void {
   describe(`${options.name} adapter compliance`, () => {
+    const supportedScopes = options.supportedScopes ?? (['user', 'workspace'] as const);
     const temporaryDirectories: string[] = [];
     afterEach(async () => {
       for (const directory of temporaryDirectories.splice(0)) await rm(directory, { recursive: true, force: true });
@@ -54,11 +57,10 @@ export function defineAdapterComplianceSuite(options: AdapterComplianceOptions):
         now: () => new Date('2026-08-07T00:00:00.000Z'),
       };
       const adapter = options.createAdapter(environment);
-      const rootName = fixtureRootName(adapter.id);
-      const userRoot = join(homeDir, rootName);
-      const workspaceRoot = join(projectRoot, rootName);
-      await mkdir(userRoot, { recursive: true });
-      await mkdir(workspaceRoot, { recursive: true });
+      const userRoot = join(homeDir, options.roots?.user ?? fixtureRootName(adapter.id));
+      const workspaceRoot = join(projectRoot, options.roots?.workspace ?? fixtureRootName(adapter.id));
+      if (supportedScopes.includes('user')) await mkdir(userRoot, { recursive: true });
+      if (supportedScopes.includes('workspace')) await mkdir(workspaceRoot, { recursive: true });
       return { adapter, homeDir, projectRoot, userRoot, workspaceRoot };
     }
 
@@ -70,8 +72,8 @@ export function defineAdapterComplianceSuite(options: AdapterComplianceOptions):
       await writeFile(join(skillDirectory, 'reference.md'), '# Reference');
 
       const detected = await current.adapter.detect();
-      expect(detected).toHaveLength(2);
-      expect(detected.map((installation) => installation.scope).sort()).toEqual(['user', 'workspace']);
+      expect(detected).toHaveLength(supportedScopes.length);
+      expect(detected.map((installation) => installation.scope).sort()).toEqual([...supportedScopes].sort());
       const user = detected.find((installation) => installation.scope === 'user');
       expect(user).toBeDefined();
       if (!user) throw new Error('User installation missing');
@@ -81,6 +83,17 @@ export function defineAdapterComplianceSuite(options: AdapterComplianceOptions):
       expect(first.map((capability) => capability.id)).toEqual(
         [...first.map((capability) => capability.id)].sort((left, right) => left.localeCompare(right)),
       );
+      if (!supportedScopes.includes('workspace')) {
+        await expect(
+          current.adapter.inventory({
+            id: `${options.adapterId}:workspace:${current.workspaceRoot}`,
+            adapterId: options.adapterId,
+            scope: 'workspace',
+            rootPath: current.workspaceRoot,
+            displayName: `${options.name} (workspace)`,
+          }),
+        ).rejects.toThrow(/belong/i);
+      }
     });
 
     it('imports canonically, plans inside roots, writes lock metadata, and uninstalls', async () => {
@@ -169,7 +182,7 @@ export function defineAdapterComplianceSuite(options: AdapterComplianceOptions):
     });
 
     it('plans valid Windows destinations using the adapter allowlist', async () => {
-      const rootName = fixtureRootName(options.adapterId);
+      const rootName = options.roots?.user ?? fixtureRootName(options.adapterId);
       const rootPath = `C:\\Users\\Person\\${rootName}`;
       const adapter = options.createAdapter({
         homeDir: 'C:\\Users\\Person',

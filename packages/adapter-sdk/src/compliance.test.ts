@@ -15,3 +15,20 @@ defineAdapterComplianceSuite({
       directories: { skill: 'skills', prompt: 'commands' },
     }),
 });
+
+defineAdapterComplianceSuite({
+  name: 'user-only fake adapter',
+  adapterId: 'user-only-fake',
+  supportedComponents: ['skill'],
+  supportedScopes: ['user'],
+  roots: { user: '.user-only-fake' },
+  createAdapter: (environment) =>
+    createFilesystemAdapter({
+      id: 'user-only-fake',
+      displayName: 'User-only Fake Agent',
+      supportedComponents: ['skill'],
+      environment,
+      roots: { user: '.user-only-fake' },
+      directories: { skill: 'skills' },
+    }),
+});
